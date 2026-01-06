@@ -3,7 +3,6 @@
 import { useState } from 'react';
 import { Sparkles, Loader2, Brain, RefreshCw, Rocket, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
-import Image from 'next/image';
 
 interface Game {
   appid: number;
@@ -395,13 +394,16 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
                 style={{ backgroundColor: 'var(--background-secondary)' }}
               >
                 <div className="flex flex-col md:flex-row">
-                  <div className="md:w-72 flex-shrink-0">
-                    <Image
+                  <div className="md:w-72 flex-shrink-0 bg-gray-200">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={game.headerImage}
                       alt={game.name}
-                      width={460}
-                      height={215}
                       className="w-full h-auto"
+                      onError={(e) => {
+                        const target = e.target as HTMLImageElement;
+                        target.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/capsule_616x353.jpg`;
+                      }}
                     />
                   </div>
                   <div className="p-4 flex-grow">
