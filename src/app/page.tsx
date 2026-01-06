@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import SteamInput from '@/components/SteamInput';
 import ProfileCard from '@/components/ProfileCard';
 import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
 import AIRecommend from '@/components/AIRecommend';
-import { Gamepad2 } from 'lucide-react';
+import { Gamepad2, Loader2 } from 'lucide-react';
 
 interface Game {
   appid: number;
@@ -36,11 +37,32 @@ interface SteamData {
   games: Game[];
 }
 
-export default function Home() {
+function HomeContent() {
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [steamData, setSteamData] = useState<SteamData | null>(null);
   const [gameDetails, setGameDetails] = useState<Map<number, { genres: { description: string }[] }>>(new Map());
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+
+  // URLパラメータからSteam IDを取得（OpenID認証後）
+  useEffect(() => {
+    const steamId = searchParams.get('steamId');
+    const authenticated = searchParams.get('authenticated');
+    const authError = searchParams.get('error');
+
+    if (authError) {
+      setError('Steam認証に失敗しました。もう一度お試しください。');
+      return;
+    }
+
+    if (steamId && authenticated === 'true') {
+      setIsAuthenticated(true);
+      fetchSteamData(steamId);
+      // URLをクリーンアップ
+      window.history.replaceState({}, '', '/');
+    }
+  }, [searchParams]);
 
   const fetchSteamData = async (steamId: string) => {
     setIsLoading(true);
@@ -60,6 +82,10 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleSteamLogin = () => {
+    window.location.href = '/api/auth/steam?action=login';
   };
 
   // ゲーム詳細を少しずつ取得
@@ -113,8 +139,11 @@ export default function Home() {
               <p className="text-xs text-gray-400">Steam Backlog Manager</p>
             </div>
           </div>
-          <div className="text-gray-400 text-sm">
-            v1.0
+          <div className="flex items-center gap-4">
+            {isAuthenticated && (
+              <span className="text-green-400 text-sm">Steam連携済み</span>
+            )}
+            <span className="text-gray-400 text-sm">v1.1</span>
           </div>
         </div>
       </header>
@@ -130,10 +159,35 @@ export default function Home() {
               積みゲーを可視化しよう
             </h2>
             <p className="text-gray-400 mb-8 text-center max-w-md">
-              Steam IDを入力して、あなたのゲームライブラリを分析。
+              Steamアカウントと連携して、あなたのゲームライブラリを分析。
               積みゲーを把握し、AIがおすすめをレコメンドします。
             </p>
-            <SteamInput onSubmit={fetchSteamData} isLoading={isLoading} />
+
+            {/* Steamログインボタン */}
+            <button
+              onClick={handleSteamLogin}
+              className="flex items-center gap-3 px-8 py-4 bg-[#1b2838] hover:bg-[#2a475e] border border-[#66c0f4] rounded-xl text-white font-medium transition-all mb-6"
+            >
+              <svg className="w-8 h-8" viewBox="0 0 256 259" xmlns="http://www.w3.org/2000/svg">
+                <path d="M127.779 0C60.42 0 5.24 52.412 0 119.014l68.724 28.674c5.823-3.97 12.847-6.286 20.407-6.286.682 0 1.356.017 2.02.051l30.572-44.766v-.63c0-28.465 22.882-51.621 51.015-51.621 28.133 0 51.027 23.156 51.027 51.621 0 28.465-22.894 51.627-51.027 51.627-.394 0-.778-.017-1.166-.023l-43.592 31.408c.017.556.04 1.107.04 1.67 0 21.357-17.163 38.715-38.269 38.715-18.697 0-34.318-13.535-37.593-31.375L3.61 166.942C21.593 219.77 70.476 258.603 128.221 258.603c70.698 0 128.003-57.864 128.003-129.242C256.224 57.864 198.919 0 128.221 0h-.442z" fill="#fff"/>
+              </svg>
+              <span className="text-lg">Steamでログイン</span>
+            </button>
+
+            <div className="flex items-center gap-4 mb-6 w-full max-w-2xl">
+              <div className="flex-1 h-px bg-gray-700"></div>
+              <span className="text-gray-500 text-sm">または</span>
+              <div className="flex-1 h-px bg-gray-700"></div>
+            </div>
+
+            {/* 手動入力 */}
+            <div className="w-full max-w-2xl">
+              <p className="text-gray-400 text-sm text-center mb-4">
+                Steam IDを直接入力（公開プロフィールのみ）
+              </p>
+              <SteamInput onSubmit={fetchSteamData} isLoading={isLoading} />
+            </div>
+
             {error && (
               <div className="mt-4 px-4 py-3 bg-red-900/50 border border-red-700 rounded-xl text-red-300">
                 {error}
@@ -183,5 +237,21 @@ export default function Home() {
         </div>
       </footer>
     </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+    </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <HomeContent />
+    </Suspense>
   );
 }
