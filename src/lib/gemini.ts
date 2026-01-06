@@ -116,59 +116,65 @@ export interface NewGameRecommendation {
   headerImage: string;
 }
 
+export interface FavoriteGame {
+  name: string;
+  playtime: number; // hours
+  genres: string[];
+}
+
 export async function recommendNewReleases(
   genreStats: GenreStats[],
   newGames: { appid: number; name: string; genres?: string[]; tags?: string[]; description?: string }[],
-  favoriteGames: string[] = [],
-  backlogGames: string[] = []
+  favoriteGames: FavoriteGame[] = [],
+  wishlistNames: string[] = []
 ): Promise<NewGameRecommendation[]> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-  const topGenres = genreStats
-    .sort((a, b) => b.count - a.count)
+  // プレイ時間順でソートしたジャンル統計
+  const topGenresByPlaytime = genreStats
+    .sort((a, b) => b.totalPlaytime - a.totalPlaytime)
     .slice(0, 5)
-    .map(g => g.genre);
+    .map(g => `${g.genre} (${Math.round(g.totalPlaytime / 60)}時間)`);
 
+  // ユーザーのお気に入りゲーム情報
+  const favoriteSection = favoriteGames.length > 0
+    ? `## 【最重要】ユーザーがよく遊んでいるゲーム（プレイ時間順）:
+${favoriteGames.map(g => `- ${g.name}: ${g.playtime}時間 [${g.genres.join(', ')}]`).join('\n')}`
+    : '';
+
+  // ウィッシュリスト情報
+  const wishlistSection = wishlistNames.length > 0
+    ? `## ユーザーのウィッシュリスト（興味のあるゲーム）:
+${wishlistNames.join(', ')}`
+    : '';
+
+  // 新作ゲームリスト
   const newGamesList = newGames
     .slice(0, 25)
     .map(g => {
       const genres = g.genres?.length ? `ジャンル: ${g.genres.join(', ')}` : '';
-      const desc = g.description ? `説明: ${g.description.slice(0, 150)}` : '';
+      const desc = g.description ? `説明: ${g.description.slice(0, 200)}` : '';
       return `- ${g.name} (AppID: ${g.appid}) | ${genres} | ${desc}`;
     })
     .join('\n');
 
-  // ユーザーのゲーム情報セクション（より詳細に）
-  const favoriteSection = favoriteGames.length > 0
-    ? `## 【最重要】ユーザーがプレイしているゲーム（プレイ時間順）:
-プレイ時間が長いゲームほどユーザーが好きなゲームです。特に上位のゲームのジャンル・雰囲気に近いゲームを選んでください。
-${favoriteGames.map(g => `- ${g}`).join('\n')}`
-    : '';
-
-  const backlogSection = backlogGames.length > 0
-    ? `## ユーザーが購入済みだが未プレイのゲーム:
-${backlogGames.join(', ')}`
-    : '';
-
-  const prompt = `あなたはゲームレコメンドの専門家です。
+  const prompt = `あなたはゲームレコメンドの専門家です。ユーザーの遊んでいるゲームとウィッシュリストを分析し、最も合う新作ゲームを選んでください。
 
 ${favoriteSection}
 
-## ユーザーがよく遊ぶジャンル:
-${topGenres.join(', ')}
+## ユーザーがよく遊ぶジャンル（プレイ時間順）:
+${topGenresByPlaytime.join(', ')}
 
-${backlogSection}
+${wishlistSection}
 
-## 候補ゲームリスト（この中から選んでください）:
+## 候補ゲームリスト（直近3ヶ月の新作、この中から選んでください）:
 ${newGamesList}
 
-## 【絶対守ること】選定基準:
-1. プレイ時間が最も長いゲームのジャンルを最優先で選ぶ
-   - 例: アドベンチャーを1000時間遊んでいる→アドベンチャーを推薦
-   - 例: インディーゲームをよく遊ぶ→インディーゲームを推薦
-2. ユーザーが遊んでいるゲームと全く違うジャンルは絶対に選ばない
-   - シミュレーション・ストラテジーをほとんど遊んでいないなら推薦しない
-3. 候補リストにユーザーの好みに合うゲームがない場合は、最も近いものを選ぶ
+## 選定基準:
+1. ユーザーが最もプレイしているゲームのジャンル・雰囲気に近いものを優先
+2. ウィッシュリストにあるゲームと似た傾向のゲームを選ぶ
+3. ゲームの説明文のキーワードがユーザーの好みと一致するものを選ぶ
+4. ユーザーがほとんど遊んでいないジャンルは避ける
 
 ## 回答形式:
 必ず以下のJSON形式のみで回答してください。前置き不要。
@@ -177,8 +183,8 @@ ${newGamesList}
 [
   {
     "appid": 数字,
-    "name": "ゲーム名",
-    "reason": "ユーザーが○○時間遊んでいる△△と同じ□□ジャンルなのでおすすめ",
+    "name": "ゲーム名（候補リストから正確にコピー）",
+    "reason": "なぜこのユーザーに合うか（ユーザーの遊んでいるゲームやウィッシュリストとの類似点を具体的に）",
     "genre": "主なジャンル"
   }
 ]

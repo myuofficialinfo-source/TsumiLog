@@ -31,10 +31,18 @@ interface Stats {
   playedGames: number;
 }
 
+interface WishlistGame {
+  appid: number;
+  name: string;
+  priority: number;
+  added: number;
+}
+
 interface SteamData {
   profile: Profile;
   stats: Stats;
   games: Game[];
+  wishlist?: WishlistGame[];
 }
 
 function HomeContent() {
@@ -262,7 +270,7 @@ function HomeContent() {
               <GenreChart games={steamData.games} gameDetails={gameDetails} />
 
               {/* AI分析 */}
-              <AIRecommend games={steamData.games} gameDetails={gameDetails} stats={steamData.stats} />
+              <AIRecommend games={steamData.games} gameDetails={gameDetails} stats={steamData.stats} wishlist={steamData.wishlist} />
             </div>
 
             {/* ゲームリスト */}

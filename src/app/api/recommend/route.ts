@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateRecommendations, analyzeGamingPreferences } from '@/lib/gemini';
+import { generateRecommendations, analyzeGamingPreferences, recommendNewReleases, FavoriteGame } from '@/lib/gemini';
 import { getNewReleases } from '@/lib/steam';
 import { checkRateLimit, incrementRateLimit } from '@/lib/rate-limit';
 import { GenreStats, BacklogGame } from '@/types/steam';
@@ -43,6 +43,10 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // フロントから送られてくるユーザー情報
+      const favoriteGames = (body.favoriteGames || []) as FavoriteGame[];
+      const wishlistNames = (body.wishlistNames || []) as string[];
+
       // ユーザーのトップジャンルを取得
       const topGenres = genreStats
         .sort((a, b) => b.totalPlaytime - a.totalPlaytime)
@@ -58,51 +62,16 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // ユーザーのジャンル重みを計算（プレイ時間ベース）
-      const genreWeights = new Map<string, number>();
-      let totalPlaytime = 0;
-      genreStats.forEach(g => {
-        totalPlaytime += g.totalPlaytime;
-      });
-      genreStats.forEach(g => {
-        const weight = totalPlaytime > 0 ? g.totalPlaytime / totalPlaytime : g.count / genreStats.length;
-        genreWeights.set(g.genre, weight);
-      });
+      // Geminiで最適な新作を選定
+      const newReleases = await recommendNewReleases(
+        genreStats,
+        candidates,
+        favoriteGames,
+        wishlistNames
+      );
 
-      // 各候補ゲームにスコアを計算
-      const scoredGames = candidates.map(game => {
-        let score = 0;
-        const matchedGenres: string[] = [];
-
-        game.genres.forEach(genre => {
-          const weight = genreWeights.get(genre);
-          if (weight) {
-            score += weight;
-            matchedGenres.push(genre);
-          }
-        });
-
-        // 理由を生成（ゲームの説明を使用）
-        const reason = game.description
-          ? game.description.slice(0, 80) + (game.description.length > 80 ? '...' : '')
-          : (matchedGenres.length > 0 ? `${matchedGenres.join('・')}ジャンルが一致` : '新作タイトル');
-
-        return {
-          appid: game.appid,
-          name: game.name,
-          genre: matchedGenres.length > 0 ? matchedGenres.join(', ') : game.genres.slice(0, 2).join(', '),
-          reason,
-          score,
-          storeUrl: `https://store.steampowered.com/app/${game.appid}`,
-          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
-        };
-      });
-
-      // スコア順にソートして上位5つを返す
-      const newReleases = scoredGames
-        .sort((a, b) => b.score - a.score)
-        .slice(0, 5);
-
+      // 成功した場合のみカウントを増やす
+      incrementRateLimit('gemini-api');
       return NextResponse.json({ newReleases });
     }
 

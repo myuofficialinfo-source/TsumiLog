@@ -33,10 +33,18 @@ interface NewGameRecommendation {
   headerImage: string;
 }
 
+interface WishlistGame {
+  appid: number;
+  name: string;
+  priority: number;
+  added: number;
+}
+
 interface AIRecommendProps {
   games: Game[];
   gameDetails: Map<number, { genres: { description: string }[] }>;
   stats?: Stats;
+  wishlist?: WishlistGame[];
 }
 
 // プレイ時間を日と時間に変換
@@ -49,7 +57,7 @@ const formatPlaytime = (hours: number) => {
   return `${hours}時間`;
 };
 
-export default function AIRecommend({ games, gameDetails, stats }: AIRecommendProps) {
+export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIRecommendProps) {
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [newReleases, setNewReleases] = useState<NewGameRecommendation[] | null>(null);
@@ -168,11 +176,30 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
     try {
       const genreStats = generateGenreStats();
 
+      // プレイ時間順でソートしたゲーム情報（上位20本）
+      const favoriteGames = [...games]
+        .sort((a, b) => b.playtime_forever - a.playtime_forever)
+        .slice(0, 20)
+        .map(g => {
+          const details = gameDetails.get(g.appid);
+          const genres = details?.genres?.map(genre => genre.description) || [];
+          return {
+            name: g.name,
+            playtime: Math.round(g.playtime_forever / 60),
+            genres,
+          };
+        });
+
+      // ウィッシュリスト情報
+      const wishlistNames = wishlist?.slice(0, 10).map(w => w.name) || [];
+
       const response = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           genreStats,
+          favoriteGames,
+          wishlistNames,
           type: 'new-releases',
         }),
       });
