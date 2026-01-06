@@ -166,6 +166,9 @@ ${newGamesList}
 
 上記リストから5つ選び、ユーザーの好みに最も合うものを提案してください。`;
 
+  // 有効なAppIDのセットを作成
+  const validAppIds = new Set(newGames.map(g => g.appid));
+
   try {
     const result = await model.generateContent(prompt);
     const response = result.response;
@@ -180,7 +183,10 @@ ${newGamesList}
     const jsonStr = jsonMatch[1] || jsonMatch[0];
     const recommendations = JSON.parse(jsonStr) as { appid: number; name: string; reason: string; genre: string }[];
 
-    return recommendations.map(rec => ({
+    // 有効なAppIDのみをフィルタリング（Geminiが創作したゲームを除外）
+    const validRecommendations = recommendations.filter(rec => validAppIds.has(rec.appid));
+
+    return validRecommendations.map(rec => ({
       ...rec,
       storeUrl: `https://store.steampowered.com/app/${rec.appid}`,
       headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${rec.appid}/header.jpg`,
