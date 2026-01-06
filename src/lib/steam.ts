@@ -116,61 +116,36 @@ export interface NewReleaseGame {
   description: string;
 }
 
-// 新作・人気ゲームを取得（詳細情報付き）
+// 人気・おすすめゲームを取得（詳細情報付き）
 export async function getNewReleases(): Promise<NewReleaseGame[]> {
   try {
     const appIds: number[] = [];
 
-    // 複数のソースからゲームを取得
-    const [featuredRes, searchRes] = await Promise.all([
-      // 1. featuredcategories から新作・人気を取得
-      fetch(`${STEAM_STORE_API}/featuredcategories?l=japanese`),
-      // 2. 売上トップから取得（より人気のゲームを含む）
-      fetch(`https://store.steampowered.com/search/results/?query&start=0&count=30&sort_by=_ASC&force_infinite=1&category1=998&supportedlang=japanese&hidef2p=1&filter=topsellers&ndl=1&json=1`),
-    ]);
+    // featuredcategories から人気ゲームを取得
+    const featuredRes = await fetch(`${STEAM_STORE_API}/featuredcategories?l=japanese`);
 
-    // featuredcategories からの取得
     if (featuredRes.ok) {
       const data = await featuredRes.json();
 
-      // 新作カテゴリ
-      if (data.new_releases?.items) {
-        for (const item of data.new_releases.items) {
-          if (!appIds.includes(item.id)) appIds.push(item.id);
-        }
-      }
-
-      // トップセラー
+      // 優先順位: 1. トップセラー（人気ゲーム）
       if (data.top_sellers?.items) {
         for (const item of data.top_sellers.items) {
           if (!appIds.includes(item.id)) appIds.push(item.id);
         }
       }
 
-      // スペシャル（セール中の人気ゲーム）
+      // 優先順位: 2. スペシャル（セール中の人気ゲーム）
       if (data.specials?.items) {
         for (const item of data.specials.items) {
           if (!appIds.includes(item.id)) appIds.push(item.id);
         }
       }
-    }
 
-    // 売上検索結果からの取得
-    if (searchRes.ok) {
-      try {
-        const searchData = await searchRes.json();
-        if (searchData.items) {
-          for (const item of searchData.items) {
-            // URLからappidを抽出
-            const match = item.logo?.match(/\/apps\/(\d+)\//);
-            if (match) {
-              const id = parseInt(match[1]);
-              if (!appIds.includes(id)) appIds.push(id);
-            }
-          }
+      // 優先順位: 3. 新作（足りない場合のみ）
+      if (appIds.length < 20 && data.new_releases?.items) {
+        for (const item of data.new_releases.items) {
+          if (!appIds.includes(item.id)) appIds.push(item.id);
         }
-      } catch {
-        // 検索結果のパースに失敗しても続行
       }
     }
 

@@ -47,6 +47,11 @@ export async function POST(request: NextRequest) {
       const favoriteGames = (body.favoriteGames as string[]) || [];
       const userBacklogGames = (body.backlogGames as string[]) || [];
 
+      // デバッグログ
+      console.log('=== New Releases Debug ===');
+      console.log('Favorite Games:', favoriteGames);
+      console.log('Genre Stats:', genreStats.slice(0, 5));
+
       // 新作ゲームを詳細情報付きで取得
       const newGames = await getNewReleases();
       if (newGames.length === 0) {
@@ -55,6 +60,9 @@ export async function POST(request: NextRequest) {
           { status: 500 }
         );
       }
+
+      // デバッグログ - 取得したゲーム
+      console.log('New Games from Steam:', newGames.map(g => `${g.name} (${g.genres.join(', ')})`));
 
       // 詳細情報をGeminiに渡す形式に変換
       const gamesWithDetails = newGames.map(g => ({
