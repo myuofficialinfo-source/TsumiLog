@@ -182,20 +182,20 @@ function HomeContent() {
 
         {/* 入力フォーム */}
         {!steamData && !isLoading && (
-          <div className="flex flex-col items-center justify-center py-4">
+          <div className="flex flex-col items-center justify-center py-2">
             {/* メインアイコン */}
-            <div className="mb-4">
-              <Image src="/icons/icom.png" alt="ツミナビ" width={180} height={180} />
+            <div className="mb-3">
+              <Image src="/icons/icom.png" alt="ツミナビ" width={160} height={160} />
             </div>
 
-            <h2 className="text-4xl font-black mb-3 text-center gradient-text">
+            <h2 className="text-4xl font-black mb-2 text-center gradient-text">
               積みゲーを可視化しよう！
             </h2>
-            <p className="text-gray-600 mb-6 text-center max-w-md text-lg">
+            <p className="text-gray-600 mb-4 text-center max-w-md text-lg">
               Steamアカウントと連携して、あなたのゲームライブラリを分析。
               <br />
               <span className="font-bold" style={{ color: 'var(--pop-red)' }}>積みゲー</span>を把握して、
-              <span className="font-bold" style={{ color: 'var(--pop-blue)' }}>AIがおすすめ</span>をレコメンド！
+              <span className="font-bold" style={{ color: 'var(--pop-blue)' }}>おすすめ</span>をレコメンド！
             </p>
 
             {/* Steamログインボタン */}
@@ -240,7 +240,7 @@ function HomeContent() {
             )}
 
             {/* 装飾 */}
-            <div className="mt-8 flex gap-4">
+            <div className="mt-6 flex gap-4">
               <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-red)' }} />
               <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
               <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
