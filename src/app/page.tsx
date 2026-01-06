@@ -182,16 +182,16 @@ function HomeContent() {
 
         {/* 入力フォーム */}
         {!steamData && !isLoading && (
-          <div className="flex flex-col items-center justify-center py-8">
+          <div className="flex flex-col items-center justify-center py-4">
             {/* メインアイコン */}
-            <div className="mb-6">
-              <Image src="/icons/icom.png" alt="ツミログ" width={200} height={200} />
+            <div className="mb-4">
+              <Image src="/icons/icom.png" alt="ツミログ" width={180} height={180} />
             </div>
 
-            <h2 className="text-4xl font-black mb-4 text-center gradient-text">
+            <h2 className="text-4xl font-black mb-3 text-center gradient-text">
               積みゲーを可視化しよう！
             </h2>
-            <p className="text-gray-600 mb-10 text-center max-w-md text-lg">
+            <p className="text-gray-600 mb-6 text-center max-w-md text-lg">
               Steamアカウントと連携して、あなたのゲームライブラリを分析。
               <br />
               <span className="font-bold" style={{ color: 'var(--pop-red)' }}>積みゲー</span>を把握して、
@@ -211,7 +211,7 @@ function HomeContent() {
 
             {/* 注意事項 */}
             <div
-              className="mt-6 px-6 py-4 rounded-xl border-2 border-[#3D3D3D] max-w-md text-center"
+              className="mt-4 px-6 py-3 rounded-xl border-2 border-[#3D3D3D] max-w-md text-center"
               style={{ backgroundColor: 'var(--background-secondary)' }}
             >
               <p className="text-sm text-gray-600 font-medium">
@@ -240,7 +240,7 @@ function HomeContent() {
             )}
 
             {/* 装飾 */}
-            <div className="mt-16 flex gap-4">
+            <div className="mt-8 flex gap-4">
               <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-red)' }} />
               <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
               <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
