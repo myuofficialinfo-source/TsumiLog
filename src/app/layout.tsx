@@ -17,6 +17,10 @@ export const metadata: Metadata = {
   title: "ツミログ | TsumiLog - Steam積みゲー管理",
   description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析しておすすめを提案します。",
   metadataBase: new URL('https://tsumi-log.vercel.app'),
+  icons: {
+    icon: '/icons/icom.ico',
+    apple: '/icons/icom.png',
+  },
   openGraph: {
     title: "ツミログ | TsumiLog - Steam積みゲー管理",
     description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析して、あなたのゲーマータイプを診断！",
