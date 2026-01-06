@@ -182,10 +182,10 @@ function HomeContent() {
 
         {/* 入力フォーム */}
         {!steamData && !isLoading && (
-          <div className="flex flex-col items-center justify-center py-16">
+          <div className="flex flex-col items-center justify-center py-8">
             {/* メインアイコン */}
-            <div className="mb-8">
-              <Image src="/icons/icom.png" alt="ツミログ" width={160} height={160} />
+            <div className="mb-6">
+              <Image src="/icons/icom.png" alt="ツミログ" width={200} height={200} />
             </div>
 
             <h2 className="text-4xl font-black mb-4 text-center gradient-text">
@@ -278,9 +278,6 @@ function HomeContent() {
             <Image src="/icons/icom.png" alt="ツミログ" width={40} height={40} />
           </div>
           <p className="font-bold text-gray-600">ツミログ - TsumiLog</p>
-          <p className="mt-2 text-sm text-gray-500">
-            Powered by Steam API & Google Gemini AI
-          </p>
         </div>
       </footer>
     </div>
