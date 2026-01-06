@@ -3,6 +3,16 @@
 import Image from 'next/image';
 import { Gamepad2, Clock, Package, PlayCircle } from 'lucide-react';
 
+// プレイ時間を日と時間に変換
+const formatPlaytime = (hours: number) => {
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  if (days > 0) {
+    return remainingHours > 0 ? `${days}日${remainingHours}時間` : `${days}日`;
+  }
+  return `${hours}時間`;
+};
+
 interface ProfileCardProps {
   profile: {
     personaName: string;
@@ -67,7 +77,7 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
         <StatCard
           icon={<Clock className="w-5 h-5" style={{ color: 'var(--pop-purple)' }} />}
           label="総プレイ時間"
-          value={`${stats.totalPlaytimeHours.toLocaleString()}h`}
+          value={formatPlaytime(stats.totalPlaytimeHours)}
           color="var(--pop-purple)"
         />
       </div>

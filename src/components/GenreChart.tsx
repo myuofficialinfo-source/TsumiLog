@@ -104,7 +104,7 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
 
       <div className="flex flex-col md:flex-row gap-6">
         {/* チャート */}
-        <div className="h-64 md:h-80 flex-1">
+        <div className="h-72 md:h-96 flex-1">
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'pie' ? (
               <PieChart>
@@ -112,8 +112,8 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
                   data={genreStats}
                   cx="50%"
                   cy="50%"
-                  innerRadius={50}
-                  outerRadius={90}
+                  innerRadius={70}
+                  outerRadius={140}
                   paddingAngle={2}
                   dataKey="count"
                 >
