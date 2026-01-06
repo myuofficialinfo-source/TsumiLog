@@ -168,11 +168,25 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
     try {
       const genreStats = generateGenreStats();
 
+      // よくプレイするゲーム（プレイ時間上位10本）
+      const favoriteGames = [...games]
+        .sort((a, b) => b.playtime_forever - a.playtime_forever)
+        .slice(0, 10)
+        .map(g => g.name);
+
+      // 積みゲー（購入したが未プレイ）
+      const backlogGames = games
+        .filter(g => g.isBacklog)
+        .slice(0, 10)
+        .map(g => g.name);
+
       const response = await fetch('/api/recommend', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           genreStats,
+          favoriteGames,
+          backlogGames,
           type: 'new-releases',
         }),
       });
