@@ -29,8 +29,8 @@ interface GenreChartProps {
 }
 
 const COLORS = [
-  '#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6',
-  '#EC4899', '#06B6D4', '#84CC16', '#F97316', '#6366F1',
+  '#E63946', '#2A9D8F', '#F4A261', '#457B9D', '#9B5DE5',
+  '#F15BB5', '#00BBF9', '#84CC16', '#F97316', '#6366F1',
 ];
 
 export default function GenreChart({ games, gameDetails }: GenreChartProps) {
@@ -66,34 +66,36 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
 
   if (genreStats.length === 0) {
     return (
-      <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
-        <h3 className="text-xl font-bold text-white mb-4">ジャンル分析</h3>
-        <p className="text-gray-400">ゲーム詳細を読み込み中...</p>
+      <div className="pop-card p-6">
+        <h3 className="text-xl font-black text-[#3D3D3D] mb-4">ジャンル分析</h3>
+        <p className="text-gray-600">ゲーム詳細を読み込み中...</p>
       </div>
     );
   }
 
   return (
-    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+    <div className="pop-card p-6">
       <div className="flex justify-between items-center mb-6">
-        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-blue-400" />
+        <h3 className="text-xl font-black text-[#3D3D3D] flex items-center gap-2">
+          <BarChart3 className="w-6 h-6" style={{ color: 'var(--pop-blue)' }} />
           ジャンル分析
         </h3>
-        <div className="flex bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
+        <div className="flex rounded-lg overflow-hidden border-2 border-[#3D3D3D]">
           <button
             onClick={() => setChartType('pie')}
             className={`p-2 transition-colors ${
-              chartType === 'pie' ? 'bg-blue-600' : 'hover:bg-gray-700'
+              chartType === 'pie' ? 'text-white' : 'hover:bg-gray-100'
             }`}
+            style={{ backgroundColor: chartType === 'pie' ? 'var(--pop-blue)' : 'var(--card-bg)' }}
           >
             <PieChartIcon className="w-5 h-5" />
           </button>
           <button
             onClick={() => setChartType('bar')}
             className={`p-2 transition-colors ${
-              chartType === 'bar' ? 'bg-blue-600' : 'hover:bg-gray-700'
+              chartType === 'bar' ? 'text-white' : 'hover:bg-gray-100'
             }`}
+            style={{ backgroundColor: chartType === 'bar' ? 'var(--pop-blue)' : 'var(--card-bg)' }}
           >
             <BarChart3 className="w-5 h-5" />
           </button>
@@ -115,19 +117,21 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
                 label={({ name, percent }) =>
                   `${name ?? ''} (${((percent ?? 0) * 100).toFixed(0)}%)`
                 }
-                labelLine={{ stroke: '#6B7280' }}
+                labelLine={{ stroke: '#3D3D3D' }}
               >
                 {genreStats.map((_, index) => (
                   <Cell
                     key={`cell-${index}`}
                     fill={COLORS[index % COLORS.length]}
+                    stroke="#3D3D3D"
+                    strokeWidth={2}
                   />
                 ))}
               </Pie>
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#1F2937',
-                  border: '1px solid #374151',
+                  backgroundColor: 'var(--card-bg)',
+                  border: '2px solid #3D3D3D',
                   borderRadius: '8px',
                 }}
                 formatter={(value, name) => [
@@ -138,24 +142,24 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
             </PieChart>
           ) : (
             <BarChart data={genreStats} layout="vertical">
-              <XAxis type="number" stroke="#6B7280" />
+              <XAxis type="number" stroke="#3D3D3D" />
               <YAxis
                 type="category"
                 dataKey="name"
-                stroke="#6B7280"
+                stroke="#3D3D3D"
                 width={100}
                 tick={{ fontSize: 12 }}
               />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#1F2937',
-                  border: '1px solid #374151',
+                  backgroundColor: 'var(--card-bg)',
+                  border: '2px solid #3D3D3D',
                   borderRadius: '8px',
                 }}
               />
               <Legend />
-              <Bar dataKey="count" name="ゲーム数" fill="#3B82F6" radius={4} />
-              <Bar dataKey="backlog" name="積みゲー" fill="#F59E0B" radius={4} />
+              <Bar dataKey="count" name="ゲーム数" fill="#457B9D" radius={4} />
+              <Bar dataKey="backlog" name="積みゲー" fill="#E63946" radius={4} />
             </BarChart>
           )}
         </ResponsiveContainer>
@@ -166,14 +170,15 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
         {genreStats.slice(0, 5).map((genre, index) => (
           <div
             key={genre.name}
-            className="p-3 bg-gray-900 rounded-lg border border-gray-700"
+            className="p-3 rounded-lg border-2 border-[#3D3D3D]"
+            style={{ backgroundColor: 'var(--background-secondary)' }}
           >
             <div
-              className="w-3 h-3 rounded-full mb-2"
+              className="w-4 h-4 rounded-sm mb-2 border border-[#3D3D3D]"
               style={{ backgroundColor: COLORS[index] }}
             />
-            <p className="text-sm font-medium text-white truncate">{genre.name}</p>
-            <p className="text-xs text-gray-400">{genre.count}本</p>
+            <p className="text-sm font-bold text-[#3D3D3D] truncate">{genre.name}</p>
+            <p className="text-xs text-gray-500 font-medium">{genre.count}本</p>
           </div>
         ))}
       </div>

@@ -2,12 +2,11 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
-import SteamInput from '@/components/SteamInput';
 import ProfileCard from '@/components/ProfileCard';
 import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
 import AIRecommend from '@/components/AIRecommend';
-import { Gamepad2, Loader2 } from 'lucide-react';
+import { Loader2, LogOut } from 'lucide-react';
 
 interface Game {
   appid: number;
@@ -37,17 +36,41 @@ interface SteamData {
   games: Game[];
 }
 
+// 積み木ブロックコンポーネント
+function BlockIcon({ color, size = 'md' }: { color: string; size?: 'sm' | 'md' | 'lg' }) {
+  const sizes = {
+    sm: 'w-4 h-4',
+    md: 'w-6 h-6',
+    lg: 'w-10 h-10',
+  };
+  return (
+    <div
+      className={`${sizes[size]} rounded-sm border-2 border-[#3D3D3D] transform rotate-3`}
+      style={{ backgroundColor: color }}
+    />
+  );
+}
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [steamData, setSteamData] = useState<SteamData | null>(null);
   const [gameDetails, setGameDetails] = useState<Map<number, { genres: { description: string }[] }>>(new Map());
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [steamId, setSteamId] = useState<string | null>(null);
+
+  // 起動時にlocalStorageからsteamIdを復元
+  useEffect(() => {
+    const savedSteamId = localStorage.getItem('steamId');
+    if (savedSteamId) {
+      setSteamId(savedSteamId);
+      fetchSteamData(savedSteamId);
+    }
+  }, []);
 
   // URLパラメータからSteam IDを取得（OpenID認証後）
   useEffect(() => {
-    const steamId = searchParams.get('steamId');
+    const urlSteamId = searchParams.get('steamId');
     const authenticated = searchParams.get('authenticated');
     const authError = searchParams.get('error');
 
@@ -56,20 +79,22 @@ function HomeContent() {
       return;
     }
 
-    if (steamId && authenticated === 'true') {
-      setIsAuthenticated(true);
-      fetchSteamData(steamId);
+    if (urlSteamId && authenticated === 'true') {
+      // localStorageに保存
+      localStorage.setItem('steamId', urlSteamId);
+      setSteamId(urlSteamId);
+      fetchSteamData(urlSteamId);
       // URLをクリーンアップ
       window.history.replaceState({}, '', '/');
     }
   }, [searchParams]);
 
-  const fetchSteamData = async (steamId: string) => {
+  const fetchSteamData = async (id: string) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const response = await fetch(`/api/steam/games?steamId=${encodeURIComponent(steamId)}&wishlist=true`);
+      const response = await fetch(`/api/steam/games?steamId=${encodeURIComponent(id)}&wishlist=true`);
       const data = await response.json();
 
       if (!response.ok) {
@@ -86,6 +111,13 @@ function HomeContent() {
 
   const handleSteamLogin = () => {
     window.location.href = '/api/auth/steam?action=login';
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('steamId');
+    setSteamId(null);
+    setSteamData(null);
+    setGameDetails(new Map());
   };
 
   // ゲーム詳細を少しずつ取得
@@ -126,89 +158,102 @@ function HomeContent() {
   }, [steamData?.games]);
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
       {/* ヘッダー */}
-      <header className="border-b border-gray-800 bg-gray-900/80 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
+        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl">
-              <Gamepad2 className="w-6 h-6 text-white" />
+            {/* 積み木ロゴ */}
+            <div className="flex items-end gap-0.5">
+              <BlockIcon color="#E63946" size="lg" />
+              <BlockIcon color="#F4A261" size="md" />
+              <BlockIcon color="#2A9D8F" size="sm" />
             </div>
             <div>
-              <h1 className="text-xl font-bold text-white">積みゲー管理</h1>
-              <p className="text-xs text-gray-400">Steam Backlog Manager</p>
+              <h1 className="text-2xl font-black gradient-text">ツミログ</h1>
+              <p className="text-xs text-gray-500 font-medium">TsumiLog</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
-            {isAuthenticated && (
-              <span className="text-green-400 text-sm">Steam連携済み</span>
+            {steamId && (
+              <button
+                onClick={handleLogout}
+                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+                style={{ backgroundColor: 'var(--card-bg)' }}
+              >
+                <LogOut className="w-4 h-4" />
+                ログアウト
+              </button>
             )}
-            <span className="text-gray-400 text-sm">v1.1</span>
           </div>
         </div>
       </header>
 
       <main className="max-w-7xl mx-auto px-4 py-8">
-        {/* 入力フォーム */}
-        {!steamData && (
+        {/* ローディング */}
+        {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
-            <div className="p-4 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl mb-8">
-              <Gamepad2 className="w-16 h-16 text-white" />
+            <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--pop-blue)' }} />
+            <p className="mt-4 text-lg font-medium">ゲームデータを取得中...</p>
+          </div>
+        )}
+
+        {/* 入力フォーム */}
+        {!steamData && !isLoading && (
+          <div className="flex flex-col items-center justify-center py-16">
+            {/* 積み木イラスト */}
+            <div className="flex items-end gap-1 mb-8">
+              <div className="w-12 h-12 rounded-lg border-3 border-[#3D3D3D] transform -rotate-3" style={{ backgroundColor: 'var(--pop-red)' }} />
+              <div className="w-16 h-16 rounded-lg border-3 border-[#3D3D3D] transform rotate-2" style={{ backgroundColor: 'var(--pop-yellow)' }} />
+              <div className="w-10 h-10 rounded-lg border-3 border-[#3D3D3D] transform -rotate-6" style={{ backgroundColor: 'var(--pop-green)' }} />
+              <div className="w-14 h-14 rounded-lg border-3 border-[#3D3D3D] transform rotate-3" style={{ backgroundColor: 'var(--pop-blue)' }} />
+              <div className="w-8 h-8 rounded-lg border-3 border-[#3D3D3D] transform -rotate-2" style={{ backgroundColor: 'var(--pop-purple)' }} />
             </div>
-            <h2 className="text-3xl font-bold text-white mb-4 text-center">
-              積みゲーを可視化しよう
+
+            <h2 className="text-4xl font-black mb-4 text-center gradient-text">
+              積みゲーを可視化しよう！
             </h2>
-            <p className="text-gray-400 mb-8 text-center max-w-md">
+            <p className="text-gray-600 mb-10 text-center max-w-md text-lg">
               Steamアカウントと連携して、あなたのゲームライブラリを分析。
-              積みゲーを把握し、AIがおすすめをレコメンドします。
+              <br />
+              <span className="font-bold" style={{ color: 'var(--pop-red)' }}>積みゲー</span>を把握して、
+              <span className="font-bold" style={{ color: 'var(--pop-blue)' }}>AIがおすすめ</span>をレコメンド！
             </p>
 
             {/* Steamログインボタン */}
             <button
               onClick={handleSteamLogin}
-              className="flex items-center gap-3 px-8 py-4 bg-[#1b2838] hover:bg-[#2a475e] border border-[#66c0f4] rounded-xl text-white font-medium transition-all mb-6"
+              className="pop-button flex items-center gap-3 px-8 py-4 text-white font-bold text-lg"
             >
               <svg className="w-8 h-8" viewBox="0 0 256 259" xmlns="http://www.w3.org/2000/svg">
                 <path d="M127.779 0C60.42 0 5.24 52.412 0 119.014l68.724 28.674c5.823-3.97 12.847-6.286 20.407-6.286.682 0 1.356.017 2.02.051l30.572-44.766v-.63c0-28.465 22.882-51.621 51.015-51.621 28.133 0 51.027 23.156 51.027 51.621 0 28.465-22.894 51.627-51.027 51.627-.394 0-.778-.017-1.166-.023l-43.592 31.408c.017.556.04 1.107.04 1.67 0 21.357-17.163 38.715-38.269 38.715-18.697 0-34.318-13.535-37.593-31.375L3.61 166.942C21.593 219.77 70.476 258.603 128.221 258.603c70.698 0 128.003-57.864 128.003-129.242C256.224 57.864 198.919 0 128.221 0h-.442z" fill="#fff"/>
               </svg>
-              <span className="text-lg">Steamでログイン</span>
+              <span>Steamでログイン</span>
             </button>
 
-            <div className="flex items-center gap-4 mb-6 w-full max-w-2xl">
-              <div className="flex-1 h-px bg-gray-700"></div>
-              <span className="text-gray-500 text-sm">または</span>
-              <div className="flex-1 h-px bg-gray-700"></div>
-            </div>
-
-            {/* 手動入力 */}
-            <div className="w-full max-w-2xl">
-              <p className="text-gray-400 text-sm text-center mb-4">
-                Steam IDを直接入力（公開プロフィールのみ）
-              </p>
-              <SteamInput onSubmit={fetchSteamData} isLoading={isLoading} />
-            </div>
-
             {error && (
-              <div className="mt-4 px-4 py-3 bg-red-900/50 border border-red-700 rounded-xl text-red-300">
+              <div
+                className="mt-6 px-6 py-4 rounded-xl border-3 border-[#3D3D3D] font-medium"
+                style={{ backgroundColor: '#FEE2E2', color: 'var(--pop-red)' }}
+              >
                 {error}
               </div>
             )}
+
+            {/* 装飾 */}
+            <div className="mt-16 flex gap-4">
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-red)' }} />
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-blue)' }} />
+              <div className="w-4 h-4 rounded-full" style={{ backgroundColor: 'var(--pop-purple)' }} />
+            </div>
           </div>
         )}
 
         {/* 結果表示 */}
-        {steamData && (
+        {steamData && !isLoading && (
           <div className="space-y-6">
-            {/* 検索バー（上部に固定） */}
-            <div className="bg-gray-800 rounded-xl p-4 border border-gray-700">
-              <div className="flex flex-col md:flex-row items-center gap-4">
-                <p className="text-gray-400 text-sm">別のアカウントを検索:</p>
-                <div className="flex-1 max-w-xl">
-                  <SteamInput onSubmit={fetchSteamData} isLoading={isLoading} />
-                </div>
-              </div>
-            </div>
-
             {/* プロフィールカード */}
             <ProfileCard profile={steamData.profile} stats={steamData.stats} />
 
@@ -228,10 +273,15 @@ function HomeContent() {
       </main>
 
       {/* フッター */}
-      <footer className="border-t border-gray-800 py-8 mt-16">
-        <div className="max-w-7xl mx-auto px-4 text-center text-gray-500 text-sm">
-          <p>積みゲー管理 - Steam Backlog Manager</p>
-          <p className="mt-2">
+      <footer className="border-t-3 border-[#3D3D3D] py-8 mt-16" style={{ backgroundColor: 'var(--card-bg)' }}>
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <div className="flex justify-center items-end gap-1 mb-4">
+            <BlockIcon color="#E63946" size="sm" />
+            <BlockIcon color="#F4A261" size="sm" />
+            <BlockIcon color="#2A9D8F" size="sm" />
+          </div>
+          <p className="font-bold text-gray-600">ツミログ - TsumiLog</p>
+          <p className="mt-2 text-sm text-gray-500">
             Powered by Steam API & Google Gemini AI
           </p>
         </div>
@@ -242,8 +292,8 @@ function HomeContent() {
 
 function LoadingFallback() {
   return (
-    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--pop-blue)' }} />
     </div>
   );
 }

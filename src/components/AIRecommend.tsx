@@ -118,32 +118,34 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
   const currentContent = activeTab === 'recommend' ? recommendation : analysis;
 
   return (
-    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+    <div className="pop-card p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-          <Sparkles className="w-6 h-6 text-yellow-400" />
+        <h3 className="text-xl font-black text-[#3D3D3D] flex items-center gap-2">
+          <Sparkles className="w-6 h-6" style={{ color: 'var(--pop-yellow)' }} />
           AI分析
         </h3>
 
-        <div className="flex bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
+        <div className="flex rounded-lg overflow-hidden border-2 border-[#3D3D3D]">
           <button
             onClick={() => setActiveTab('recommend')}
-            className={`px-4 py-2 text-sm flex items-center gap-2 transition-colors ${
+            className={`px-4 py-2 text-sm flex items-center gap-2 font-medium transition-colors ${
               activeTab === 'recommend'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'text-white'
+                : 'text-gray-600 hover:bg-gray-100'
             }`}
+            style={{ backgroundColor: activeTab === 'recommend' ? 'var(--pop-yellow)' : 'var(--card-bg)' }}
           >
             <Sparkles className="w-4 h-4" />
             おすすめ
           </button>
           <button
             onClick={() => setActiveTab('analyze')}
-            className={`px-4 py-2 text-sm flex items-center gap-2 transition-colors ${
+            className={`px-4 py-2 text-sm flex items-center gap-2 font-medium transition-colors ${
               activeTab === 'analyze'
-                ? 'bg-blue-600 text-white'
-                : 'text-gray-400 hover:text-white'
+                ? 'text-white'
+                : 'text-gray-600 hover:bg-gray-100'
             }`}
+            style={{ backgroundColor: activeTab === 'analyze' ? 'var(--pop-purple)' : 'var(--card-bg)' }}
           >
             <Brain className="w-4 h-4" />
             傾向分析
@@ -153,14 +155,17 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
 
       {!currentContent ? (
         <div className="text-center py-12">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gray-900 mb-4">
+          <div
+            className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 border-3 border-[#3D3D3D]"
+            style={{ backgroundColor: 'var(--background-secondary)' }}
+          >
             {activeTab === 'recommend' ? (
-              <Sparkles className="w-8 h-8 text-yellow-400" />
+              <Sparkles className="w-8 h-8" style={{ color: 'var(--pop-yellow)' }} />
             ) : (
-              <Brain className="w-8 h-8 text-purple-400" />
+              <Brain className="w-8 h-8" style={{ color: 'var(--pop-purple)' }} />
             )}
           </div>
-          <p className="text-gray-400 mb-6">
+          <p className="text-gray-600 mb-6 font-medium">
             {activeTab === 'recommend'
               ? 'AIがあなたの積みゲーと好みを分析し、おすすめを提案します'
               : 'AIがあなたのゲーマーとしての傾向を分析します'}
@@ -168,7 +173,7 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
           <button
             onClick={handleGenerate}
             disabled={isLoading || gameDetails.size === 0}
-            className="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl text-white font-medium hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center gap-2 mx-auto"
+            className="pop-button px-6 py-3 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
           >
             {isLoading ? (
               <>
@@ -183,7 +188,7 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
             )}
           </button>
           {gameDetails.size === 0 && (
-            <p className="text-sm text-gray-500 mt-2">
+            <p className="text-sm text-gray-500 mt-2 font-medium">
               ゲーム詳細の読み込みを待っています...
             </p>
           )}
@@ -194,7 +199,8 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
             <button
               onClick={handleGenerate}
               disabled={isLoading}
-              className="flex items-center gap-2 px-4 py-2 text-sm bg-gray-900 rounded-lg hover:bg-gray-700 transition-colors border border-gray-700 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors border-2 border-[#3D3D3D] disabled:opacity-50"
+              style={{ backgroundColor: 'var(--background-secondary)' }}
             >
               {isLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -204,30 +210,30 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
               再生成
             </button>
           </div>
-          <div className="prose prose-invert max-w-none">
+          <div className="prose max-w-none">
             <ReactMarkdown
               components={{
                 h1: ({ children }) => (
-                  <h1 className="text-2xl font-bold text-white mb-4">{children}</h1>
+                  <h1 className="text-2xl font-black text-[#3D3D3D] mb-4">{children}</h1>
                 ),
                 h2: ({ children }) => (
-                  <h2 className="text-xl font-bold text-white mt-6 mb-3">{children}</h2>
+                  <h2 className="text-xl font-black text-[#3D3D3D] mt-6 mb-3">{children}</h2>
                 ),
                 h3: ({ children }) => (
-                  <h3 className="text-lg font-semibold text-white mt-4 mb-2">{children}</h3>
+                  <h3 className="text-lg font-bold text-[#3D3D3D] mt-4 mb-2">{children}</h3>
                 ),
                 p: ({ children }) => (
-                  <p className="text-gray-300 mb-3 leading-relaxed">{children}</p>
+                  <p className="text-gray-700 mb-3 leading-relaxed">{children}</p>
                 ),
                 ul: ({ children }) => (
-                  <ul className="list-disc list-inside text-gray-300 mb-3 space-y-1">{children}</ul>
+                  <ul className="list-disc list-inside text-gray-700 mb-3 space-y-1">{children}</ul>
                 ),
                 ol: ({ children }) => (
-                  <ol className="list-decimal list-inside text-gray-300 mb-3 space-y-1">{children}</ol>
+                  <ol className="list-decimal list-inside text-gray-700 mb-3 space-y-1">{children}</ol>
                 ),
-                li: ({ children }) => <li className="text-gray-300">{children}</li>,
+                li: ({ children }) => <li className="text-gray-700">{children}</li>,
                 strong: ({ children }) => (
-                  <strong className="text-white font-semibold">{children}</strong>
+                  <strong className="font-bold" style={{ color: 'var(--pop-red)' }}>{children}</strong>
                 ),
               }}
             >

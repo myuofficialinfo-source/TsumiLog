@@ -1,8 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* ベージュ系ベースカラー */
+  --background: #FDF6E3;
+  --background-secondary: #F5E6C8;
+  --foreground: #3D3D3D;
+
+  /* ポップカラー */
+  --pop-red: #E63946;
+  --pop-green: #2A9D8F;
+  --pop-blue: #457B9D;
+  --pop-yellow: #F4A261;
+  --pop-purple: #9B5DE5;
+  --pop-pink: #F15BB5;
+
+  /* カードとボーダー */
+  --card-bg: #FFFBF0;
+  --card-border: #E8D5B7;
 }
 
 @theme inline {
@@ -12,15 +26,50 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: 'Rounded Mplus 1c', Arial, Helvetica, sans-serif;
+}
+
+/* 積み木風のシャドウ */
+.block-shadow {
+  box-shadow: 4px 4px 0px var(--pop-red),
+              8px 8px 0px var(--pop-yellow),
+              12px 12px 0px var(--pop-green);
+}
+
+/* ポップなボタン */
+.pop-button {
+  background: linear-gradient(135deg, var(--pop-red), var(--pop-pink));
+  border: 3px solid #3D3D3D;
+  border-radius: 12px;
+  box-shadow: 4px 4px 0px #3D3D3D;
+  transition: all 0.1s ease;
+}
+
+.pop-button:hover {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0px #3D3D3D;
+}
+
+.pop-button:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0px 0px 0px #3D3D3D;
+}
+
+/* カード */
+.pop-card {
+  background: var(--card-bg);
+  border: 3px solid #3D3D3D;
+  border-radius: 16px;
+  box-shadow: 6px 6px 0px #3D3D3D;
+}
+
+/* グラデーションテキスト */
+.gradient-text {
+  background: linear-gradient(135deg, var(--pop-red), var(--pop-yellow), var(--pop-green), var(--pop-blue));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
 }

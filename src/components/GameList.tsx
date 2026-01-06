@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Clock, Filter, SortAsc, SortDesc, Package, PlayCircle } from 'lucide-react';
+import { SortAsc, SortDesc, Package, PlayCircle } from 'lucide-react';
 
 interface Game {
   appid: number;
@@ -57,10 +57,10 @@ export default function GameList({ games }: GameListProps) {
   };
 
   return (
-    <div className="bg-gray-800 rounded-2xl p-6 border border-gray-700">
+    <div className="pop-card p-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
-        <h3 className="text-xl font-bold text-white flex items-center gap-2">
-          <Package className="w-6 h-6 text-orange-400" />
+        <h3 className="text-xl font-black text-[#3D3D3D] flex items-center gap-2">
+          <Package className="w-6 h-6" style={{ color: 'var(--pop-yellow)' }} />
           ゲームライブラリ
         </h3>
 
@@ -71,20 +71,26 @@ export default function GameList({ games }: GameListProps) {
             placeholder="ゲームを検索..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-white text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="px-4 py-2 border-2 border-[#3D3D3D] rounded-lg text-[#3D3D3D] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--pop-blue)]"
+            style={{ backgroundColor: 'var(--background-secondary)' }}
           />
 
           {/* フィルター */}
-          <div className="flex bg-gray-900 rounded-lg overflow-hidden border border-gray-700">
+          <div className="flex rounded-lg overflow-hidden border-2 border-[#3D3D3D]">
             {(['all', 'backlog', 'played'] as const).map((f) => (
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-4 py-2 text-sm transition-colors ${
+                className={`px-4 py-2 text-sm font-medium transition-colors ${
                   filter === f
-                    ? 'bg-blue-600 text-white'
-                    : 'text-gray-400 hover:text-white'
+                    ? 'text-white'
+                    : 'text-gray-600 hover:bg-gray-100'
                 }`}
+                style={{
+                  backgroundColor: filter === f
+                    ? f === 'backlog' ? 'var(--pop-red)' : f === 'played' ? 'var(--pop-green)' : 'var(--pop-blue)'
+                    : 'var(--card-bg)'
+                }}
               >
                 {f === 'all' ? '全て' : f === 'backlog' ? '積みゲー' : 'プレイ済み'}
               </button>
@@ -99,6 +105,7 @@ export default function GameList({ games }: GameListProps) {
           active={sortKey === 'backlog'}
           asc={sortAsc}
           onClick={() => toggleSort('backlog')}
+          color="var(--pop-red)"
         >
           積みゲー順
         </SortButton>
@@ -106,6 +113,7 @@ export default function GameList({ games }: GameListProps) {
           active={sortKey === 'playtime'}
           asc={sortAsc}
           onClick={() => toggleSort('playtime')}
+          color="var(--pop-green)"
         >
           プレイ時間
         </SortButton>
@@ -113,13 +121,14 @@ export default function GameList({ games }: GameListProps) {
           active={sortKey === 'name'}
           asc={sortAsc}
           onClick={() => toggleSort('name')}
+          color="var(--pop-blue)"
         >
           名前順
         </SortButton>
       </div>
 
       {/* 結果カウント */}
-      <p className="text-sm text-gray-400 mb-4">
+      <p className="text-sm text-gray-600 font-medium mb-4">
         {filteredAndSorted.length}件表示 / 全{games.length}件
       </p>
 
@@ -131,7 +140,7 @@ export default function GameList({ games }: GameListProps) {
       </div>
 
       {filteredAndSorted.length > 50 && (
-        <p className="text-center text-gray-500 mt-4">
+        <p className="text-center text-gray-500 font-medium mt-4">
           他 {filteredAndSorted.length - 50} 件のゲームがあります
         </p>
       )}
@@ -144,20 +153,21 @@ function SortButton({
   active,
   asc,
   onClick,
+  color,
 }: {
   children: React.ReactNode;
   active: boolean;
   asc: boolean;
   onClick: () => void;
+  color: string;
 }) {
   return (
     <button
       onClick={onClick}
-      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm transition-colors ${
-        active
-          ? 'bg-blue-600 text-white'
-          : 'bg-gray-900 text-gray-400 hover:text-white border border-gray-700'
+      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border-2 border-[#3D3D3D] ${
+        active ? 'text-white' : 'text-gray-600 hover:bg-gray-100'
       }`}
+      style={{ backgroundColor: active ? color : 'var(--card-bg)' }}
     >
       {children}
       {active && (asc ? <SortAsc className="w-4 h-4" /> : <SortDesc className="w-4 h-4" />)}
@@ -173,9 +183,10 @@ function GameCard({ game }: { game: Game }) {
       href={`https://store.steampowered.com/app/${game.appid}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="group flex gap-3 p-3 bg-gray-900 rounded-xl hover:bg-gray-700 transition-colors border border-gray-700"
+      className="group flex gap-3 p-3 rounded-xl hover:scale-[1.02] transition-all border-2 border-[#3D3D3D]"
+      style={{ backgroundColor: 'var(--background-secondary)' }}
     >
-      <div className="relative w-24 h-12 flex-shrink-0 rounded-lg overflow-hidden bg-gray-800">
+      <div className="relative w-24 h-12 flex-shrink-0 rounded-lg overflow-hidden border-2 border-[#3D3D3D]" style={{ backgroundColor: 'var(--card-bg)' }}>
         {!imageError ? (
           <Image
             src={game.headerImage}
@@ -185,23 +196,23 @@ function GameCard({ game }: { game: Game }) {
             onError={() => setImageError(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-gray-600">
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
             <Gamepad2 className="w-6 h-6" />
           </div>
         )}
       </div>
       <div className="flex-1 min-w-0">
-        <h4 className="text-white text-sm font-medium truncate group-hover:text-blue-400 transition-colors">
+        <h4 className="text-[#3D3D3D] text-sm font-bold truncate group-hover:text-[var(--pop-blue)] transition-colors">
           {game.name}
         </h4>
         <div className="flex items-center gap-2 mt-1">
           {game.isBacklog ? (
-            <span className="flex items-center gap-1 text-xs text-orange-400">
+            <span className="flex items-center gap-1 text-xs font-medium" style={{ color: 'var(--pop-red)' }}>
               <Package className="w-3 h-3" />
               積みゲー
             </span>
           ) : (
-            <span className="flex items-center gap-1 text-xs text-green-400">
+            <span className="flex items-center gap-1 text-xs font-medium" style={{ color: 'var(--pop-green)' }}>
               <PlayCircle className="w-3 h-3" />
               {game.playtimeHours}h
             </span>
