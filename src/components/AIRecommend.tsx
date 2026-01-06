@@ -29,6 +29,16 @@ interface AIRecommendProps {
   stats?: Stats;
 }
 
+// プレイ時間を日と時間に変換
+const formatPlaytime = (hours: number) => {
+  const days = Math.floor(hours / 24);
+  const remainingHours = hours % 24;
+  if (days > 0) {
+    return remainingHours > 0 ? `${days}日${remainingHours}時間` : `${days}日`;
+  }
+  return `${hours}時間`;
+};
+
 export default function AIRecommend({ games, gameDetails, stats }: AIRecommendProps) {
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -192,7 +202,7 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
 
 📚 所持ゲーム: ${stats.totalGames}本
 📦 積みゲー: ${stats.backlogCount}本 (${backlogPercent}%)
-⏱️ 総プレイ時間: ${stats.totalPlaytimeHours.toLocaleString()}時間
+⏱️ 総プレイ時間: ${formatPlaytime(stats.totalPlaytimeHours)}
 
 あなたの積みゲーも診断してみよう！
 #ツミログ #積みゲー #Steam`;
@@ -307,7 +317,7 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
                     📦 積み{stats.backlogCount}本
                   </div>
                   <div className="px-3 py-1 bg-white/20 rounded-full text-white text-sm font-medium">
-                    ⏱️ {stats.totalPlaytimeHours.toLocaleString()}h
+                    ⏱️ {formatPlaytime(stats.totalPlaytimeHours)}
                   </div>
                 </div>
               )}

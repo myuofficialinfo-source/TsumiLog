@@ -12,6 +12,24 @@ export async function GET(request: NextRequest) {
   const playtime = searchParams.get('playtime') || '0';
   const genresParam = searchParams.get('genres') || '';
 
+  // プレイ時間を日と時間に変換（数値と単位を分けて返す）
+  const formatPlaytimeParts = (hours: number) => {
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    if (days > 0) {
+      if (remainingHours > 0) {
+        return [
+          { value: days, unit: '日' },
+          { value: remainingHours, unit: '時間' },
+        ];
+      }
+      return [{ value: days, unit: '日' }];
+    }
+    return [{ value: hours, unit: '時間' }];
+  };
+
+  const playtimeParts = formatPlaytimeParts(parseInt(playtime));
+
   // キャッチコピーを適切な位置で改行
   const formatCatchphrase = (text: string) => {
     if (text.length <= 15) return [text];
@@ -53,10 +71,10 @@ export async function GET(request: NextRequest) {
   const createPieSlices = () => {
     if (genres.length === 0) return null;
 
-    const cx = 110;
-    const cy = 110;
-    const outerR = 105;
-    const innerR = 60;
+    const cx = 140;
+    const cy = 140;
+    const outerR = 130;
+    const innerR = 75;
     let startAngle = -90;
 
     return genres.map((genre, i) => {
@@ -131,7 +149,7 @@ export async function GET(request: NextRequest) {
             alignItems: 'center',
           }}
         >
-          <span style={{ color: 'white', fontSize: 14, marginBottom: 6 }}>あなたのゲーマータイプ</span>
+          <span style={{ color: 'white', fontSize: 18, marginBottom: 6 }}>あなたのゲーマータイプ</span>
           <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
             {catchphraseLines.length === 1 ? (
               <span style={{ color: 'white', fontSize: 38, fontWeight: 900, textAlign: 'center' }}>「{catchphraseLines[0]}」</span>
@@ -150,15 +168,15 @@ export async function GET(request: NextRequest) {
           <div style={{ display: 'flex', flexDirection: 'column', marginRight: 40 }}>
             <span style={{ fontSize: 18, fontWeight: 900, color: '#666', marginBottom: 10 }}>ジャンル分布</span>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <svg width="220" height="220" viewBox="0 0 220 220">
+              <svg width="400" height="400" viewBox="0 0 320 320">
                 {createPieSlices()}
               </svg>
               {/* 凡例 */}
-              <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 16 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', marginLeft: -30 }}>
                 {genres.map((genre, i) => (
                   <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
                     <div style={{ width: 16, height: 16, backgroundColor: genre.color, borderRadius: 4, marginRight: 10 }} />
-                    <span style={{ fontSize: 18, color: '#3D3D3D', fontWeight: 700 }}>{genre.name}</span>
+                    <span style={{ fontSize: 18, color: '#3D3D3D', fontWeight: 900 }}>{genre.name}</span>
                   </div>
                 ))}
               </div>
@@ -166,18 +184,25 @@ export async function GET(request: NextRequest) {
           </div>
 
           {/* 右側：統計 */}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1, alignItems: 'flex-end' }}>
-            <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-              <span style={{ fontSize: 36, fontWeight: 900, color: '#3D3D3D', marginRight: 20 }}>所持ゲーム</span>
-              <span style={{ fontSize: 80, fontWeight: 900, color: '#457B9D' }}>{totalGames}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 12, backgroundColor: 'white', borderRadius: 12, border: '3px solid #3D3D3D', padding: '4px 20px' }}>
+              <span style={{ fontSize: 100, fontWeight: 900, color: '#457B9D', lineHeight: 1 }}>{totalGames}</span>
+              <span style={{ fontSize: 24, fontWeight: 900, color: '#3D3D3D', paddingBottom: 8 }}>所持ゲーム</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
-              <span style={{ fontSize: 36, fontWeight: 900, color: '#3D3D3D', marginRight: 20 }}>積みゲー</span>
-              <span style={{ fontSize: 80, fontWeight: 900, color: '#E63946' }}>{backlogCount}</span>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 12, backgroundColor: 'white', borderRadius: 12, border: '3px solid #3D3D3D', padding: '4px 20px' }}>
+              <span style={{ fontSize: 100, fontWeight: 900, color: '#E63946', lineHeight: 1 }}>{backlogCount}</span>
+              <span style={{ fontSize: 24, fontWeight: 900, color: '#3D3D3D', paddingBottom: 8 }}>積みゲー</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'baseline' }}>
-              <span style={{ fontSize: 36, fontWeight: 900, color: '#3D3D3D', marginRight: 20 }}>総プレイ時間</span>
-              <span style={{ fontSize: 80, fontWeight: 900, color: '#2A9D8F' }}>{playtime}h</span>
+            <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', backgroundColor: 'white', borderRadius: 12, border: '3px solid #3D3D3D', padding: '4px 20px' }}>
+              <span style={{ display: 'flex', alignItems: 'flex-end', color: '#2A9D8F' }}>
+                {playtimeParts.map((part, i) => (
+                  <span key={i} style={{ display: 'flex', alignItems: 'flex-end' }}>
+                    <span style={{ fontSize: 60, fontWeight: 900, lineHeight: 1 }}>{part.value}</span>
+                    <span style={{ fontSize: 28, fontWeight: 900, lineHeight: 1, paddingBottom: 4 }}>{part.unit}</span>
+                  </span>
+                ))}
+              </span>
+              <span style={{ fontSize: 24, fontWeight: 900, color: '#3D3D3D', paddingBottom: 8 }}>総プレイ時間</span>
             </div>
           </div>
         </div>
