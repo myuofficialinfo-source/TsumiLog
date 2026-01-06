@@ -2,7 +2,7 @@ import { ImageResponse } from 'next/og';
 
 export const runtime = 'edge';
 
-export const alt = 'ツミログ - Steam積みゲー管理';
+export const alt = 'ツミナビ - Steam積みゲー管理';
 export const size = {
   width: 1200,
   height: 630,
@@ -96,7 +96,7 @@ export default async function Image() {
             marginBottom: '16px',
           }}
         >
-          ツミログ
+          ツミナビ
         </div>
         <div
           style={{
@@ -106,7 +106,7 @@ export default async function Image() {
             marginBottom: '40px',
           }}
         >
-          TsumiLog
+          Tsumi-Navi
         </div>
 
         {/* サブタイトル */}

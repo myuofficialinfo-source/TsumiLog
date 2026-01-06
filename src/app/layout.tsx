@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ツミログ | TsumiLog - Steam積みゲー管理",
+  title: "ツミナビ | Tsumi-Navi - Steam積みゲー管理",
   description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析しておすすめを提案します。",
   metadataBase: new URL('https://tsumi-log.vercel.app'),
   icons: {
@@ -22,16 +22,16 @@ export const metadata: Metadata = {
     apple: '/icons/icom.png',
   },
   openGraph: {
-    title: "ツミログ | TsumiLog - Steam積みゲー管理",
+    title: "ツミナビ | Tsumi-Navi - Steam積みゲー管理",
     description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析して、あなたのゲーマータイプを診断！",
     url: 'https://tsumi-log.vercel.app',
-    siteName: 'ツミログ',
+    siteName: 'ツミナビ',
     locale: 'ja_JP',
     type: 'website',
   },
   twitter: {
     card: 'summary_large_image',
-    title: "ツミログ | TsumiLog - Steam積みゲー管理",
+    title: "ツミナビ | Tsumi-Navi - Steam積みゲー管理",
     description: "Steamの積みゲーを可視化・管理。AIがあなたのゲーマータイプを診断！",
   },
 };

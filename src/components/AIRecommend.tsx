@@ -195,7 +195,7 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
 
     const backlogPercent = Math.round((stats.backlogCount / stats.totalGames) * 100);
 
-    const text = `【ツミログ診断結果】
+    const text = `【ツミナビ診断結果】
 
 私のゲーマータイプは...
 「${catchphrase}」
@@ -205,7 +205,7 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
 ⏱️ 総プレイ時間: ${formatPlaytime(stats.totalPlaytimeHours)}
 
 あなたの積みゲーも診断してみよう！
-#ツミログ #積みゲー #Steam`;
+#ツミナビ #積みゲー #Steam`;
 
     const shareUrl = generateShareUrl();
     // 開発時に確認用

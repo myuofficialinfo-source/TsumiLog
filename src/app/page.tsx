@@ -150,10 +150,10 @@ function HomeContent() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             {/* ロゴアイコン */}
-            <Image src="/icons/icom.png" alt="ツミログ" width={48} height={48} />
+            <Image src="/icons/icom.png" alt="ツミナビ" width={48} height={48} />
             <div>
-              <h1 className="text-2xl font-black gradient-text">ツミログ</h1>
-              <p className="text-xs text-gray-500 font-medium">TsumiLog</p>
+              <h1 className="text-2xl font-black gradient-text">ツミナビ</h1>
+              <p className="text-xs text-gray-500 font-medium">Tsumi-Navi</p>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -185,7 +185,7 @@ function HomeContent() {
           <div className="flex flex-col items-center justify-center py-4">
             {/* メインアイコン */}
             <div className="mb-4">
-              <Image src="/icons/icom.png" alt="ツミログ" width={180} height={180} />
+              <Image src="/icons/icom.png" alt="ツミナビ" width={180} height={180} />
             </div>
 
             <h2 className="text-4xl font-black mb-3 text-center gradient-text">
@@ -275,9 +275,9 @@ function HomeContent() {
       <footer className="border-t-3 border-[#3D3D3D] py-8 mt-16" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center mb-4">
-            <Image src="/icons/icom.png" alt="ツミログ" width={40} height={40} />
+            <Image src="/icons/icom.png" alt="ツミナビ" width={40} height={40} />
           </div>
-          <p className="font-bold text-gray-600">ツミログ - TsumiLog</p>
+          <p className="font-bold text-gray-600">ツミナビ - Tsumi-Navi</p>
         </div>
       </footer>
     </div>

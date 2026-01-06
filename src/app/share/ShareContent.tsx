@@ -21,7 +21,7 @@ function ShareContentInner() {
           <div className="w-6 h-6 rounded-lg border-3 border-[#3D3D3D] transform -rotate-6" style={{ backgroundColor: 'var(--pop-green)' }} />
         </div>
 
-        <h1 className="text-2xl font-black mb-2 gradient-text">ツミログ診断結果</h1>
+        <h1 className="text-2xl font-black mb-2 gradient-text">ツミナビ診断結果</h1>
 
         <div
           className="my-6 p-6 rounded-xl border-3 border-[#3D3D3D]"

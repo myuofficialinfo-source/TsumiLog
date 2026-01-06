@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
             <div style={{ width: 36, height: 36, backgroundColor: '#F4A261', borderRadius: 6, border: '3px solid #3D3D3D', marginRight: 4 }} />
             <div style={{ width: 22, height: 22, backgroundColor: '#2A9D8F', borderRadius: 6, border: '3px solid #3D3D3D' }} />
           </div>
-          <span style={{ fontSize: 32, fontWeight: 900, color: '#3D3D3D' }}>ツミログ診断結果</span>
+          <span style={{ fontSize: 32, fontWeight: 900, color: '#3D3D3D' }}>ツミナビ診断結果</span>
         </div>
 
         {/* キャッチコピー */}

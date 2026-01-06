@@ -25,16 +25,16 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   const ogImageUrl = `https://tsumi-log.vercel.app/api/og?${ogParams.toString()}`;
 
   return {
-    title: `${catchphrase} | ツミログ診断結果`,
+    title: `${catchphrase} | ツミナビ診断結果`,
     description: `所持ゲーム${totalGames}本、積みゲー${backlogCount}本のゲーマータイプ診断結果`,
     openGraph: {
-      title: `${catchphrase} | ツミログ診断結果`,
+      title: `${catchphrase} | ツミナビ診断結果`,
       description: `所持ゲーム${totalGames}本、積みゲー${backlogCount}本、総プレイ時間${playtime}時間`,
       images: [{ url: ogImageUrl, width: 1200, height: 630 }],
     },
     twitter: {
       card: 'summary_large_image',
-      title: `${catchphrase} | ツミログ診断結果`,
+      title: `${catchphrase} | ツミナビ診断結果`,
       description: `所持ゲーム${totalGames}本、積みゲー${backlogCount}本、総プレイ時間${playtime}時間`,
       images: [ogImageUrl],
     },
