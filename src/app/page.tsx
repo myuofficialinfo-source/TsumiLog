@@ -2,6 +2,7 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+import Image from 'next/image';
 import ProfileCard from '@/components/ProfileCard';
 import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
@@ -34,21 +35,6 @@ interface SteamData {
   profile: Profile;
   stats: Stats;
   games: Game[];
-}
-
-// 積み木ブロックコンポーネント
-function BlockIcon({ color, size = 'md' }: { color: string; size?: 'sm' | 'md' | 'lg' }) {
-  const sizes = {
-    sm: 'w-4 h-4',
-    md: 'w-6 h-6',
-    lg: 'w-10 h-10',
-  };
-  return (
-    <div
-      className={`${sizes[size]} rounded-sm border-2 border-[#3D3D3D] transform rotate-3`}
-      style={{ backgroundColor: color }}
-    />
-  );
 }
 
 function HomeContent() {
@@ -163,12 +149,8 @@ function HomeContent() {
       <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            {/* 積み木ロゴ */}
-            <div className="flex items-end gap-0.5">
-              <BlockIcon color="#E63946" size="lg" />
-              <BlockIcon color="#F4A261" size="md" />
-              <BlockIcon color="#2A9D8F" size="sm" />
-            </div>
+            {/* ロゴアイコン */}
+            <Image src="/icons/icom.png" alt="ツミログ" width={48} height={48} />
             <div>
               <h1 className="text-2xl font-black gradient-text">ツミログ</h1>
               <p className="text-xs text-gray-500 font-medium">TsumiLog</p>
@@ -201,13 +183,9 @@ function HomeContent() {
         {/* 入力フォーム */}
         {!steamData && !isLoading && (
           <div className="flex flex-col items-center justify-center py-16">
-            {/* 積み木イラスト */}
-            <div className="flex items-end gap-1 mb-8">
-              <div className="w-12 h-12 rounded-lg border-3 border-[#3D3D3D] transform -rotate-3" style={{ backgroundColor: 'var(--pop-red)' }} />
-              <div className="w-16 h-16 rounded-lg border-3 border-[#3D3D3D] transform rotate-2" style={{ backgroundColor: 'var(--pop-yellow)' }} />
-              <div className="w-10 h-10 rounded-lg border-3 border-[#3D3D3D] transform -rotate-6" style={{ backgroundColor: 'var(--pop-green)' }} />
-              <div className="w-14 h-14 rounded-lg border-3 border-[#3D3D3D] transform rotate-3" style={{ backgroundColor: 'var(--pop-blue)' }} />
-              <div className="w-8 h-8 rounded-lg border-3 border-[#3D3D3D] transform -rotate-2" style={{ backgroundColor: 'var(--pop-purple)' }} />
+            {/* メインアイコン */}
+            <div className="mb-8">
+              <Image src="/icons/icom.png" alt="ツミログ" width={160} height={160} />
             </div>
 
             <h2 className="text-4xl font-black mb-4 text-center gradient-text">
@@ -296,10 +274,8 @@ function HomeContent() {
       {/* フッター */}
       <footer className="border-t-3 border-[#3D3D3D] py-8 mt-16" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex justify-center items-end gap-1 mb-4">
-            <BlockIcon color="#E63946" size="sm" />
-            <BlockIcon color="#F4A261" size="sm" />
-            <BlockIcon color="#2A9D8F" size="sm" />
+          <div className="flex justify-center mb-4">
+            <Image src="/icons/icom.png" alt="ツミログ" width={40} height={40} />
           </div>
           <p className="font-bold text-gray-600">ツミログ - TsumiLog</p>
           <p className="mt-2 text-sm text-gray-500">
