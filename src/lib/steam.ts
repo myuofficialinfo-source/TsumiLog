@@ -108,6 +108,45 @@ export function identifyBacklog(games: SteamGame[], thresholdMinutes = 30): Stea
   return games.filter(game => game.playtime_forever < thresholdMinutes);
 }
 
+// 新作ゲームを取得（直近3ヶ月）
+export async function getNewReleases(): Promise<{ appid: number; name: string }[]> {
+  try {
+    // Steamの新作リストを取得
+    const response = await fetch(
+      `${STEAM_STORE_API}/featuredcategories?l=japanese`
+    );
+    const data = await response.json();
+
+    const newReleases: { appid: number; name: string }[] = [];
+
+    // 新作カテゴリから取得
+    if (data.new_releases?.items) {
+      for (const item of data.new_releases.items) {
+        newReleases.push({
+          appid: item.id,
+          name: item.name,
+        });
+      }
+    }
+
+    // トップセラーからも追加（新作が多い）
+    if (data.top_sellers?.items) {
+      for (const item of data.top_sellers.items) {
+        if (!newReleases.find(g => g.appid === item.id)) {
+          newReleases.push({
+            appid: item.id,
+            name: item.name,
+          });
+        }
+      }
+    }
+
+    return newReleases;
+  } catch {
+    return [];
+  }
+}
+
 // SteamIDを抽出（URL形式に対応）
 export function extractSteamId(input: string): string {
   // 直接SteamID64が入力された場合

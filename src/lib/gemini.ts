@@ -106,3 +106,78 @@ SNSでシェアしたくなるような、ユニークで印象的な称号に�
     throw new Error(`分析の生成に失敗しました: ${errorMessage}`);
   }
 }
+
+export interface NewGameRecommendation {
+  appid: number;
+  name: string;
+  reason: string;
+  genre: string;
+  storeUrl: string;
+  headerImage: string;
+}
+
+export async function recommendNewReleases(
+  genreStats: GenreStats[],
+  newGames: { appid: number; name: string; genres?: string[]; description?: string }[]
+): Promise<NewGameRecommendation[]> {
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+
+  const topGenres = genreStats
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map(g => g.genre);
+
+  const newGamesList = newGames
+    .slice(0, 30)
+    .map(g => `- ${g.name} (AppID: ${g.appid})${g.genres ? ` [${g.genres.join(', ')}]` : ''}`)
+    .join('\n');
+
+  const prompt = `あなたはゲームレコメンドの専門家です。ユーザーの好みに基づいて、最新リリースゲームの中からおすすめを5つ選んでください。
+
+## ユーザーがよく遊ぶジャンル:
+${topGenres.join(', ')}
+
+## 最新リリースゲームリスト:
+${newGamesList}
+
+## 回答形式:
+【重要】必ず以下のJSON形式のみで回答してください。説明文や前置きは一切不要です。
+
+\`\`\`json
+[
+  {
+    "appid": 数字,
+    "name": "ゲーム名",
+    "reason": "おすすめ理由（日本語で1-2文）",
+    "genre": "主なジャンル"
+  }
+]
+\`\`\`
+
+上記リストから5つ選び、ユーザーの好みに最も合うものを提案してください。`;
+
+  try {
+    const result = await model.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+
+    // JSONを抽出
+    const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\[[\s\S]*\]/);
+    if (!jsonMatch) {
+      throw new Error('JSON形式の応答が得られませんでした');
+    }
+
+    const jsonStr = jsonMatch[1] || jsonMatch[0];
+    const recommendations = JSON.parse(jsonStr) as { appid: number; name: string; reason: string; genre: string }[];
+
+    return recommendations.map(rec => ({
+      ...rec,
+      storeUrl: `https://store.steampowered.com/app/${rec.appid}`,
+      headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${rec.appid}/header.jpg`,
+    }));
+  } catch (error) {
+    console.error('Gemini API error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`新作おすすめの生成に失敗しました: ${errorMessage}`);
+  }
+}

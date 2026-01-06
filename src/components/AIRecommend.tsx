@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Loader2, Brain, RefreshCw } from 'lucide-react';
+import { Sparkles, Loader2, Brain, RefreshCw, Rocket, ExternalLink } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import Image from 'next/image';
 
 interface Game {
   appid: number;
@@ -21,6 +22,15 @@ interface Stats {
 interface GenreData {
   name: string;
   count: number;
+}
+
+interface NewGameRecommendation {
+  appid: number;
+  name: string;
+  reason: string;
+  genre: string;
+  storeUrl: string;
+  headerImage: string;
 }
 
 interface AIRecommendProps {
@@ -42,9 +52,10 @@ const formatPlaytime = (hours: number) => {
 export default function AIRecommend({ games, gameDetails, stats }: AIRecommendProps) {
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
+  const [newReleases, setNewReleases] = useState<NewGameRecommendation[] | null>(null);
   const [catchphrase, setCatchphrase] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState<'recommend' | 'analyze'>('recommend');
+  const [activeTab, setActiveTab] = useState<'recommend' | 'analyze' | 'new-releases'>('recommend');
 
   // 積みゲーの数を取得
   const backlogCount = stats?.backlogCount ?? games.filter(g => g.isBacklog).length;
@@ -152,11 +163,38 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
     }
   };
 
+  const fetchNewReleases = async () => {
+    setIsLoading(true);
+    try {
+      const genreStats = generateGenreStats();
+
+      const response = await fetch('/api/recommend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          genreStats,
+          type: 'new-releases',
+        }),
+      });
+
+      const data = await response.json();
+      if (data.newReleases) {
+        setNewReleases(data.newReleases);
+      }
+    } catch (error) {
+      console.error('New releases error:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleGenerate = () => {
     if (activeTab === 'recommend') {
       fetchRecommendation();
-    } else {
+    } else if (activeTab === 'analyze') {
       fetchAnalysis();
+    } else {
+      fetchNewReleases();
     }
   };
 
@@ -219,7 +257,7 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
     window.open(tweetUrl, '_blank', 'width=550,height=420');
   };
 
-  const currentContent = activeTab === 'recommend' ? recommendation : analysis;
+  const currentContent = activeTab === 'recommend' ? recommendation : activeTab === 'analyze' ? analysis : null;
 
   return (
     <div className="pop-card p-6">
@@ -232,7 +270,7 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
         <div className="flex rounded-lg overflow-hidden border-2 border-[#3D3D3D]">
           <button
             onClick={() => setActiveTab('recommend')}
-            className={`px-4 py-2 text-sm flex items-center gap-2 font-medium transition-colors ${
+            className={`px-3 py-2 text-sm flex items-center gap-1.5 font-medium transition-colors ${
               activeTab === 'recommend'
                 ? 'text-white'
                 : 'text-gray-600 hover:bg-gray-100'
@@ -244,7 +282,7 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
           </button>
           <button
             onClick={() => setActiveTab('analyze')}
-            className={`px-4 py-2 text-sm flex items-center gap-2 font-medium transition-colors ${
+            className={`px-3 py-2 text-sm flex items-center gap-1.5 font-medium transition-colors ${
               activeTab === 'analyze'
                 ? 'text-white'
                 : 'text-gray-600 hover:bg-gray-100'
@@ -253,6 +291,18 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
           >
             <Brain className="w-4 h-4" />
             傾向分析
+          </button>
+          <button
+            onClick={() => setActiveTab('new-releases')}
+            className={`px-3 py-2 text-sm flex items-center gap-1.5 font-medium transition-colors ${
+              activeTab === 'new-releases'
+                ? 'text-white'
+                : 'text-gray-600 hover:bg-gray-100'
+            }`}
+            style={{ backgroundColor: activeTab === 'new-releases' ? 'var(--pop-green)' : 'var(--card-bg)' }}
+          >
+            <Rocket className="w-4 h-4" />
+            新作紹介
           </button>
         </div>
       </div>
@@ -282,6 +332,98 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--pop-blue)' }} />
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
           </div>
+        </div>
+      ) : activeTab === 'new-releases' && !newReleases ? (
+        <div className="text-center py-12">
+          <div
+            className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 border-3 border-[#3D3D3D]"
+            style={{ backgroundColor: 'var(--background-secondary)' }}
+          >
+            <Rocket className="w-8 h-8" style={{ color: 'var(--pop-green)' }} />
+          </div>
+          <p className="text-gray-600 mb-6 font-medium">
+            あなたの好みに合った最新ゲームを紹介します
+          </p>
+          <button
+            onClick={handleGenerate}
+            disabled={isLoading || gameDetails.size === 0}
+            className="pop-button px-6 py-3 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                検索中...
+              </>
+            ) : (
+              <>
+                <Rocket className="w-5 h-5" />
+                新作を探す
+              </>
+            )}
+          </button>
+          {gameDetails.size === 0 && (
+            <p className="text-sm text-gray-500 mt-2 font-medium">
+              ゲーム詳細の読み込みを待っています...
+            </p>
+          )}
+        </div>
+      ) : activeTab === 'new-releases' && newReleases ? (
+        <div>
+          <div className="flex justify-end mb-4">
+            <button
+              onClick={handleGenerate}
+              disabled={isLoading}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors border-2 border-[#3D3D3D] disabled:opacity-50"
+              style={{ backgroundColor: 'var(--background-secondary)' }}
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <RefreshCw className="w-4 h-4" />
+              )}
+              再検索
+            </button>
+          </div>
+          <div className="space-y-4">
+            {newReleases.map((game) => (
+              <a
+                key={game.appid}
+                href={game.storeUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block rounded-xl border-2 border-[#3D3D3D] overflow-hidden hover:shadow-lg transition-shadow"
+                style={{ backgroundColor: 'var(--background-secondary)' }}
+              >
+                <div className="flex flex-col md:flex-row">
+                  <div className="md:w-72 flex-shrink-0">
+                    <Image
+                      src={game.headerImage}
+                      alt={game.name}
+                      width={460}
+                      height={215}
+                      className="w-full h-auto"
+                    />
+                  </div>
+                  <div className="p-4 flex-grow">
+                    <div className="flex items-start justify-between gap-2">
+                      <h4 className="font-bold text-lg text-[#3D3D3D]">{game.name}</h4>
+                      <ExternalLink className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--pop-blue)' }} />
+                    </div>
+                    <span
+                      className="inline-block px-2 py-0.5 text-xs font-medium rounded-full mt-2"
+                      style={{ backgroundColor: 'var(--pop-green)', color: 'white' }}
+                    >
+                      {game.genre}
+                    </span>
+                    <p className="text-gray-600 mt-2 text-sm">{game.reason}</p>
+                  </div>
+                </div>
+              </a>
+            ))}
+          </div>
+          <p className="text-xs text-gray-500 text-center mt-4">
+            ※クリックでSteamストアページを開きます
+          </p>
         </div>
       ) : !currentContent ? (
         <div className="text-center py-12">

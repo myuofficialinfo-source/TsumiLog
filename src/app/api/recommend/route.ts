@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { generateRecommendations, analyzeGamingPreferences } from '@/lib/gemini';
+import { generateRecommendations, analyzeGamingPreferences, recommendNewReleases } from '@/lib/gemini';
+import { getNewReleases } from '@/lib/steam';
 import { checkRateLimit, incrementRateLimit } from '@/lib/rate-limit';
 import { GenreStats, BacklogGame } from '@/types/steam';
 
@@ -22,7 +23,7 @@ export async function POST(request: NextRequest) {
       backlogGames: BacklogGame[];
       genreStats: GenreStats[];
       userPreferences?: string;
-      type: 'recommend' | 'analyze';
+      type: 'recommend' | 'analyze' | 'new-releases';
     };
 
     if (type === 'analyze') {
@@ -32,6 +33,29 @@ export async function POST(request: NextRequest) {
       // 成功した場合のみカウントを増やす
       incrementRateLimit('gemini-api');
       return NextResponse.json({ analysis });
+    }
+
+    if (type === 'new-releases') {
+      if (!genreStats) {
+        return NextResponse.json(
+          { error: 'ジャンル統計が必要です' },
+          { status: 400 }
+        );
+      }
+
+      // 新作ゲームを取得
+      const newGames = await getNewReleases();
+      if (newGames.length === 0) {
+        return NextResponse.json(
+          { error: '新作ゲームの取得に失敗しました' },
+          { status: 500 }
+        );
+      }
+
+      const newReleases = await recommendNewReleases(genreStats, newGames);
+      // 成功した場合のみカウントを増やす
+      incrementRateLimit('gemini-api');
+      return NextResponse.json({ newReleases });
     }
 
     if (!backlogGames || !genreStats) {
