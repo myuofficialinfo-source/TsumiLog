@@ -18,6 +18,11 @@ interface Stats {
   playedGames: number;
 }
 
+interface GenreData {
+  name: string;
+  count: number;
+}
+
 interface AIRecommendProps {
   games: Game[];
   gameDetails: Map<number, { genres: { description: string }[] }>;
@@ -142,6 +147,39 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
     }
   };
 
+  // ジャンル統計を取得
+  const getTopGenres = (): GenreData[] => {
+    const statsMap = new Map<string, number>();
+    games.forEach((game) => {
+      const details = gameDetails.get(game.appid);
+      if (!details?.genres) return;
+      details.genres.forEach((genre) => {
+        statsMap.set(genre.description, (statsMap.get(genre.description) || 0) + 1);
+      });
+    });
+    return Array.from(statsMap.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+  };
+
+  // シェア用ページのURLを生成
+  const generateShareUrl = () => {
+    if (!catchphrase || !stats) return 'https://tsumi-log.vercel.app';
+    const topGenres = getTopGenres();
+    const genresParam = topGenres.map(g => `${g.name}:${g.count}`).join(',');
+
+    const params = new URLSearchParams({
+      catchphrase,
+      totalGames: stats.totalGames.toString(),
+      backlogCount: stats.backlogCount.toString(),
+      playtime: stats.totalPlaytimeHours.toString(),
+      genres: genresParam,
+    });
+
+    return `https://tsumi-log.vercel.app/share?${params.toString()}`;
+  };
+
   const shareToX = () => {
     if (!catchphrase || !stats) return;
 
@@ -159,8 +197,12 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
 あなたの積みゲーも診断してみよう！
 #ツミログ #積みゲー #Steam`;
 
-    const url = 'https://tsumi-log.vercel.app';
-    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    const shareUrl = generateShareUrl();
+    // 開発時に確認用
+    console.log('Share URL:', shareUrl);
+    console.log('OG Image URL:', shareUrl.replace('/share?', '/share/opengraph-image?'));
+
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl)}`;
     window.open(tweetUrl, '_blank', 'width=550,height=420');
   };
 

@@ -102,85 +102,86 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
         </div>
       </div>
 
-      <div className="h-80">
-        <ResponsiveContainer width="100%" height="100%">
-          {chartType === 'pie' ? (
-            <PieChart>
-              <Pie
-                data={genreStats}
-                cx="50%"
-                cy="50%"
-                innerRadius={60}
-                outerRadius={100}
-                paddingAngle={2}
-                dataKey="count"
-                label={({ name, percent }) =>
-                  `${name ?? ''} (${((percent ?? 0) * 100).toFixed(0)}%)`
-                }
-                labelLine={{ stroke: '#3D3D3D' }}
-              >
-                {genreStats.map((_, index) => (
-                  <Cell
-                    key={`cell-${index}`}
-                    fill={COLORS[index % COLORS.length]}
-                    stroke="#3D3D3D"
-                    strokeWidth={2}
-                  />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--card-bg)',
-                  border: '2px solid #3D3D3D',
-                  borderRadius: '8px',
-                }}
-                formatter={(value, name) => [
-                  `${value ?? 0}本`,
-                  name === 'count' ? 'ゲーム数' : String(name),
-                ]}
-              />
-            </PieChart>
-          ) : (
-            <BarChart data={genreStats} layout="vertical">
-              <XAxis type="number" stroke="#3D3D3D" />
-              <YAxis
-                type="category"
-                dataKey="name"
-                stroke="#3D3D3D"
-                width={100}
-                tick={{ fontSize: 12 }}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: 'var(--card-bg)',
-                  border: '2px solid #3D3D3D',
-                  borderRadius: '8px',
-                }}
-              />
-              <Legend />
-              <Bar dataKey="count" name="ゲーム数" fill="#457B9D" radius={4} />
-              <Bar dataKey="backlog" name="積みゲー" fill="#E63946" radius={4} />
-            </BarChart>
-          )}
-        </ResponsiveContainer>
-      </div>
+      <div className="flex flex-col md:flex-row gap-6">
+        {/* チャート */}
+        <div className="h-64 md:h-80 flex-1">
+          <ResponsiveContainer width="100%" height="100%">
+            {chartType === 'pie' ? (
+              <PieChart>
+                <Pie
+                  data={genreStats}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={90}
+                  paddingAngle={2}
+                  dataKey="count"
+                >
+                  {genreStats.map((_, index) => (
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index % COLORS.length]}
+                      stroke="#3D3D3D"
+                      strokeWidth={2}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--card-bg)',
+                    border: '2px solid #3D3D3D',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value, name) => [
+                    `${value ?? 0}本`,
+                    name === 'count' ? 'ゲーム数' : String(name),
+                  ]}
+                />
+              </PieChart>
+            ) : (
+              <BarChart data={genreStats} layout="vertical">
+                <XAxis type="number" stroke="#3D3D3D" />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  stroke="#3D3D3D"
+                  width={100}
+                  tick={{ fontSize: 12 }}
+                />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--card-bg)',
+                    border: '2px solid #3D3D3D',
+                    borderRadius: '8px',
+                  }}
+                />
+                <Legend />
+                <Bar dataKey="count" name="ゲーム数" fill="#457B9D" radius={4} />
+                <Bar dataKey="backlog" name="積みゲー" fill="#E63946" radius={4} />
+              </BarChart>
+            )}
+          </ResponsiveContainer>
+        </div>
 
-      {/* トップジャンル一覧 */}
-      <div className="mt-6 grid grid-cols-2 md:grid-cols-5 gap-2">
-        {genreStats.slice(0, 5).map((genre, index) => (
-          <div
-            key={genre.name}
-            className="p-3 rounded-lg border-2 border-[#3D3D3D]"
-            style={{ backgroundColor: 'var(--background-secondary)' }}
-          >
+        {/* ジャンル一覧（縦並び） */}
+        <div className="flex flex-col gap-2 md:w-48">
+          {genreStats.slice(0, 10).map((genre, index) => (
             <div
-              className="w-4 h-4 rounded-sm mb-2 border border-[#3D3D3D]"
-              style={{ backgroundColor: COLORS[index] }}
-            />
-            <p className="text-sm font-bold text-[#3D3D3D] truncate">{genre.name}</p>
-            <p className="text-xs text-gray-500 font-medium">{genre.count}本</p>
-          </div>
-        ))}
+              key={genre.name}
+              className="flex items-center gap-3 p-2 rounded-lg border-2 border-[#3D3D3D]"
+              style={{ backgroundColor: 'var(--background-secondary)' }}
+            >
+              <div
+                className="w-4 h-4 rounded-sm flex-shrink-0 border border-[#3D3D3D]"
+                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+              />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-[#3D3D3D]">{genre.name}</p>
+              </div>
+              <p className="text-sm font-medium text-gray-600 flex-shrink-0">{genre.count}本</p>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
