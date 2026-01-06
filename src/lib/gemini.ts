@@ -1,7 +1,13 @@
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GenreStats, BacklogGame } from '@/types/steam';
 
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_AI_API_KEY || '');
+const apiKey = process.env.GOOGLE_AI_API_KEY;
+
+if (!apiKey) {
+  console.error('GOOGLE_AI_API_KEY is not set');
+}
+
+const genAI = new GoogleGenerativeAI(apiKey || '');
 
 export async function generateRecommendations(
   backlogGames: BacklogGame[],
@@ -42,11 +48,12 @@ ${userPreferences ? `## ユーザーの好み:\n${userPreferences}` : ''}
 
   try {
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     return response.text();
   } catch (error) {
     console.error('Gemini API error:', error);
-    throw new Error('AIレコメンドの生成に失敗しました');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`AIレコメンドの生成に失敗しました: ${errorMessage}`);
   }
 }
 
@@ -80,10 +87,11 @@ ${genreSummary}
 
   try {
     const result = await model.generateContent(prompt);
-    const response = await result.response;
+    const response = result.response;
     return response.text();
   } catch (error) {
     console.error('Gemini API error:', error);
-    throw new Error('分析の生成に失敗しました');
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    throw new Error(`分析の生成に失敗しました: ${errorMessage}`);
   }
 }

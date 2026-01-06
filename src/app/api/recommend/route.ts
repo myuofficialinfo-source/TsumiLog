@@ -35,8 +35,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ recommendations });
   } catch (error) {
     console.error('Recommendation error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'レコメンドの生成に失敗しました' },
+      { error: `レコメンドの生成に失敗しました: ${errorMessage}` },
       { status: 500 }
     );
   }
