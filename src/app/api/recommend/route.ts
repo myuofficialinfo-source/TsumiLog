@@ -43,8 +43,14 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 人気ゲームを取得
-      const candidates = await getNewReleases();
+      // ユーザーのトップジャンルを取得
+      const topGenres = genreStats
+        .sort((a, b) => b.totalPlaytime - a.totalPlaytime)
+        .slice(0, 5)
+        .map(g => g.genre);
+
+      // ユーザーのジャンルに基づいて新作ゲームを取得
+      const candidates = await getNewReleases(topGenres);
       if (candidates.length === 0) {
         return NextResponse.json(
           { error: 'ゲームの取得に失敗しました' },

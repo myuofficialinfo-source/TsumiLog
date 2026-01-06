@@ -116,21 +116,70 @@ export interface NewReleaseGame {
   description: string;
 }
 
-// 最近リリースされたゲームを取得（直近3ヶ月）
-export async function getNewReleases(): Promise<NewReleaseGame[]> {
+// Steamジャンル名からタグIDへのマッピング
+const GENRE_TO_TAG: Record<string, string> = {
+  'アドベンチャー': '21',
+  'Adventure': '21',
+  'インディー': '492',
+  'Indie': '492',
+  'RPG': '122',
+  'アクション': '19',
+  'Action': '19',
+  'カジュアル': '597',
+  'Casual': '597',
+  'シミュレーション': '599',
+  'Simulation': '599',
+  'ストラテジー': '9',
+  'Strategy': '9',
+  'パズル': '1664',
+  'Puzzle': '1664',
+};
+
+// ユーザーのジャンルに基づいて最近リリースされたゲームを取得
+export async function getNewReleases(userGenres: string[] = []): Promise<NewReleaseGame[]> {
   try {
     const appIds: number[] = [];
 
-    // featuredcategories から新作のみ取得
-    const featuredRes = await fetch(`${STEAM_STORE_API}/featuredcategories?l=japanese`);
+    // ユーザーのジャンルからタグIDを取得
+    const tagIds = userGenres
+      .map(g => GENRE_TO_TAG[g])
+      .filter(Boolean)
+      .slice(0, 3); // 最大3つのタグで検索
 
-    if (featuredRes.ok) {
-      const data = await featuredRes.json();
+    // タグIDがある場合はSteam検索APIを使用
+    if (tagIds.length > 0) {
+      for (const tagId of tagIds) {
+        try {
+          const searchRes = await fetch(
+            `https://store.steampowered.com/search/results/?query&start=0&count=15&sort_by=Released_DESC&category1=998&tags=${tagId}&json=1`
+          );
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            if (searchData.items) {
+              for (const item of searchData.items) {
+                const match = item.logo?.match(/\/apps\/(\d+)\//);
+                if (match) {
+                  const id = parseInt(match[1]);
+                  if (!appIds.includes(id)) appIds.push(id);
+                }
+              }
+            }
+          }
+        } catch {
+          // 検索失敗しても続行
+        }
+      }
+    }
 
-      // 新作カテゴリのみ使用（最近リリースされたゲーム）
-      if (data.new_releases?.items) {
-        for (const item of data.new_releases.items) {
-          if (!appIds.includes(item.id)) appIds.push(item.id);
+    // タグ検索で十分なゲームが取得できない場合はfeaturedcategoriesからも取得
+    if (appIds.length < 10) {
+      const featuredRes = await fetch(`${STEAM_STORE_API}/featuredcategories?l=japanese`);
+      if (featuredRes.ok) {
+        const data = await featuredRes.json();
+        if (data.new_releases?.items) {
+          for (const item of data.new_releases.items) {
+            if (!appIds.includes(item.id)) appIds.push(item.id);
+          }
         }
       }
     }
@@ -139,8 +188,8 @@ export async function getNewReleases(): Promise<NewReleaseGame[]> {
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-    // 各ゲームの詳細を取得（並列で最大30本）
-    const targetAppIds = appIds.slice(0, 30);
+    // 各ゲームの詳細を取得（並列で最大25本）
+    const targetAppIds = appIds.slice(0, 25);
     const detailsPromises = targetAppIds.map(async (appid) => {
       try {
         const detailRes = await fetch(
@@ -157,14 +206,13 @@ export async function getNewReleases(): Promise<NewReleaseGame[]> {
 
         // リリース日をチェック（3ヶ月以内のみ）
         const releaseDate = gameData.release_date;
-        if (releaseDate?.coming_soon) return null; // 未発売は除外
+        if (releaseDate?.coming_soon) return null;
 
         if (releaseDate?.date) {
-          // 日付をパース（例: "2024年10月11日" or "Oct 11, 2024"）
           const dateStr = releaseDate.date;
           const releaseDateObj = new Date(dateStr.replace(/年|月/g, '/').replace(/日/, ''));
           if (isNaN(releaseDateObj.getTime()) || releaseDateObj < threeMonthsAgo) {
-            return null; // 3ヶ月より前のゲームは除外
+            return null;
           }
         }
 
