@@ -98,6 +98,11 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
           />
         </div>
       </div>
+
+      {/* Steam API制限の注意書き */}
+      <p className="mt-4 text-xs text-gray-500 text-center">
+        ※Steamの公開設定によっては一部のゲームが取得できない場合があります
+      </p>
     </div>
   );
 }
