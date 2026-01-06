@@ -284,7 +284,7 @@ function HomeContent() {
               <GenreChart games={steamData.games} gameDetails={gameDetails} />
 
               {/* AI分析 */}
-              <AIRecommend games={steamData.games} gameDetails={gameDetails} />
+              <AIRecommend games={steamData.games} gameDetails={gameDetails} stats={steamData.stats} />
             </div>
 
             {/* ゲームリスト */}

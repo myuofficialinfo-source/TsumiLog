@@ -11,34 +11,43 @@ interface Game {
   isBacklog: boolean;
 }
 
+interface Stats {
+  totalGames: number;
+  backlogCount: number;
+  totalPlaytimeHours: number;
+  playedGames: number;
+}
+
 interface AIRecommendProps {
   games: Game[];
   gameDetails: Map<number, { genres: { description: string }[] }>;
+  stats?: Stats;
 }
 
-export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
+export default function AIRecommend({ games, gameDetails, stats }: AIRecommendProps) {
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
+  const [catchphrase, setCatchphrase] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'recommend' | 'analyze'>('recommend');
 
   const generateGenreStats = () => {
-    const stats = new Map<string, { count: number; playtime: number }>();
+    const statsMap = new Map<string, { count: number; playtime: number }>();
 
     games.forEach((game) => {
       const details = gameDetails.get(game.appid);
       if (!details?.genres) return;
 
       details.genres.forEach((genre) => {
-        const current = stats.get(genre.description) || { count: 0, playtime: 0 };
-        stats.set(genre.description, {
+        const current = statsMap.get(genre.description) || { count: 0, playtime: 0 };
+        statsMap.set(genre.description, {
           count: current.count + 1,
           playtime: current.playtime + game.playtime_forever,
         });
       });
     });
 
-    return Array.from(stats.entries()).map(([genre, data]) => ({
+    return Array.from(statsMap.entries()).map(([genre, data]) => ({
       genre,
       count: data.count,
       totalPlaytime: data.playtime,
@@ -98,6 +107,24 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
 
       const data = await response.json();
       if (data.analysis) {
+        // キャッチコピーを抽出
+        const lines = data.analysis.split('\n');
+        let foundCatchphrase = '';
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('【') && !trimmed.startsWith('---') && !trimmed.startsWith('1.') && !trimmed.startsWith('*')) {
+            // 「」で囲まれているか確認
+            const match = trimmed.match(/「(.+?)」/);
+            if (match) {
+              foundCatchphrase = match[1];
+              break;
+            } else if (trimmed.length < 30 && trimmed.length > 3) {
+              foundCatchphrase = trimmed;
+              break;
+            }
+          }
+        }
+        setCatchphrase(foundCatchphrase || 'ゲーマー');
         setAnalysis(data.analysis);
       }
     } catch (error) {
@@ -113,6 +140,28 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
     } else {
       fetchAnalysis();
     }
+  };
+
+  const shareToX = () => {
+    if (!catchphrase || !stats) return;
+
+    const backlogPercent = Math.round((stats.backlogCount / stats.totalGames) * 100);
+
+    const text = `【ツミログ診断結果】
+
+私のゲーマータイプは...
+「${catchphrase}」
+
+📚 所持ゲーム: ${stats.totalGames}本
+📦 積みゲー: ${stats.backlogCount}本 (${backlogPercent}%)
+⏱️ 総プレイ時間: ${stats.totalPlaytimeHours.toLocaleString()}時間
+
+あなたの積みゲーも診断してみよう！
+#ツミログ #積みゲー #Steam`;
+
+    const url = 'https://tsumi-log.vercel.app';
+    const tweetUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(url)}`;
+    window.open(tweetUrl, '_blank', 'width=550,height=420');
   };
 
   const currentContent = activeTab === 'recommend' ? recommendation : analysis;
@@ -195,7 +244,46 @@ export default function AIRecommend({ games, gameDetails }: AIRecommendProps) {
         </div>
       ) : (
         <div>
-          <div className="flex justify-end mb-4">
+          {/* 傾向分析の場合：キャッチコピーカード */}
+          {activeTab === 'analyze' && catchphrase && (
+            <div
+              className="mb-6 p-6 rounded-xl border-3 border-[#3D3D3D] text-center"
+              style={{ background: 'linear-gradient(135deg, var(--pop-purple), var(--pop-pink))' }}
+            >
+              <p className="text-white text-sm font-medium mb-2">あなたのゲーマータイプ</p>
+              <h2 className="text-2xl md:text-3xl font-black text-white mb-4">
+                「{catchphrase}」
+              </h2>
+
+              {/* 統計情報 */}
+              {stats && (
+                <div className="flex justify-center gap-4 mb-4 flex-wrap">
+                  <div className="px-3 py-1 bg-white/20 rounded-full text-white text-sm font-medium">
+                    📚 {stats.totalGames}本
+                  </div>
+                  <div className="px-3 py-1 bg-white/20 rounded-full text-white text-sm font-medium">
+                    📦 積み{stats.backlogCount}本
+                  </div>
+                  <div className="px-3 py-1 bg-white/20 rounded-full text-white text-sm font-medium">
+                    ⏱️ {stats.totalPlaytimeHours.toLocaleString()}h
+                  </div>
+                </div>
+              )}
+
+              {/* Xシェアボタン */}
+              <button
+                onClick={shareToX}
+                className="inline-flex items-center gap-2 px-6 py-3 bg-black text-white font-bold rounded-xl hover:bg-gray-800 transition-colors border-2 border-white"
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                Xでシェアする
+              </button>
+            </div>
+          )}
+
+          <div className="flex justify-end mb-4 gap-2">
             <button
               onClick={handleGenerate}
               disabled={isLoading}
