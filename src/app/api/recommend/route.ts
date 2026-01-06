@@ -76,18 +76,15 @@ export async function POST(request: NextRequest) {
           }
         });
 
-        // 理由を生成
-        let reason = '';
-        if (matchedGenres.length > 0) {
-          reason = `${matchedGenres.join('・')}ジャンルが一致`;
-        } else {
-          reason = '人気タイトル';
-        }
+        // 理由を生成（ゲームの説明を使用）
+        const reason = game.description
+          ? game.description.slice(0, 80) + (game.description.length > 80 ? '...' : '')
+          : (matchedGenres.length > 0 ? `${matchedGenres.join('・')}ジャンルが一致` : '新作タイトル');
 
         return {
           appid: game.appid,
           name: game.name,
-          genre: game.genres.join(', '),
+          genre: matchedGenres.length > 0 ? matchedGenres.join(', ') : game.genres.slice(0, 2).join(', '),
           reason,
           score,
           storeUrl: `https://store.steampowered.com/app/${game.appid}`,

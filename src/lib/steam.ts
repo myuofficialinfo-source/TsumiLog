@@ -116,41 +116,31 @@ export interface NewReleaseGame {
   description: string;
 }
 
-// 人気・おすすめゲームを取得（詳細情報付き）
+// 最近リリースされたゲームを取得（直近3ヶ月）
 export async function getNewReleases(): Promise<NewReleaseGame[]> {
   try {
     const appIds: number[] = [];
 
-    // featuredcategories から人気ゲームを取得
+    // featuredcategories から新作のみ取得
     const featuredRes = await fetch(`${STEAM_STORE_API}/featuredcategories?l=japanese`);
 
     if (featuredRes.ok) {
       const data = await featuredRes.json();
 
-      // 優先順位: 1. トップセラー（人気ゲーム）
-      if (data.top_sellers?.items) {
-        for (const item of data.top_sellers.items) {
-          if (!appIds.includes(item.id)) appIds.push(item.id);
-        }
-      }
-
-      // 優先順位: 2. スペシャル（セール中の人気ゲーム）
-      if (data.specials?.items) {
-        for (const item of data.specials.items) {
-          if (!appIds.includes(item.id)) appIds.push(item.id);
-        }
-      }
-
-      // 優先順位: 3. 新作（足りない場合のみ）
-      if (appIds.length < 20 && data.new_releases?.items) {
+      // 新作カテゴリのみ使用（最近リリースされたゲーム）
+      if (data.new_releases?.items) {
         for (const item of data.new_releases.items) {
           if (!appIds.includes(item.id)) appIds.push(item.id);
         }
       }
     }
 
-    // 各ゲームの詳細を取得（並列で最大25本）
-    const targetAppIds = appIds.slice(0, 25);
+    // 3ヶ月前の日付を計算
+    const threeMonthsAgo = new Date();
+    threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
+
+    // 各ゲームの詳細を取得（並列で最大30本）
+    const targetAppIds = appIds.slice(0, 30);
     const detailsPromises = targetAppIds.map(async (appid) => {
       try {
         const detailRes = await fetch(
@@ -164,6 +154,19 @@ export async function getNewReleases(): Promise<NewReleaseGame[]> {
 
         // DLCやサウンドトラックを除外
         if (gameData.type !== 'game') return null;
+
+        // リリース日をチェック（3ヶ月以内のみ）
+        const releaseDate = gameData.release_date;
+        if (releaseDate?.coming_soon) return null; // 未発売は除外
+
+        if (releaseDate?.date) {
+          // 日付をパース（例: "2024年10月11日" or "Oct 11, 2024"）
+          const dateStr = releaseDate.date;
+          const releaseDateObj = new Date(dateStr.replace(/年|月/g, '/').replace(/日/, ''));
+          if (isNaN(releaseDateObj.getTime()) || releaseDateObj < threeMonthsAgo) {
+            return null; // 3ヶ月より前のゲームは除外
+          }
+        }
 
         return {
           appid,
