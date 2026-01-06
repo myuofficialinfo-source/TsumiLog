@@ -231,6 +231,27 @@ function HomeContent() {
               <span>Steamでログイン</span>
             </button>
 
+            {/* 注意事項 */}
+            <div
+              className="mt-6 px-6 py-4 rounded-xl border-2 border-[#3D3D3D] max-w-md text-center"
+              style={{ backgroundColor: 'var(--background-secondary)' }}
+            >
+              <p className="text-sm text-gray-600 font-medium">
+                <span className="font-bold" style={{ color: 'var(--pop-yellow)' }}>ご注意：</span>
+                ゲームデータを取得するには、Steamのプロフィール設定で
+                <span className="font-bold">「ゲームの詳細」を公開</span>に設定してください。
+              </p>
+              <a
+                href="https://steamcommunity.com/my/edit/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-2 text-sm font-bold hover:underline"
+                style={{ color: 'var(--pop-blue)' }}
+              >
+                Steam プライバシー設定を開く
+              </a>
+            </div>
+
             {error && (
               <div
                 className="mt-6 px-6 py-4 rounded-xl border-3 border-[#3D3D3D] font-medium"

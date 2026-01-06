@@ -133,17 +133,11 @@ export default function GameList({ games }: GameListProps) {
       </p>
 
       {/* ゲームリスト */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[600px] overflow-y-auto pr-2">
-        {filteredAndSorted.slice(0, 50).map((game) => (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[800px] overflow-y-auto pr-2">
+        {filteredAndSorted.map((game) => (
           <GameCard key={game.appid} game={game} />
         ))}
       </div>
-
-      {filteredAndSorted.length > 50 && (
-        <p className="text-center text-gray-500 font-medium mt-4">
-          他 {filteredAndSorted.length - 50} 件のゲームがあります
-        </p>
-      )}
     </div>
   );
 }
