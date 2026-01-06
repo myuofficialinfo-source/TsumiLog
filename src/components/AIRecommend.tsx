@@ -46,6 +46,9 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'recommend' | 'analyze'>('recommend');
 
+  // 積みゲーの数を取得
+  const backlogCount = stats?.backlogCount ?? games.filter(g => g.isBacklog).length;
+
   const generateGenreStats = () => {
     const statsMap = new Map<string, { count: number; playtime: number }>();
 
@@ -254,7 +257,33 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
         </div>
       </div>
 
-      {!currentContent ? (
+      {/* 積みゲーゼロの場合（おすすめタブのみ） */}
+      {activeTab === 'recommend' && backlogCount === 0 ? (
+        <div className="text-center py-12">
+          <div
+            className="inline-flex items-center justify-center w-20 h-20 rounded-full mb-6 border-3 border-[#3D3D3D]"
+            style={{ backgroundColor: 'var(--pop-green)', opacity: 0.9 }}
+          >
+            <span className="text-4xl">🎉</span>
+          </div>
+          <h3 className="text-2xl font-black mb-4" style={{ color: 'var(--pop-green)' }}>
+            積みゲーゼロ！素晴らしい！
+          </h3>
+          <p className="text-gray-700 mb-4 font-medium max-w-md mx-auto leading-relaxed">
+            あなたは購入したゲームをしっかりプレイする<br />
+            <span className="font-black" style={{ color: 'var(--pop-blue)' }}>計画的なゲーマー</span>ですね！
+          </p>
+          <p className="text-gray-600 text-sm font-medium">
+            積みゲーがないので、おすすめの提案はありません。<br />
+            この調子でゲームライフを楽しんでください！
+          </p>
+          <div className="mt-6 flex justify-center gap-2">
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--pop-blue)' }} />
+            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
+          </div>
+        </div>
+      ) : !currentContent ? (
         <div className="text-center py-12">
           <div
             className="inline-flex items-center justify-center w-16 h-16 rounded-full mb-4 border-3 border-[#3D3D3D]"

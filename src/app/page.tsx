@@ -146,7 +146,7 @@ function HomeContent() {
   return (
     <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
       {/* ヘッダー */}
-      <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
+      <header className="sticky top-0 z-50" style={{ backgroundColor: 'var(--background)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             {/* ロゴアイコン */}
@@ -272,12 +272,9 @@ function HomeContent() {
       </main>
 
       {/* フッター */}
-      <footer className="border-t-3 border-[#3D3D3D] py-8 mt-16" style={{ backgroundColor: 'var(--card-bg)' }}>
+      <footer className="py-6 mt-16" style={{ backgroundColor: 'var(--background)' }}>
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex justify-center mb-4">
-            <Image src="/icons/icom.png" alt="ツミナビ" width={40} height={40} />
-          </div>
-          <p className="font-bold text-gray-600">ツミナビ - Tsumi-Navi</p>
+          <p className="font-bold text-gray-500 text-sm">ツミナビ - Tsumi-Navi</p>
         </div>
       </footer>
     </div>
