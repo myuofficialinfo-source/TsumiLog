@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Sparkles, Loader2, Brain, RefreshCw, Rocket, ExternalLink } from 'lucide-react';
+import { Sparkles, Loader2, Brain, RefreshCw, Rocket, ExternalLink, Gamepad2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
+import Image from 'next/image';
 
 interface Game {
   appid: number;
@@ -383,44 +384,9 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
               再検索
             </button>
           </div>
-          <div className="space-y-4">
+          <div className="space-y-3">
             {newReleases.map((game) => (
-              <a
-                key={game.appid}
-                href={game.storeUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block rounded-xl border-2 border-[#3D3D3D] overflow-hidden hover:shadow-lg transition-shadow"
-                style={{ backgroundColor: 'var(--background-secondary)' }}
-              >
-                <div className="flex flex-col md:flex-row">
-                  <div className="md:w-72 flex-shrink-0 bg-gray-200">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={game.headerImage}
-                      alt={game.name}
-                      className="w-full h-auto"
-                      onError={(e) => {
-                        const target = e.target as HTMLImageElement;
-                        target.src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/capsule_616x353.jpg`;
-                      }}
-                    />
-                  </div>
-                  <div className="p-4 flex-grow">
-                    <div className="flex items-start justify-between gap-2">
-                      <h4 className="font-bold text-lg text-[#3D3D3D]">{game.name}</h4>
-                      <ExternalLink className="w-5 h-5 flex-shrink-0" style={{ color: 'var(--pop-blue)' }} />
-                    </div>
-                    <span
-                      className="inline-block px-2 py-0.5 text-xs font-medium rounded-full mt-2"
-                      style={{ backgroundColor: 'var(--pop-green)', color: 'white' }}
-                    >
-                      {game.genre}
-                    </span>
-                    <p className="text-gray-600 mt-2 text-sm">{game.reason}</p>
-                  </div>
-                </div>
-              </a>
+              <NewReleaseCard key={game.appid} game={game} />
             ))}
           </div>
           <p className="text-xs text-gray-500 text-center mt-4">
@@ -556,5 +522,53 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
         </div>
       )}
     </div>
+  );
+}
+
+// 新作ゲームカードコンポーネント
+function NewReleaseCard({ game }: { game: NewGameRecommendation }) {
+  const [imageError, setImageError] = useState(false);
+
+  return (
+    <a
+      href={game.storeUrl}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="group flex gap-3 p-3 rounded-xl hover:scale-[1.02] transition-all border-2 border-[#3D3D3D]"
+      style={{ backgroundColor: 'var(--background-secondary)' }}
+    >
+      <div className="relative w-24 h-12 flex-shrink-0 rounded-lg overflow-hidden border-2 border-[#3D3D3D]" style={{ backgroundColor: 'var(--card-bg)' }}>
+        {!imageError ? (
+          <Image
+            src={game.headerImage}
+            alt={game.name}
+            fill
+            className="object-cover"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-gray-400">
+            <Gamepad2 className="w-6 h-6" />
+          </div>
+        )}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h4 className="text-[#3D3D3D] text-sm font-bold truncate group-hover:text-[var(--pop-blue)] transition-colors">
+            {game.name}
+          </h4>
+          <ExternalLink className="w-4 h-4 flex-shrink-0" style={{ color: 'var(--pop-blue)' }} />
+        </div>
+        <div className="flex items-center gap-2 mt-1">
+          <span
+            className="px-2 py-0.5 text-xs font-medium rounded-full"
+            style={{ backgroundColor: 'var(--pop-green)', color: 'white' }}
+          >
+            {game.genre}
+          </span>
+        </div>
+        <p className="text-gray-600 text-xs mt-1 line-clamp-2">{game.reason}</p>
+      </div>
+    </a>
   );
 }

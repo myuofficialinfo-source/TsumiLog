@@ -118,7 +118,7 @@ export interface NewGameRecommendation {
 
 export async function recommendNewReleases(
   genreStats: GenreStats[],
-  newGames: { appid: number; name: string; genres?: string[]; description?: string }[]
+  newGames: { appid: number; name: string; genres?: string[]; tags?: string[]; description?: string }[]
 ): Promise<NewGameRecommendation[]> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
@@ -128,17 +128,27 @@ export async function recommendNewReleases(
     .map(g => g.genre);
 
   const newGamesList = newGames
-    .slice(0, 30)
-    .map(g => `- ${g.name} (AppID: ${g.appid})${g.genres ? ` [${g.genres.join(', ')}]` : ''}`)
-    .join('\n');
+    .slice(0, 15)
+    .map(g => {
+      const genres = g.genres?.length ? `ジャンル: ${g.genres.join(', ')}` : '';
+      const tags = g.tags?.length ? `タグ: ${g.tags.join(', ')}` : '';
+      const desc = g.description ? `説明: ${g.description.slice(0, 100)}...` : '';
+      return `### ${g.name} (AppID: ${g.appid})\n${genres}\n${tags}\n${desc}`;
+    })
+    .join('\n\n');
 
   const prompt = `あなたはゲームレコメンドの専門家です。ユーザーの好みに基づいて、最新リリースゲームの中からおすすめを5つ選んでください。
 
 ## ユーザーがよく遊ぶジャンル:
 ${topGenres.join(', ')}
 
-## 最新リリースゲームリスト:
+## 最新リリースゲーム詳細:
 ${newGamesList}
+
+## 選定基準:
+- ユーザーの好むジャンルと一致または類似するゲームを優先
+- ゲームの説明文やタグからユーザーの好みに合いそうなものを選ぶ
+- 多様性も考慮し、似たようなゲームばかりにならないようにする
 
 ## 回答形式:
 【重要】必ず以下のJSON形式のみで回答してください。説明文や前置きは一切不要です。
@@ -148,7 +158,7 @@ ${newGamesList}
   {
     "appid": 数字,
     "name": "ゲーム名",
-    "reason": "おすすめ理由（日本語で1-2文）",
+    "reason": "おすすめ理由（ユーザーの好みとの関連を含めて日本語で1-2文）",
     "genre": "主なジャンル"
   }
 ]

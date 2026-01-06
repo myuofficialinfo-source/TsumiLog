@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      // 新作ゲームを取得
+      // 新作ゲームを詳細情報付きで取得
       const newGames = await getNewReleases();
       if (newGames.length === 0) {
         return NextResponse.json(
@@ -52,7 +52,16 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      const newReleases = await recommendNewReleases(genreStats, newGames);
+      // 詳細情報をGeminiに渡す形式に変換
+      const gamesWithDetails = newGames.map(g => ({
+        appid: g.appid,
+        name: g.name,
+        genres: g.genres,
+        tags: g.tags,
+        description: g.description,
+      }));
+
+      const newReleases = await recommendNewReleases(genreStats, gamesWithDetails);
       // 成功した場合のみカウントを増やす
       incrementRateLimit('gemini-api');
       return NextResponse.json({ newReleases });

@@ -108,8 +108,16 @@ export function identifyBacklog(games: SteamGame[], thresholdMinutes = 30): Stea
   return games.filter(game => game.playtime_forever < thresholdMinutes);
 }
 
-// 新作ゲームを取得（直近3ヶ月）
-export async function getNewReleases(): Promise<{ appid: number; name: string }[]> {
+export interface NewReleaseGame {
+  appid: number;
+  name: string;
+  genres: string[];
+  tags: string[];
+  description: string;
+}
+
+// 新作ゲームを取得（詳細情報付き）
+export async function getNewReleases(): Promise<NewReleaseGame[]> {
   try {
     // Steamの新作リストを取得
     const response = await fetch(
@@ -117,31 +125,50 @@ export async function getNewReleases(): Promise<{ appid: number; name: string }[
     );
     const data = await response.json();
 
-    const newReleases: { appid: number; name: string }[] = [];
+    const appIds: number[] = [];
 
     // 新作カテゴリから取得
     if (data.new_releases?.items) {
       for (const item of data.new_releases.items) {
-        newReleases.push({
-          appid: item.id,
-          name: item.name,
-        });
+        appIds.push(item.id);
       }
     }
 
-    // トップセラーからも追加（新作が多い）
+    // トップセラーからも追加
     if (data.top_sellers?.items) {
       for (const item of data.top_sellers.items) {
-        if (!newReleases.find(g => g.appid === item.id)) {
-          newReleases.push({
-            appid: item.id,
-            name: item.name,
-          });
+        if (!appIds.includes(item.id)) {
+          appIds.push(item.id);
         }
       }
     }
 
-    return newReleases;
+    // 各ゲームの詳細を取得（並列で最大15本）
+    const targetAppIds = appIds.slice(0, 15);
+    const detailsPromises = targetAppIds.map(async (appid) => {
+      try {
+        const detailRes = await fetch(
+          `${STEAM_STORE_API}/appdetails?appids=${appid}&l=japanese`
+        );
+        const detailData = await detailRes.json();
+
+        if (!detailData[appid]?.success) return null;
+
+        const gameData = detailData[appid].data;
+        return {
+          appid,
+          name: gameData.name,
+          genres: (gameData.genres || []).map((g: { description: string }) => g.description),
+          tags: (gameData.categories || []).slice(0, 5).map((c: { description: string }) => c.description),
+          description: gameData.short_description || '',
+        };
+      } catch {
+        return null;
+      }
+    });
+
+    const results = await Promise.all(detailsPromises);
+    return results.filter((r): r is NewReleaseGame => r !== null);
   } catch {
     return [];
   }
