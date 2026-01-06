@@ -14,7 +14,7 @@ export async function generateRecommendations(
   genreStats: GenreStats[],
   userPreferences?: string
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const topGenres = genreStats
     .sort((a, b) => b.count - a.count)
@@ -62,7 +62,7 @@ export async function analyzeGamingPreferences(
   totalGames: number,
   totalPlaytime: number
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const genreSummary = genreStats
     .sort((a, b) => b.count - a.count)
