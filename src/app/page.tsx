@@ -144,9 +144,9 @@ function HomeContent() {
   }, [steamData?.games]);
 
   return (
-    <div className="min-h-screen" style={{ backgroundColor: 'var(--background)' }}>
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
       {/* ヘッダー */}
-      <header className="sticky top-0 z-50" style={{ backgroundColor: 'var(--background)' }}>
+      <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             {/* ロゴアイコン */}
@@ -171,7 +171,7 @@ function HomeContent() {
         </div>
       </header>
 
-      <main className="max-w-7xl mx-auto px-4 py-8">
+      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
         {/* ローディング */}
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
@@ -272,9 +272,12 @@ function HomeContent() {
       </main>
 
       {/* フッター */}
-      <footer className="py-6 mt-16" style={{ backgroundColor: 'var(--background)' }}>
+      <footer className="border-t-3 border-[#3D3D3D] py-8 mt-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="font-bold text-gray-500 text-sm">ツミナビ - Tsumi-Navi</p>
+          <div className="flex justify-center mb-4">
+            <Image src="/icons/icom.png" alt="ツミナビ" width={40} height={40} />
+          </div>
+          <p className="font-bold text-gray-600">ツミナビ - Tsumi-Navi</p>
         </div>
       </footer>
     </div>
