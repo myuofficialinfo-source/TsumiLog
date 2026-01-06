@@ -12,6 +12,26 @@ export async function GET(request: NextRequest) {
   const playtime = searchParams.get('playtime') || '0';
   const genresParam = searchParams.get('genres') || '';
 
+  // キャッチコピーを適切な位置で改行
+  const formatCatchphrase = (text: string) => {
+    if (text.length <= 15) return [text];
+
+    // 句読点や助詞で改行位置を探す
+    const breakPoints = ['、', '。', '！', '？', 'の', 'な', 'て', 'で', 'に', 'を', 'が', 'は'];
+    let bestBreak = Math.floor(text.length / 2);
+
+    for (let i = Math.floor(text.length / 3); i < Math.floor(text.length * 2 / 3); i++) {
+      if (breakPoints.includes(text[i])) {
+        bestBreak = i + 1;
+        break;
+      }
+    }
+
+    return [text.slice(0, bestBreak), text.slice(bestBreak)];
+  };
+
+  const catchphraseLines = formatCatchphrase(catchphrase);
+
   // ジャンルデータをパース
   const COLORS = ['#E63946', '#2A9D8F', '#F4A261', '#457B9D', '#9B5DE5'];
   const genres: { name: string; count: number; color: string }[] = [];
@@ -33,10 +53,10 @@ export async function GET(request: NextRequest) {
   const createPieSlices = () => {
     if (genres.length === 0) return null;
 
-    const cx = 90;
-    const cy = 90;
-    const outerR = 85;
-    const innerR = 50;
+    const cx = 110;
+    const cy = 110;
+    const outerR = 105;
+    const innerR = 60;
     let startAngle = -90;
 
     return genres.map((genre, i) => {
@@ -77,7 +97,7 @@ export async function GET(request: NextRequest) {
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
-          padding: '40px 50px',
+          padding: '35px 50px',
           fontFamily: 'sans-serif',
         }}
       >
@@ -87,7 +107,7 @@ export async function GET(request: NextRequest) {
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            marginBottom: 30,
+            marginBottom: 20,
           }}
         >
           <div style={{ display: 'flex', alignItems: 'flex-end', marginRight: 12 }}>
@@ -104,32 +124,41 @@ export async function GET(request: NextRequest) {
             background: 'linear-gradient(135deg, #9B5DE5, #F15BB5)',
             borderRadius: 16,
             border: '4px solid #3D3D3D',
-            padding: '20px 40px',
-            marginBottom: 30,
+            padding: '16px 40px',
+            marginBottom: 25,
             display: 'flex',
             flexDirection: 'column',
             alignItems: 'center',
           }}
         >
-          <span style={{ color: 'white', fontSize: 16, marginBottom: 8 }}>あなたのゲーマータイプ</span>
-          <span style={{ color: 'white', fontSize: 40, fontWeight: 900 }}>「{catchphrase}」</span>
+          <span style={{ color: 'white', fontSize: 14, marginBottom: 6 }}>あなたのゲーマータイプ</span>
+          <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            {catchphraseLines.length === 1 ? (
+              <span style={{ color: 'white', fontSize: 38, fontWeight: 900, textAlign: 'center' }}>「{catchphraseLines[0]}」</span>
+            ) : (
+              <>
+                <span style={{ color: 'white', fontSize: 36, fontWeight: 900, textAlign: 'center' }}>「{catchphraseLines[0]}</span>
+                <span style={{ color: 'white', fontSize: 36, fontWeight: 900, textAlign: 'center' }}>{catchphraseLines[1]}」</span>
+              </>
+            )}
+          </div>
         </div>
 
         {/* コンテンツエリア */}
         <div style={{ display: 'flex', flex: 1 }}>
           {/* 左側：円グラフ */}
-          <div style={{ display: 'flex', flexDirection: 'column', marginRight: 50 }}>
-            <span style={{ fontSize: 16, fontWeight: 700, color: '#666', marginBottom: 12 }}>ジャンル分布</span>
+          <div style={{ display: 'flex', flexDirection: 'column', marginRight: 40 }}>
+            <span style={{ fontSize: 18, fontWeight: 900, color: '#666', marginBottom: 10 }}>ジャンル分布</span>
             <div style={{ display: 'flex', alignItems: 'center' }}>
-              <svg width="180" height="180" viewBox="0 0 180 180">
+              <svg width="220" height="220" viewBox="0 0 220 220">
                 {createPieSlices()}
               </svg>
               {/* 凡例 */}
-              <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 20 }}>
+              <div style={{ display: 'flex', flexDirection: 'column', marginLeft: 16 }}>
                 {genres.map((genre, i) => (
-                  <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: 8 }}>
-                    <div style={{ width: 14, height: 14, backgroundColor: genre.color, borderRadius: 3, marginRight: 10 }} />
-                    <span style={{ fontSize: 16, color: '#3D3D3D', fontWeight: 600 }}>{genre.name}</span>
+                  <div key={i} style={{ display: 'flex', alignItems: 'center', marginBottom: 10 }}>
+                    <div style={{ width: 16, height: 16, backgroundColor: genre.color, borderRadius: 4, marginRight: 10 }} />
+                    <span style={{ fontSize: 18, color: '#3D3D3D', fontWeight: 700 }}>{genre.name}</span>
                   </div>
                 ))}
               </div>
@@ -137,18 +166,18 @@ export async function GET(request: NextRequest) {
           </div>
 
           {/* 右側：統計 */}
-          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1 }}>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#3D3D3D', width: 180 }}>所持ゲーム</span>
-              <span style={{ fontSize: 72, fontWeight: 900, color: '#457B9D' }}>{totalGames}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', flex: 1, alignItems: 'flex-end' }}>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+              <span style={{ fontSize: 36, fontWeight: 900, color: '#3D3D3D', marginRight: 20 }}>所持ゲーム</span>
+              <span style={{ fontSize: 80, fontWeight: 900, color: '#457B9D' }}>{totalGames}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center', marginBottom: 20 }}>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#3D3D3D', width: 180 }}>積みゲー</span>
-              <span style={{ fontSize: 72, fontWeight: 900, color: '#E63946' }}>{backlogCount}</span>
+            <div style={{ display: 'flex', alignItems: 'baseline', marginBottom: 8 }}>
+              <span style={{ fontSize: 36, fontWeight: 900, color: '#3D3D3D', marginRight: 20 }}>積みゲー</span>
+              <span style={{ fontSize: 80, fontWeight: 900, color: '#E63946' }}>{backlogCount}</span>
             </div>
-            <div style={{ display: 'flex', alignItems: 'center' }}>
-              <span style={{ fontSize: 28, fontWeight: 700, color: '#3D3D3D', width: 180 }}>総プレイ時間</span>
-              <span style={{ fontSize: 72, fontWeight: 900, color: '#2A9D8F' }}>{playtime}h</span>
+            <div style={{ display: 'flex', alignItems: 'baseline' }}>
+              <span style={{ fontSize: 36, fontWeight: 900, color: '#3D3D3D', marginRight: 20 }}>総プレイ時間</span>
+              <span style={{ fontSize: 80, fontWeight: 900, color: '#2A9D8F' }}>{playtime}h</span>
             </div>
           </div>
         </div>
