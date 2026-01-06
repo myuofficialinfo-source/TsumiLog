@@ -116,35 +116,66 @@ export interface NewReleaseGame {
   description: string;
 }
 
-// 新作ゲームを取得（詳細情報付き）
+// 新作・人気ゲームを取得（詳細情報付き）
 export async function getNewReleases(): Promise<NewReleaseGame[]> {
   try {
-    // Steamの新作リストを取得
-    const response = await fetch(
-      `${STEAM_STORE_API}/featuredcategories?l=japanese`
-    );
-    const data = await response.json();
-
     const appIds: number[] = [];
 
-    // 新作カテゴリから取得
-    if (data.new_releases?.items) {
-      for (const item of data.new_releases.items) {
-        appIds.push(item.id);
-      }
-    }
+    // 複数のソースからゲームを取得
+    const [featuredRes, searchRes] = await Promise.all([
+      // 1. featuredcategories から新作・人気を取得
+      fetch(`${STEAM_STORE_API}/featuredcategories?l=japanese`),
+      // 2. 売上トップから取得（より人気のゲームを含む）
+      fetch(`https://store.steampowered.com/search/results/?query&start=0&count=30&sort_by=_ASC&force_infinite=1&category1=998&supportedlang=japanese&hidef2p=1&filter=topsellers&ndl=1&json=1`),
+    ]);
 
-    // トップセラーからも追加
-    if (data.top_sellers?.items) {
-      for (const item of data.top_sellers.items) {
-        if (!appIds.includes(item.id)) {
-          appIds.push(item.id);
+    // featuredcategories からの取得
+    if (featuredRes.ok) {
+      const data = await featuredRes.json();
+
+      // 新作カテゴリ
+      if (data.new_releases?.items) {
+        for (const item of data.new_releases.items) {
+          if (!appIds.includes(item.id)) appIds.push(item.id);
+        }
+      }
+
+      // トップセラー
+      if (data.top_sellers?.items) {
+        for (const item of data.top_sellers.items) {
+          if (!appIds.includes(item.id)) appIds.push(item.id);
+        }
+      }
+
+      // スペシャル（セール中の人気ゲーム）
+      if (data.specials?.items) {
+        for (const item of data.specials.items) {
+          if (!appIds.includes(item.id)) appIds.push(item.id);
         }
       }
     }
 
-    // 各ゲームの詳細を取得（並列で最大15本）
-    const targetAppIds = appIds.slice(0, 15);
+    // 売上検索結果からの取得
+    if (searchRes.ok) {
+      try {
+        const searchData = await searchRes.json();
+        if (searchData.items) {
+          for (const item of searchData.items) {
+            // URLからappidを抽出
+            const match = item.logo?.match(/\/apps\/(\d+)\//);
+            if (match) {
+              const id = parseInt(match[1]);
+              if (!appIds.includes(id)) appIds.push(id);
+            }
+          }
+        }
+      } catch {
+        // 検索結果のパースに失敗しても続行
+      }
+    }
+
+    // 各ゲームの詳細を取得（並列で最大25本）
+    const targetAppIds = appIds.slice(0, 25);
     const detailsPromises = targetAppIds.map(async (appid) => {
       try {
         const detailRes = await fetch(
@@ -155,6 +186,10 @@ export async function getNewReleases(): Promise<NewReleaseGame[]> {
         if (!detailData[appid]?.success) return null;
 
         const gameData = detailData[appid].data;
+
+        // DLCやサウンドトラックを除外
+        if (gameData.type !== 'game') return null;
+
         return {
           appid,
           name: gameData.name,

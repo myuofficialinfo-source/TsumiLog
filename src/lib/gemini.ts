@@ -130,57 +130,59 @@ export async function recommendNewReleases(
     .map(g => g.genre);
 
   const newGamesList = newGames
-    .slice(0, 15)
+    .slice(0, 25)
     .map(g => {
       const genres = g.genres?.length ? `ジャンル: ${g.genres.join(', ')}` : '';
-      const tags = g.tags?.length ? `タグ: ${g.tags.join(', ')}` : '';
-      const desc = g.description ? `説明: ${g.description.slice(0, 100)}...` : '';
-      return `### ${g.name} (AppID: ${g.appid})\n${genres}\n${tags}\n${desc}`;
+      const desc = g.description ? `説明: ${g.description.slice(0, 150)}` : '';
+      return `- ${g.name} (AppID: ${g.appid}) | ${genres} | ${desc}`;
     })
-    .join('\n\n');
+    .join('\n');
 
-  // ユーザーのゲーム情報セクション
+  // ユーザーのゲーム情報セクション（より詳細に）
   const favoriteSection = favoriteGames.length > 0
-    ? `## ユーザーがよくプレイするゲーム（プレイ時間上位）:\n${favoriteGames.join(', ')}`
+    ? `## 【重要】ユーザーがよくプレイするゲーム（プレイ時間上位）:
+これらのゲームをユーザーは長時間遊んでいます。似たジャンル・システム・雰囲気のゲームを優先してください。
+${favoriteGames.map(g => `- ${g}`).join('\n')}`
     : '';
 
   const backlogSection = backlogGames.length > 0
-    ? `## ユーザーが購入済みだが未プレイのゲーム:\n${backlogGames.join(', ')}`
+    ? `## ユーザーが購入済みだが未プレイのゲーム:
+${backlogGames.join(', ')}`
     : '';
 
-  const prompt = `あなたはゲームレコメンドの専門家です。ユーザーの好みに基づいて、最新リリースゲームの中からおすすめを5つ選んでください。
+  const prompt = `あなたはゲームレコメンドの専門家です。ユーザーがプレイしているゲームを分析し、候補リストから最も好みに合うゲームを5つ選んでください。
+
+${favoriteSection}
 
 ## ユーザーがよく遊ぶジャンル:
 ${topGenres.join(', ')}
 
-${favoriteSection}
-
 ${backlogSection}
 
-## 最新リリースゲーム詳細:
+## 候補ゲームリスト（この中から選んでください）:
 ${newGamesList}
 
-## 選定基準:
-- 【最重要】ユーザーがよくプレイするゲームと似た雰囲気・ジャンル・システムのゲームを優先
-- ユーザーが購入済みのゲームの傾向も参考にする
-- ユーザーの好むジャンルと一致または類似するゲームを選ぶ
-- ゲームの説明文やタグからユーザーの好みに合いそうなものを選ぶ
+## 【重要】選定基準:
+1. ユーザーがプレイしているゲームと同じジャンル・システムを最優先
+   - 例: RPGをよく遊ぶ→RPGを推薦、アクションをよく遊ぶ→アクションを推薦
+2. ユーザーのプレイ傾向に合った雰囲気・世界観のゲーム
+3. ジャンルが合わないゲームは選ばない
 
 ## 回答形式:
-【重要】必ず以下のJSON形式のみで回答してください。説明文や前置きは一切不要です。
+必ず以下のJSON形式のみで回答してください。前置き不要。
 
 \`\`\`json
 [
   {
     "appid": 数字,
     "name": "ゲーム名",
-    "reason": "おすすめ理由（ユーザーがプレイしているゲームとの類似点を含めて日本語で1-2文）",
+    "reason": "○○（ユーザーがプレイしているゲーム名）と同じ△△（ジャンル/システム）で、□□な点がおすすめ",
     "genre": "主なジャンル"
   }
 ]
 \`\`\`
 
-上記リストから5つ選び、ユーザーの好みに最も合うものを提案してください。`;
+候補リストから5つ選んでください。`;
 
   // 有効なAppIDのセットを作成
   const validAppIds = new Set(newGames.map(g => g.appid));
