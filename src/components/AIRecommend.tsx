@@ -213,7 +213,7 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h3 className="text-xl font-black text-[#3D3D3D] flex items-center gap-2">
           <Sparkles className="w-6 h-6" style={{ color: 'var(--pop-yellow)' }} />
-          AI分析
+          分析
         </h3>
 
         <div className="flex rounded-lg overflow-hidden border-2 border-[#3D3D3D]">
@@ -258,8 +258,8 @@ export default function AIRecommend({ games, gameDetails, stats }: AIRecommendPr
           </div>
           <p className="text-gray-600 mb-6 font-medium">
             {activeTab === 'recommend'
-              ? 'AIがあなたの積みゲーと好みを分析し、おすすめを提案します'
-              : 'AIがあなたのゲーマーとしての傾向を分析します'}
+              ? 'あなたの積みゲーと好みを分析し、おすすめを提案します'
+              : 'あなたのゲーマーとしての傾向を分析します'}
           </p>
           <button
             onClick={handleGenerate}
