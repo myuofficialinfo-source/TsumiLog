@@ -106,7 +106,26 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-purple)' }} />
-                  5. 知的財産権
+                  5. AIの利用について
+                </h2>
+                <p className="text-gray-600">
+                  本サービスでは、以下の機能にGoogle Gemini APIを利用しています：
+                </p>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-gray-600 ml-4">
+                  <li>ゲーマータイプ診断・分析</li>
+                  <li>積みゲーからのおすすめ提案</li>
+                  <li>新作ゲームのレコメンド</li>
+                </ul>
+                <p className="text-gray-600 mt-2">
+                  AIによる分析結果は参考情報であり、正確性を保証するものではありません。
+                  なお、Gemini APIはモデルのトレーニングには利用されない設定で使用しています。
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
+                  6. 知的財産権
                 </h2>
                 <p className="text-gray-600">
                   Steam、およびSteamのロゴはValve Corporationの商標です。
@@ -117,7 +136,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  6. 規約の変更
+                  7. 規約の変更
                 </h2>
                 <p className="text-gray-600">
                   本規約は予告なく変更される場合があります。
@@ -185,7 +204,26 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-purple)' }} />
-                  5. Intellectual Property
+                  5. Use of AI
+                </h2>
+                <p className="text-gray-600">
+                  This service uses Google Gemini API for the following features:
+                </p>
+                <ul className="list-disc list-inside mt-2 space-y-1 text-gray-600 ml-4">
+                  <li>Gamer type diagnosis and analysis</li>
+                  <li>Game recommendations from your backlog</li>
+                  <li>New release recommendations</li>
+                </ul>
+                <p className="text-gray-600 mt-2">
+                  AI analysis results are for reference only and accuracy is not guaranteed.
+                  The Gemini API is configured not to be used for model training.
+                </p>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
+                  6. Intellectual Property
                 </h2>
                 <p className="text-gray-600">
                   Steam and the Steam logo are trademarks of Valve Corporation.
@@ -196,7 +234,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  6. Changes to Terms
+                  7. Changes to Terms
                 </h2>
                 <p className="text-gray-600">
                   These terms may be changed without notice.
