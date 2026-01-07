@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, Globe } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function PrivacyPolicy() {
-  const { language } = useLanguage();
+  const { language, setLanguage, t } = useLanguage();
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
@@ -14,16 +14,23 @@ export default function PrivacyPolicy() {
       <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <Image src="/icons/icom.png" alt="TsumiNavi" width={48} height={48} />
+            <Image src="/icons/icom.png" alt={t('app.title')} width={48} height={48} />
             <div>
-              <h1 className="text-2xl font-black gradient-text">
-                {language === 'ja' ? 'ツミナビ' : 'TsumiNavi'}
-              </h1>
-              <p className="text-xs text-gray-500 font-medium">
-                {language === 'ja' ? 'Steam積みゲー管理' : 'Steam Backlog Manager'}
-              </p>
+              <h1 className="text-2xl font-black gradient-text">{t('app.title')}<span className="text-sm font-medium text-gray-500 ml-1">{language === 'ja' ? '（β版）' : '(beta)'}</span></h1>
+              <p className="text-xs text-gray-500 font-medium">{t('app.subtitle')}</p>
             </div>
           </Link>
+          <div className="flex items-center gap-2">
+            {/* 言語切り替えボタン */}
+            <button
+              onClick={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+              style={{ backgroundColor: 'var(--card-bg)' }}
+            >
+              <Globe className="w-4 h-4" />
+              {language === 'ja' ? 'EN' : 'JA'}
+            </button>
+          </div>
         </div>
       </header>
 
@@ -238,14 +245,21 @@ export default function PrivacyPolicy() {
       <footer className="border-t-3 border-[#3D3D3D] py-8 mt-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center mb-4">
-            <Image src="/icons/icom.png" alt="TsumiNavi" width={40} height={40} />
+            <Image src="/icons/icom.png" alt={t('app.title')} width={40} height={40} />
           </div>
-          <p className="font-bold text-gray-600">
-            {language === 'ja' ? 'ツミナビ - Steam積みゲー管理' : 'TsumiNavi - Steam Backlog Manager'}
-          </p>
+          <p className="font-bold text-gray-600">{t('app.title')} - {t('app.subtitle')}</p>
           <p className="text-sm text-gray-500 mt-2">
             A personal project | Powered by Steam
           </p>
+          <div className="flex justify-center gap-4 mt-3 text-xs text-gray-400">
+            <Link href="/privacy" className="hover:text-gray-300 transition-colors">
+              {language === 'ja' ? 'プライバシーポリシー' : 'Privacy Policy'}
+            </Link>
+            <span>|</span>
+            <Link href="/terms" className="hover:text-gray-300 transition-colors">
+              {language === 'ja' ? '利用規約' : 'Terms of Service'}
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
