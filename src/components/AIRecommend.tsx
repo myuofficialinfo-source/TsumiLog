@@ -600,6 +600,7 @@ function NewReleaseCard({ game }: { game: NewGameRecommendation }) {
             alt={game.name}
             fill
             className="object-cover"
+            unoptimized
             onError={() => setImageError(true)}
           />
         ) : (

@@ -115,6 +115,7 @@ export interface NewReleaseGame {
   genres: string[];
   tags: string[];
   description: string;
+  headerImage: string;
 }
 
 // Steamジャンル名からタグIDへのマッピング
@@ -223,6 +224,7 @@ export async function getNewReleases(userGenres: string[] = []): Promise<NewRele
           genres: (gameData.genres || []).map((g: { description: string }) => g.description),
           tags: (gameData.categories || []).slice(0, 5).map((c: { description: string }) => c.description),
           description: gameData.short_description || '',
+          headerImage: gameData.header_image || `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`,
         };
       } catch {
         return null;

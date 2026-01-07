@@ -181,7 +181,7 @@ export interface FavoriteGame {
 
 export async function recommendNewReleases(
   genreStats: GenreStats[],
-  newGames: { appid: number; name: string; genres?: string[]; tags?: string[]; description?: string }[],
+  newGames: { appid: number; name: string; genres?: string[]; tags?: string[]; description?: string; headerImage?: string }[],
   favoriteGames: FavoriteGame[] = [],
   wishlistNames: string[] = [],
   language: Language = 'ja'
@@ -316,15 +316,18 @@ Select 5 games from the candidate list.`;
     // 有効なAppIDのみをフィルタリング（Geminiが創作したゲームを除外）
     const validRecommendations = recommendations.filter(rec => validAppIds.has(rec.appid));
 
-    // newGamesからdescriptionを取得するマップを作成
-    const gameDescriptions = new Map(newGames.map(g => [g.appid, g.description]));
+    // newGamesから情報を取得するマップを作成
+    const gameInfoMap = new Map(newGames.map(g => [g.appid, { description: g.description, headerImage: g.headerImage }]));
 
-    return validRecommendations.map(rec => ({
-      ...rec,
-      storeUrl: `https://store.steampowered.com/app/${rec.appid}`,
-      headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${rec.appid}/header.jpg`,
-      description: gameDescriptions.get(rec.appid),
-    }));
+    return validRecommendations.map(rec => {
+      const gameInfo = gameInfoMap.get(rec.appid);
+      return {
+        ...rec,
+        storeUrl: `https://store.steampowered.com/app/${rec.appid}`,
+        headerImage: gameInfo?.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${rec.appid}/header.jpg`,
+        description: gameInfo?.description,
+      };
+    });
   } catch (error) {
     console.error('Gemini API error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
