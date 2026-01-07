@@ -19,10 +19,10 @@ export const metadata: Metadata = {
     default: "ツミナビ | TsumiNavi - Steam積みゲー管理・分析ツール",
     template: "%s | ツミナビ",
   },
-  description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析して、ゲーマータイプを診断！積みゲーからおすすめを提案します。Steam backlog manager with AI analysis.",
+  description: "Steamの積みゲーを可視化・管理。あなたのゲームライブラリを分析して、ゲーマータイプを診断！積みゲーからおすすめを提案します。Steam backlog manager with analysis.",
   keywords: [
     "Steam", "積みゲー", "バックログ", "ゲーム管理", "Steam backlog",
-    "backlog manager", "game library", "AI分析", "ゲーマー診断",
+    "backlog manager", "game library", "分析", "ゲーマー診断",
     "TsumiNavi", "ツミナビ", "Steam games", "unplayed games"
   ],
   authors: [{ name: "TsumiNavi" }],
@@ -50,8 +50,8 @@ export const metadata: Metadata = {
     },
   },
   openGraph: {
-    title: "ツミナビ | TsumiNavi - Steam積みゲー管理・AI分析",
-    description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析して、ゲーマータイプを診断！| Visualize and manage your Steam backlog with AI-powered analysis.",
+    title: "ツミナビ | TsumiNavi - Steam積みゲー管理・分析ツール",
+    description: "Steamの積みゲーを可視化・管理。あなたのゲームライブラリを分析して、ゲーマータイプを診断！| Visualize and manage your Steam backlog with analysis.",
     url: 'https://tsumi-log.vercel.app',
     siteName: 'ツミナビ | TsumiNavi',
     locale: 'ja_JP',
@@ -59,7 +59,7 @@ export const metadata: Metadata = {
     type: 'website',
     images: [
       {
-        url: '/og-image.png',
+        url: 'https://tsumi-log.vercel.app/og-image.png',
         width: 1200,
         height: 630,
         alt: 'ツミナビ - Steam積みゲー管理 | TsumiNavi - Steam Backlog Manager',
@@ -69,8 +69,8 @@ export const metadata: Metadata = {
   twitter: {
     card: 'summary_large_image',
     title: "ツミナビ | TsumiNavi - Steam積みゲー管理",
-    description: "Steamの積みゲーを可視化・管理。AIがあなたのゲーマータイプを診断！| AI-powered Steam backlog analysis",
-    images: ['/og-image.png'],
+    description: "Steamの積みゲーを可視化・管理。あなたのゲーマータイプを診断！| Steam backlog analysis",
+    images: ['https://tsumi-log.vercel.app/og-image.png'],
     creator: '@tsuninavi',
   },
 };
