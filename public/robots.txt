@@ -8,4 +8,4 @@ Disallow: /
 # When ready to launch, replace with:
 # User-agent: *
 # Allow: /
-# Sitemap: https://tsumi-log.vercel.app/sitemap.xml
+# Sitemap: https://tsumi-navi.vercel.app/sitemap.xml
