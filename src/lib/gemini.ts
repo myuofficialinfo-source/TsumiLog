@@ -9,10 +9,13 @@ if (!apiKey) {
 
 const genAI = new GoogleGenerativeAI(apiKey || '');
 
+export type Language = 'ja' | 'en';
+
 export async function generateRecommendations(
   backlogGames: BacklogGame[],
   genreStats: GenreStats[],
-  userPreferences?: string
+  userPreferences?: string,
+  language: Language = 'ja'
 ): Promise<string> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
@@ -26,7 +29,8 @@ export async function generateRecommendations(
     .map(g => `- ${g.name}`)
     .join('\n');
 
-  const prompt = `あなたはゲームレコメンドの専門家です。以下のユーザーの積みゲー（未プレイゲーム）リストの中から、優先的にプレイすべきおすすめゲームを5つ提案してください。
+  const prompt = language === 'ja'
+    ? `あなたはゲームレコメンドの専門家です。以下のユーザーの積みゲー（未プレイゲーム）リストの中から、優先的にプレイすべきおすすめゲームを5つ提案してください。
 
 【重要】必ず以下の「積みゲーリスト」の中からのみ選んでください。新しいゲームの購入提案は不要です。
 
@@ -47,7 +51,29 @@ ${userPreferences ? `## ユーザーの好み:\n${userPreferences}` : ''}
    - おすすめ理由: (なぜ今プレイすべきか、ユーザーの好みとの関連性)
    - プレイ時間の目安:
 
-ユーザーの好むジャンルや傾向を考慮して、積みゲーの中から最適なものを提案してください。`;
+ユーザーの好むジャンルや傾向を考慮して、積みゲーの中から最適なものを提案してください。`
+    : `You are a game recommendation expert. From the user's backlog (unplayed games) list below, suggest 5 games they should prioritize playing.
+
+【IMPORTANT】You must only select from the "Backlog List" below. Do not suggest purchasing new games.
+
+## User's Backlog (Unplayed Games) List:
+${backlogSummary}
+
+## Frequently Played Genres:
+${topGenres.join(', ')}
+
+${userPreferences ? `## User Preferences:\n${userPreferences}` : ''}
+
+## Response Format:
+Select 5 games from the backlog list and respond in the following format.
+【IMPORTANT】Do not include any preamble like "Sure" or "Okay". Start directly with "1. Game Name".
+
+1. **Game Name** (Must be selected from the list above)
+   - Genre:
+   - Why Recommended: (Why they should play it now, connection to user's preferences)
+   - Estimated Playtime:
+
+Consider the user's preferred genres and tendencies to suggest the best games from their backlog.`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -63,17 +89,25 @@ ${userPreferences ? `## ユーザーの好み:\n${userPreferences}` : ''}
 export async function analyzeGamingPreferences(
   genreStats: GenreStats[],
   totalGames: number,
-  totalPlaytime: number
+  totalPlaytime: number,
+  language: Language = 'ja'
 ): Promise<string> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
-  const genreSummary = genreStats
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 10)
-    .map(g => `${g.genre}: ${g.count}本 (総プレイ時間: ${Math.round(g.totalPlaytime / 60)}時間)`)
-    .join('\n');
+  const genreSummary = language === 'ja'
+    ? genreStats
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10)
+        .map(g => `${g.genre}: ${g.count}本 (総プレイ時間: ${Math.round(g.totalPlaytime / 60)}時間)`)
+        .join('\n')
+    : genreStats
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10)
+        .map(g => `${g.genre}: ${g.count} games (Total Playtime: ${Math.round(g.totalPlaytime / 60)} hours)`)
+        .join('\n');
 
-  const prompt = `あなたはゲーム分析の専門家です。以下のユーザーのゲームライブラリを分析し、ゲーマーとしての特徴を説明してください。
+  const prompt = language === 'ja'
+    ? `あなたはゲーム分析の専門家です。以下のユーザーのゲームライブラリを分析し、ゲーマーとしての特徴を説明してください。
 
 ## ライブラリ統計:
 - 総ゲーム数: ${totalGames}本
@@ -94,7 +128,29 @@ SNSでシェアしたくなるような、ユニークで印象的な称号に�
 1. **ゲーマータイプ**: このユーザーはどんなタイプのゲーマーか（1-2文）
 2. **好みの傾向**: 好きなゲームの特徴（箇条書き3-4点）
 3. **意外な発見**: データから読み取れる興味深いポイント
-4. **おすすめの遊び方**: 積みゲーを消化するためのアドバイス`;
+4. **おすすめの遊び方**: 積みゲーを消化するためのアドバイス`
+    : `You are a gaming analysis expert. Analyze the user's game library below and describe their characteristics as a gamer.
+
+## Library Statistics:
+- Total Games: ${totalGames}
+- Total Playtime: ${Math.round(totalPlaytime / 60)} hours
+
+## Genre Statistics:
+${genreSummary}
+
+## Response Format (Please output in this order):
+
+【Catchphrase】
+First, output a catchy and fun title that describes this user in one line.
+Examples: "Midnight Dungeon Explorer", "Sale Warrior & Backlog Master", "Indie Game Connoisseur"
+Make it unique and memorable, something worth sharing on social media.
+
+---
+
+1. **Gamer Type**: What type of gamer is this user (1-2 sentences)
+2. **Preference Trends**: Characteristics of games they like (3-4 bullet points)
+3. **Surprising Discoveries**: Interesting points that can be read from the data
+4. **Recommended Play Style**: Advice for clearing their backlog`;
 
   try {
     const result = await model.generateContent(prompt);
@@ -126,7 +182,8 @@ export async function recommendNewReleases(
   genreStats: GenreStats[],
   newGames: { appid: number; name: string; genres?: string[]; tags?: string[]; description?: string }[],
   favoriteGames: FavoriteGame[] = [],
-  wishlistNames: string[] = []
+  wishlistNames: string[] = [],
+  language: Language = 'ja'
 ): Promise<NewGameRecommendation[]> {
   const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
@@ -134,17 +191,25 @@ export async function recommendNewReleases(
   const topGenresByPlaytime = genreStats
     .sort((a, b) => b.totalPlaytime - a.totalPlaytime)
     .slice(0, 5)
-    .map(g => `${g.genre} (${Math.round(g.totalPlaytime / 60)}時間)`);
+    .map(g => language === 'ja'
+      ? `${g.genre} (${Math.round(g.totalPlaytime / 60)}時間)`
+      : `${g.genre} (${Math.round(g.totalPlaytime / 60)} hours)`);
 
   // ユーザーのお気に入りゲーム情報
   const favoriteSection = favoriteGames.length > 0
-    ? `## 【最重要】ユーザーがよく遊んでいるゲーム（プレイ時間順）:
+    ? language === 'ja'
+      ? `## 【最重要】ユーザーがよく遊んでいるゲーム（プレイ時間順）:
 ${favoriteGames.map(g => `- ${g.name}: ${g.playtime}時間 [${g.genres.join(', ')}]`).join('\n')}`
+      : `## 【MOST IMPORTANT】User's Most Played Games (by playtime):
+${favoriteGames.map(g => `- ${g.name}: ${g.playtime} hours [${g.genres.join(', ')}]`).join('\n')}`
     : '';
 
   // ウィッシュリスト情報
   const wishlistSection = wishlistNames.length > 0
-    ? `## ユーザーのウィッシュリスト（興味のあるゲーム）:
+    ? language === 'ja'
+      ? `## ユーザーのウィッシュリスト（興味のあるゲーム）:
+${wishlistNames.join(', ')}`
+      : `## User's Wishlist (Games of Interest):
 ${wishlistNames.join(', ')}`
     : '';
 
@@ -152,13 +217,18 @@ ${wishlistNames.join(', ')}`
   const newGamesList = newGames
     .slice(0, 25)
     .map(g => {
-      const genres = g.genres?.length ? `ジャンル: ${g.genres.join(', ')}` : '';
-      const desc = g.description ? `説明: ${g.description.slice(0, 200)}` : '';
+      const genres = g.genres?.length
+        ? (language === 'ja' ? `ジャンル: ${g.genres.join(', ')}` : `Genres: ${g.genres.join(', ')}`)
+        : '';
+      const desc = g.description
+        ? (language === 'ja' ? `説明: ${g.description.slice(0, 200)}` : `Description: ${g.description.slice(0, 200)}`)
+        : '';
       return `- ${g.name} (AppID: ${g.appid}) | ${genres} | ${desc}`;
     })
     .join('\n');
 
-  const prompt = `あなたはゲームレコメンドの専門家です。ユーザーの遊んでいるゲームとウィッシュリストを分析し、最も合う新作ゲームを選んでください。
+  const prompt = language === 'ja'
+    ? `あなたはゲームレコメンドの専門家です。ユーザーの遊んでいるゲームとウィッシュリストを分析し、最も合う新作ゲームを選んでください。
 
 ${favoriteSection}
 
@@ -190,7 +260,40 @@ ${newGamesList}
 ]
 \`\`\`
 
-候補リストから5つ選んでください。`;
+候補リストから5つ選んでください。`
+    : `You are a game recommendation expert. Analyze the user's played games and wishlist to select the best new releases for them.
+
+${favoriteSection}
+
+## User's Most Played Genres (by playtime):
+${topGenresByPlaytime.join(', ')}
+
+${wishlistSection}
+
+## Candidate Game List (new releases from the last 3 months, select from this list):
+${newGamesList}
+
+## Selection Criteria:
+1. Prioritize games with similar genres/atmosphere to the user's most played games
+2. Select games with similar tendencies to those in the wishlist
+3. Choose games whose description keywords match user preferences
+4. Avoid genres the user rarely plays
+
+## Response Format:
+Respond ONLY in the following JSON format. No preamble.
+
+\`\`\`json
+[
+  {
+    "appid": number,
+    "name": "Game Name (copy exactly from candidate list)",
+    "reason": "Why this fits the user (specific similarities to their played games or wishlist)",
+    "genre": "Main Genre"
+  }
+]
+\`\`\`
+
+Select 5 games from the candidate list.`;
 
   // 有効なAppIDのセットを作成
   const validAppIds = new Set(newGames.map(g => g.appid));

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import {
   PieChart,
   Pie,
@@ -14,7 +14,7 @@ import {
   Legend,
 } from 'recharts';
 import { BarChart3, PieChartIcon } from 'lucide-react';
-import { useState } from 'react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
   appid: number;
@@ -34,6 +34,7 @@ const COLORS = [
 ];
 
 export default function GenreChart({ games, gameDetails }: GenreChartProps) {
+  const { language, t } = useLanguage();
   const [chartType, setChartType] = useState<'pie' | 'bar'>('pie');
 
   const genreStats = useMemo(() => {
@@ -67,8 +68,8 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
   if (genreStats.length === 0) {
     return (
       <div className="pop-card p-6">
-        <h3 className="text-xl font-black text-[#3D3D3D] mb-4">ジャンル分析</h3>
-        <p className="text-gray-600">ゲーム詳細を読み込み中...</p>
+        <h3 className="text-xl font-black text-[#3D3D3D] mb-4">{t('genre.title')}</h3>
+        <p className="text-gray-600">{language === 'ja' ? 'ゲーム詳細を読み込み中...' : 'Loading game details...'}</p>
       </div>
     );
   }
@@ -78,7 +79,7 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
       <div className="flex justify-between items-center mb-6">
         <h3 className="text-xl font-black text-[#3D3D3D] flex items-center gap-2">
           <BarChart3 className="w-6 h-6" style={{ color: 'var(--pop-blue)' }} />
-          ジャンル分析
+          {t('genre.title')}
         </h3>
         <div className="flex rounded-lg overflow-hidden border-2 border-[#3D3D3D]">
           <button
@@ -133,8 +134,8 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
                     borderRadius: '8px',
                   }}
                   formatter={(value, name) => [
-                    `${value ?? 0}本`,
-                    name === 'count' ? 'ゲーム数' : String(name),
+                    `${value ?? 0}${language === 'ja' ? '本' : ' games'}`,
+                    name === 'count' ? (language === 'ja' ? 'ゲーム数' : 'Games') : String(name),
                   ]}
                 />
               </PieChart>
@@ -156,8 +157,8 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
                   }}
                 />
                 <Legend />
-                <Bar dataKey="count" name="ゲーム数" fill="#457B9D" radius={4} />
-                <Bar dataKey="backlog" name="積みゲー" fill="#E63946" radius={4} />
+                <Bar dataKey="count" name={language === 'ja' ? 'ゲーム数' : 'Games'} fill="#457B9D" radius={4} />
+                <Bar dataKey="backlog" name={language === 'ja' ? '積みゲー' : 'Backlog'} fill="#E63946" radius={4} />
               </BarChart>
             )}
           </ResponsiveContainer>
@@ -178,7 +179,7 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-[#3D3D3D]">{genre.name}</p>
               </div>
-              <p className="text-sm font-medium text-gray-600 flex-shrink-0">{genre.count}本</p>
+              <p className="text-sm font-medium text-gray-600 flex-shrink-0">{genre.count} {t('genre.games')}</p>
             </div>
           ))}
         </div>

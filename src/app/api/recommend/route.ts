@@ -19,17 +19,19 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json();
-    const { backlogGames, genreStats, userPreferences, type } = body as {
+    const { backlogGames, genreStats, userPreferences, type, language } = body as {
       backlogGames: BacklogGame[];
       genreStats: GenreStats[];
       userPreferences?: string;
       type: 'recommend' | 'analyze' | 'new-releases';
+      language?: 'ja' | 'en';
     };
+    const lang = language || 'ja';
 
     if (type === 'analyze') {
       const totalGames = body.totalGames || 0;
       const totalPlaytime = body.totalPlaytime || 0;
-      const analysis = await analyzeGamingPreferences(genreStats, totalGames, totalPlaytime);
+      const analysis = await analyzeGamingPreferences(genreStats, totalGames, totalPlaytime, lang);
       // 成功した場合のみカウントを増やす
       incrementRateLimit('gemini-api');
       return NextResponse.json({ analysis });
@@ -67,7 +69,8 @@ export async function POST(request: NextRequest) {
         genreStats,
         candidates,
         favoriteGames,
-        wishlistNames
+        wishlistNames,
+        lang
       );
 
       // 成功した場合のみカウントを増やす
@@ -85,7 +88,8 @@ export async function POST(request: NextRequest) {
     const recommendations = await generateRecommendations(
       backlogGames,
       genreStats,
-      userPreferences
+      userPreferences,
+      lang
     );
 
     // 成功した場合のみカウントを増やす

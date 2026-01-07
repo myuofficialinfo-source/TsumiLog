@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { SortAsc, SortDesc, Package, PlayCircle } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
   appid: number;
@@ -21,6 +22,7 @@ type SortKey = 'name' | 'playtime' | 'backlog';
 type FilterType = 'all' | 'backlog' | 'played';
 
 export default function GameList({ games }: GameListProps) {
+  const { language, t } = useLanguage();
   const [sortKey, setSortKey] = useState<SortKey>('backlog');
   const [sortAsc, setSortAsc] = useState(false);
   const [filter, setFilter] = useState<FilterType>('all');
@@ -61,14 +63,14 @@ export default function GameList({ games }: GameListProps) {
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h3 className="text-xl font-black text-[#3D3D3D] flex items-center gap-2">
           <Package className="w-6 h-6" style={{ color: 'var(--pop-yellow)' }} />
-          ゲームライブラリ
+          {t('gameList.title')}
         </h3>
 
         <div className="flex flex-wrap gap-2">
           {/* 検索 */}
           <input
             type="text"
-            placeholder="ゲームを検索..."
+            placeholder={language === 'ja' ? 'ゲームを検索...' : 'Search games...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="px-4 py-2 border-2 border-[#3D3D3D] rounded-lg text-[#3D3D3D] text-sm focus:outline-none focus:ring-2 focus:ring-[var(--pop-blue)]"
@@ -92,7 +94,7 @@ export default function GameList({ games }: GameListProps) {
                     : 'var(--card-bg)'
                 }}
               >
-                {f === 'all' ? '全て' : f === 'backlog' ? '積みゲー' : 'プレイ済み'}
+                {f === 'all' ? t('gameList.all') : f === 'backlog' ? t('gameList.backlog') : t('gameList.played')}
               </button>
             ))}
           </div>
@@ -107,7 +109,7 @@ export default function GameList({ games }: GameListProps) {
           onClick={() => toggleSort('backlog')}
           color="var(--pop-red)"
         >
-          積みゲー順
+          {t('gameList.backlog')}
         </SortButton>
         <SortButton
           active={sortKey === 'playtime'}
@@ -115,7 +117,7 @@ export default function GameList({ games }: GameListProps) {
           onClick={() => toggleSort('playtime')}
           color="var(--pop-green)"
         >
-          プレイ時間
+          {t('gameList.sort.playtime')}
         </SortButton>
         <SortButton
           active={sortKey === 'name'}
@@ -123,19 +125,21 @@ export default function GameList({ games }: GameListProps) {
           onClick={() => toggleSort('name')}
           color="var(--pop-blue)"
         >
-          名前順
+          {t('gameList.sort.name')}
         </SortButton>
       </div>
 
       {/* 結果カウント */}
       <p className="text-sm text-gray-600 font-medium mb-4">
-        {filteredAndSorted.length}件表示 / 全{games.length}件
+        {language === 'ja'
+          ? `${filteredAndSorted.length}件表示 / 全${games.length}件`
+          : `Showing ${filteredAndSorted.length} of ${games.length}`}
       </p>
 
       {/* ゲームリスト */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-[800px] overflow-y-auto pr-2">
         {filteredAndSorted.map((game) => (
-          <GameCard key={game.appid} game={game} />
+          <GameCard key={game.appid} game={game} t={t} />
         ))}
       </div>
     </div>
@@ -169,7 +173,7 @@ function SortButton({
   );
 }
 
-function GameCard({ game }: { game: Game }) {
+function GameCard({ game, t }: { game: Game; t: (key: string) => string }) {
   const [imageError, setImageError] = useState(false);
 
   return (
@@ -203,12 +207,12 @@ function GameCard({ game }: { game: Game }) {
           {game.isBacklog ? (
             <span className="flex items-center gap-1 text-xs font-medium" style={{ color: 'var(--pop-red)' }}>
               <Package className="w-3 h-3" />
-              積みゲー
+              {t('gameList.backlog')}
             </span>
           ) : (
             <span className="flex items-center gap-1 text-xs font-medium" style={{ color: 'var(--pop-green)' }}>
               <PlayCircle className="w-3 h-3" />
-              {game.playtimeHours}h
+              {game.playtimeHours}{t('gameList.hours')}
             </span>
           )}
         </div>

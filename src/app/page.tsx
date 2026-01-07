@@ -7,7 +7,8 @@ import ProfileCard from '@/components/ProfileCard';
 import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
 import AIRecommend from '@/components/AIRecommend';
-import { Loader2, LogOut } from 'lucide-react';
+import { Loader2, LogOut, Globe } from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
   appid: number;
@@ -47,6 +48,7 @@ interface SteamData {
 
 function HomeContent() {
   const searchParams = useSearchParams();
+  const { language, setLanguage, t } = useLanguage();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [steamData, setSteamData] = useState<SteamData | null>(null);
@@ -158,13 +160,22 @@ function HomeContent() {
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
           <div className="flex items-center gap-3">
             {/* ロゴアイコン */}
-            <Image src="/icons/icom.png" alt="ツミナビ" width={48} height={48} />
+            <Image src="/icons/icom.png" alt={t('app.title')} width={48} height={48} />
             <div>
-              <h1 className="text-2xl font-black gradient-text">ツミナビ</h1>
-              <p className="text-xs text-gray-500 font-medium">Tsumi-Navi</p>
+              <h1 className="text-2xl font-black gradient-text">{t('app.title')}</h1>
+              <p className="text-xs text-gray-500 font-medium">{t('app.subtitle')}</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2">
+            {/* 言語切り替えボタン */}
+            <button
+              onClick={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+              style={{ backgroundColor: 'var(--card-bg)' }}
+            >
+              <Globe className="w-4 h-4" />
+              {language === 'ja' ? 'EN' : 'JA'}
+            </button>
             {steamId && (
               <button
                 onClick={handleLogout}
@@ -172,7 +183,7 @@ function HomeContent() {
                 style={{ backgroundColor: 'var(--card-bg)' }}
               >
                 <LogOut className="w-4 h-4" />
-                ログアウト
+                {t('header.logout')}
               </button>
             )}
           </div>
@@ -184,7 +195,7 @@ function HomeContent() {
         {isLoading && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--pop-blue)' }} />
-            <p className="mt-4 text-lg font-medium">ゲームデータを取得中...</p>
+            <p className="mt-4 text-lg font-medium">{t('login.loading')}</p>
           </div>
         )}
 
@@ -193,17 +204,19 @@ function HomeContent() {
           <div className="flex flex-col items-center justify-center py-2">
             {/* メインアイコン */}
             <div className="mb-3">
-              <Image src="/icons/icom.png" alt="ツミナビ" width={160} height={160} />
+              <Image src="/icons/icom.png" alt={t('app.title')} width={160} height={160} />
             </div>
 
             <h2 className="text-4xl font-black mb-2 text-center gradient-text">
-              積みゲーを可視化しよう！
+              {t('login.title')}
             </h2>
             <p className="text-gray-600 mb-4 text-center max-w-md text-lg">
-              Steamアカウントと連携して、あなたのゲームライブラリを分析。
+              {t('login.description')}
               <br />
-              <span className="font-bold" style={{ color: 'var(--pop-red)' }}>積みゲー</span>を把握して、
-              <span className="font-bold" style={{ color: 'var(--pop-blue)' }}>おすすめ</span>をレコメンド！
+              <span className="font-bold" style={{ color: 'var(--pop-red)' }}>{t('login.backlog')}</span>
+              {language === 'ja' ? 'を把握して、' : ' tracking, get '}
+              <span className="font-bold" style={{ color: 'var(--pop-blue)' }}>{t('login.recommend')}</span>
+              {t('login.toRecommend')}
             </p>
 
             {/* Steamログインボタン */}
@@ -214,7 +227,7 @@ function HomeContent() {
               <svg className="w-8 h-8" viewBox="0 0 256 259" xmlns="http://www.w3.org/2000/svg">
                 <path d="M127.779 0C60.42 0 5.24 52.412 0 119.014l68.724 28.674c5.823-3.97 12.847-6.286 20.407-6.286.682 0 1.356.017 2.02.051l30.572-44.766v-.63c0-28.465 22.882-51.621 51.015-51.621 28.133 0 51.027 23.156 51.027 51.621 0 28.465-22.894 51.627-51.027 51.627-.394 0-.778-.017-1.166-.023l-43.592 31.408c.017.556.04 1.107.04 1.67 0 21.357-17.163 38.715-38.269 38.715-18.697 0-34.318-13.535-37.593-31.375L3.61 166.942C21.593 219.77 70.476 258.603 128.221 258.603c70.698 0 128.003-57.864 128.003-129.242C256.224 57.864 198.919 0 128.221 0h-.442z" fill="#fff"/>
               </svg>
-              <span>Steamでログイン</span>
+              <span>{t('login.button')}</span>
             </button>
 
             {/* 注意事項 */}
@@ -223,9 +236,10 @@ function HomeContent() {
               style={{ backgroundColor: 'var(--background-secondary)' }}
             >
               <p className="text-sm text-gray-600 font-medium">
-                <span className="font-bold" style={{ color: 'var(--pop-yellow)' }}>ご注意：</span>
-                ゲームデータを取得するには、Steamのプロフィール設定で
-                <span className="font-bold">「ゲームの詳細」を公開</span>に設定してください。
+                <span className="font-bold" style={{ color: 'var(--pop-yellow)' }}>{t('login.notice')}</span>
+                {t('login.noticeText')}
+                <span className="font-bold">{t('login.noticePublic')}</span>
+                {t('login.noticeEnd')}
               </p>
               <a
                 href="https://steamcommunity.com/my/edit/settings"
@@ -234,7 +248,7 @@ function HomeContent() {
                 className="inline-block mt-2 text-sm font-bold hover:underline"
                 style={{ color: 'var(--pop-blue)' }}
               >
-                Steam プライバシー設定を開く
+                {t('login.privacyLink')}
               </a>
             </div>
 
@@ -283,9 +297,9 @@ function HomeContent() {
       <footer className="border-t-3 border-[#3D3D3D] py-8 mt-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 text-center">
           <div className="flex justify-center mb-4">
-            <Image src="/icons/icom.png" alt="ツミナビ" width={40} height={40} />
+            <Image src="/icons/icom.png" alt={t('app.title')} width={40} height={40} />
           </div>
-          <p className="font-bold text-gray-600">ツミナビ - Tsumi-Navi</p>
+          <p className="font-bold text-gray-600">{t('app.title')} - {t('app.subtitle')}</p>
         </div>
       </footer>
     </div>

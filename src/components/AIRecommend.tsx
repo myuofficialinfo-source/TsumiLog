@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sparkles, Loader2, Brain, RefreshCw, Rocket, ExternalLink, Gamepad2 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import Image from 'next/image';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
   appid: number;
@@ -47,23 +48,31 @@ interface AIRecommendProps {
   wishlist?: WishlistGame[];
 }
 
-// プレイ時間を日と時間に変換
-const formatPlaytime = (hours: number) => {
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-  if (days > 0) {
-    return remainingHours > 0 ? `${days}日${remainingHours}時間` : `${days}日`;
-  }
-  return `${hours}時間`;
-};
-
 export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIRecommendProps) {
+  const { language, t } = useLanguage();
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
   const [newReleases, setNewReleases] = useState<NewGameRecommendation[] | null>(null);
   const [catchphrase, setCatchphrase] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'recommend' | 'analyze' | 'new-releases'>('recommend');
+
+  // プレイ時間を日と時間に変換
+  const formatPlaytime = (hours: number) => {
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    if (language === 'ja') {
+      if (days > 0) {
+        return remainingHours > 0 ? `${days}${t('time.days')}${remainingHours}${t('time.hours')}` : `${days}${t('time.days')}`;
+      }
+      return `${hours}${t('time.hours')}`;
+    } else {
+      if (days > 0) {
+        return remainingHours > 0 ? `${days}${t('time.days')} ${remainingHours}${t('time.hours')}` : `${days}${t('time.days')}`;
+      }
+      return `${hours}${t('time.hours')}`;
+    }
+  };
 
   // 積みゲーの数を取得
   const backlogCount = stats?.backlogCount ?? games.filter(g => g.isBacklog).length;
@@ -111,6 +120,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
           backlogGames,
           genreStats,
           type: 'recommend',
+          language,
         }),
       });
 
@@ -139,6 +149,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
           totalGames: games.length,
           totalPlaytime,
           type: 'analyze',
+          language,
         }),
       });
 
@@ -150,18 +161,23 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
         for (const line of lines) {
           const trimmed = line.trim();
           if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('【') && !trimmed.startsWith('---') && !trimmed.startsWith('1.') && !trimmed.startsWith('*')) {
-            // 「」で囲まれているか確認
-            const match = trimmed.match(/「(.+?)」/);
-            if (match) {
-              foundCatchphrase = match[1];
+            // 「」で囲まれているか確認（日本語）
+            const jaMatch = trimmed.match(/「(.+?)」/);
+            // "quotes" で囲まれているか確認（英語）
+            const enMatch = trimmed.match(/"(.+?)"/);
+            if (jaMatch) {
+              foundCatchphrase = jaMatch[1];
               break;
-            } else if (trimmed.length < 30 && trimmed.length > 3) {
+            } else if (enMatch) {
+              foundCatchphrase = enMatch[1];
+              break;
+            } else if (trimmed.length < 40 && trimmed.length > 3) {
               foundCatchphrase = trimmed;
               break;
             }
           }
         }
-        setCatchphrase(foundCatchphrase || 'ゲーマー');
+        setCatchphrase(foundCatchphrase || (language === 'ja' ? 'ゲーマー' : 'Gamer'));
         setAnalysis(data.analysis);
       }
     } catch (error) {
@@ -201,6 +217,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
           favoriteGames,
           wishlistNames,
           type: 'new-releases',
+          language,
         }),
       });
 
@@ -263,7 +280,8 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
 
     const backlogPercent = Math.round((stats.backlogCount / stats.totalGames) * 100);
 
-    const text = `【ツミナビ診断結果】
+    const text = language === 'ja'
+      ? `【ツミナビ診断結果】
 
 私のゲーマータイプは...
 「${catchphrase}」
@@ -273,7 +291,18 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
 ⏱️ 総プレイ時間: ${formatPlaytime(stats.totalPlaytimeHours)}
 
 あなたの積みゲーも診断してみよう！
-#ツミナビ #積みゲー #Steam`;
+#ツミナビ #積みゲー #Steam`
+      : `【TsumiNavi Results】
+
+My gamer type is...
+"${catchphrase}"
+
+📚 Total Games: ${stats.totalGames}
+📦 Backlog: ${stats.backlogCount} (${backlogPercent}%)
+⏱️ Total Playtime: ${formatPlaytime(stats.totalPlaytimeHours)}
+
+Check your backlog too!
+#TsumiNavi #SteamBacklog #Steam`;
 
     const shareUrl = generateShareUrl();
     // 開発時に確認用
@@ -291,7 +320,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
         <h3 className="text-xl font-black text-[#3D3D3D] flex items-center gap-2">
           <Sparkles className="w-6 h-6" style={{ color: 'var(--pop-yellow)' }} />
-          分析
+          {t('ai.title')}
         </h3>
 
         <div className="flex rounded-lg overflow-hidden border-2 border-[#3D3D3D]">
@@ -305,7 +334,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             style={{ backgroundColor: activeTab === 'recommend' ? 'var(--pop-yellow)' : 'var(--card-bg)' }}
           >
             <Sparkles className="w-4 h-4" />
-            おすすめ
+            {t('ai.recommend')}
           </button>
           <button
             onClick={() => setActiveTab('analyze')}
@@ -317,7 +346,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             style={{ backgroundColor: activeTab === 'analyze' ? 'var(--pop-purple)' : 'var(--card-bg)' }}
           >
             <Brain className="w-4 h-4" />
-            傾向分析
+            {t('ai.analyze')}
           </button>
           <button
             onClick={() => setActiveTab('new-releases')}
@@ -329,7 +358,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             style={{ backgroundColor: activeTab === 'new-releases' ? 'var(--pop-green)' : 'var(--card-bg)' }}
           >
             <Rocket className="w-4 h-4" />
-            新作紹介
+            {t('ai.newReleases')}
           </button>
         </div>
       </div>
@@ -344,15 +373,14 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             <span className="text-4xl">🎉</span>
           </div>
           <h3 className="text-2xl font-black mb-4" style={{ color: 'var(--pop-green)' }}>
-            積みゲーゼロ！素晴らしい！
+            {t('ai.noBacklog.title')}
           </h3>
           <p className="text-gray-700 mb-4 font-medium max-w-md mx-auto leading-relaxed">
-            あなたは購入したゲームをしっかりプレイする<br />
-            <span className="font-black" style={{ color: 'var(--pop-blue)' }}>計画的なゲーマー</span>ですね！
+            {t('ai.noBacklog.description')}<br />
+            <span className="font-black" style={{ color: 'var(--pop-blue)' }}>{t('ai.noBacklog.type')}</span>{language === 'ja' ? 'ですね！' : '!'}
           </p>
-          <p className="text-gray-600 text-sm font-medium">
-            積みゲーがないので、おすすめの提案はありません。<br />
-            この調子でゲームライフを楽しんでください！
+          <p className="text-gray-600 text-sm font-medium whitespace-pre-line">
+            {t('ai.noBacklog.note')}
           </p>
           <div className="mt-6 flex justify-center gap-2">
             <div className="w-3 h-3 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
@@ -369,7 +397,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             <Rocket className="w-8 h-8" style={{ color: 'var(--pop-green)' }} />
           </div>
           <p className="text-gray-600 mb-6 font-medium">
-            あなたの好みに合った最新ゲームを紹介します
+            {t('ai.newReleases.description')}
           </p>
           <button
             onClick={handleGenerate}
@@ -379,18 +407,18 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                検索中...
+                {t('ai.newReleases.searching')}
               </>
             ) : (
               <>
                 <Rocket className="w-5 h-5" />
-                新作を探す
+                {t('ai.newReleases.button')}
               </>
             )}
           </button>
           {gameDetails.size === 0 && (
             <p className="text-sm text-gray-500 mt-2 font-medium">
-              ゲーム詳細の読み込みを待っています...
+              {t('ai.waiting')}
             </p>
           )}
         </div>
@@ -408,7 +436,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              再検索
+              {t('ai.newReleases.refresh')}
             </button>
           </div>
           <div className="space-y-3">
@@ -417,7 +445,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             ))}
           </div>
           <p className="text-xs text-gray-500 text-center mt-4">
-            ※クリックでSteamストアページを開きます
+            {t('ai.newReleases.note')}
           </p>
         </div>
       ) : !currentContent ? (
@@ -434,8 +462,8 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
           </div>
           <p className="text-gray-600 mb-6 font-medium">
             {activeTab === 'recommend'
-              ? 'あなたの積みゲーと好みを分析し、おすすめを提案します'
-              : 'あなたのゲーマーとしての傾向を分析します'}
+              ? t('ai.recommend.description')
+              : t('ai.analyze.description')}
           </p>
           <button
             onClick={handleGenerate}
@@ -445,18 +473,18 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             {isLoading ? (
               <>
                 <Loader2 className="w-5 h-5 animate-spin" />
-                分析中...
+                {t('ai.analyzing')}
               </>
             ) : (
               <>
                 <Sparkles className="w-5 h-5" />
-                {activeTab === 'recommend' ? 'おすすめを生成' : '傾向を分析'}
+                {activeTab === 'recommend' ? t('ai.generate') : t('ai.analyzeButton')}
               </>
             )}
           </button>
           {gameDetails.size === 0 && (
             <p className="text-sm text-gray-500 mt-2 font-medium">
-              ゲーム詳細の読み込みを待っています...
+              {t('ai.waiting')}
             </p>
           )}
         </div>
@@ -468,19 +496,19 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
               className="mb-6 p-6 rounded-xl border-3 border-[#3D3D3D] text-center"
               style={{ background: 'linear-gradient(135deg, var(--pop-purple), var(--pop-pink))' }}
             >
-              <p className="text-white text-sm font-medium mb-2">あなたのゲーマータイプ</p>
+              <p className="text-white text-sm font-medium mb-2">{t('ai.gamerType')}</p>
               <h2 className="text-2xl md:text-3xl font-black text-white mb-4">
-                「{catchphrase}」
+                {language === 'ja' ? `「${catchphrase}」` : `"${catchphrase}"`}
               </h2>
 
               {/* 統計情報 */}
               {stats && (
                 <div className="flex justify-center gap-4 mb-4 flex-wrap">
                   <div className="px-3 py-1 bg-white/20 rounded-full text-white text-sm font-medium">
-                    📚 {stats.totalGames}本
+                    📚 {stats.totalGames}{language === 'ja' ? '本' : ' games'}
                   </div>
                   <div className="px-3 py-1 bg-white/20 rounded-full text-white text-sm font-medium">
-                    📦 積み{stats.backlogCount}本
+                    📦 {language === 'ja' ? `積み${stats.backlogCount}本` : `${stats.backlogCount} backlog`}
                   </div>
                   <div className="px-3 py-1 bg-white/20 rounded-full text-white text-sm font-medium">
                     ⏱️ {formatPlaytime(stats.totalPlaytimeHours)}
@@ -496,7 +524,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
                 <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
                   <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
                 </svg>
-                Xでシェアする
+                {t('ai.shareToX')}
               </button>
             </div>
           )}
@@ -513,7 +541,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
               ) : (
                 <RefreshCw className="w-4 h-4" />
               )}
-              再生成
+              {t('ai.regenerate')}
             </button>
           </div>
           <div className="prose max-w-none">

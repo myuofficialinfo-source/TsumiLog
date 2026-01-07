@@ -2,16 +2,7 @@
 
 import Image from 'next/image';
 import { Gamepad2, Clock, Package, PlayCircle } from 'lucide-react';
-
-// プレイ時間を日と時間に変換
-const formatPlaytime = (hours: number) => {
-  const days = Math.floor(hours / 24);
-  const remainingHours = hours % 24;
-  if (days > 0) {
-    return remainingHours > 0 ? `${days}日${remainingHours}時間` : `${days}日`;
-  }
-  return `${hours}時間`;
-};
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ProfileCardProps {
   profile: {
@@ -28,7 +19,25 @@ interface ProfileCardProps {
 }
 
 export default function ProfileCard({ profile, stats }: ProfileCardProps) {
+  const { language, t } = useLanguage();
   const backlogPercentage = Math.round((stats.backlogCount / stats.totalGames) * 100);
+
+  // プレイ時間を日と時間に変換
+  const formatPlaytime = (hours: number) => {
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    if (language === 'ja') {
+      if (days > 0) {
+        return remainingHours > 0 ? `${days}${t('time.days')}${remainingHours}${t('time.hours')}` : `${days}${t('time.days')}`;
+      }
+      return `${hours}${t('time.hours')}`;
+    } else {
+      if (days > 0) {
+        return remainingHours > 0 ? `${days}${t('time.days')} ${remainingHours}${t('time.hours')}` : `${days}${t('time.days')}`;
+      }
+      return `${hours}${t('time.hours')}`;
+    }
+  };
 
   return (
     <div className="pop-card p-6">
@@ -49,7 +58,7 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
             className="font-medium hover:underline text-sm"
             style={{ color: 'var(--pop-blue)' }}
           >
-            Steamプロフィールを見る
+            {language === 'ja' ? 'Steamプロフィールを見る' : 'View Steam Profile'}
           </a>
         </div>
       </div>
@@ -57,26 +66,26 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <StatCard
           icon={<Gamepad2 className="w-5 h-5" style={{ color: 'var(--pop-blue)' }} />}
-          label="総ゲーム数"
+          label={t('profile.totalGames')}
           value={stats.totalGames.toLocaleString()}
           color="var(--pop-blue)"
         />
         <StatCard
           icon={<Package className="w-5 h-5" style={{ color: 'var(--pop-red)' }} />}
-          label="積みゲー"
+          label={t('profile.backlog')}
           value={stats.backlogCount.toLocaleString()}
           subtext={`${backlogPercentage}%`}
           color="var(--pop-red)"
         />
         <StatCard
           icon={<PlayCircle className="w-5 h-5" style={{ color: 'var(--pop-green)' }} />}
-          label="プレイ済み"
+          label={language === 'ja' ? 'プレイ済み' : 'Played'}
           value={stats.playedGames.toLocaleString()}
           color="var(--pop-green)"
         />
         <StatCard
           icon={<Clock className="w-5 h-5" style={{ color: 'var(--pop-purple)' }} />}
-          label="総プレイ時間"
+          label={t('profile.playtime')}
           value={formatPlaytime(stats.totalPlaytimeHours)}
           color="var(--pop-purple)"
         />
@@ -85,7 +94,7 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
       {/* 積みゲー度プログレスバー */}
       <div className="mt-6">
         <div className="flex justify-between text-sm mb-2">
-          <span className="text-gray-600 font-medium">積みゲー度</span>
+          <span className="text-gray-600 font-medium">{t('profile.backlogRate')}</span>
           <span className="font-black" style={{ color: 'var(--pop-red)' }}>{backlogPercentage}%</span>
         </div>
         <div className="h-4 bg-[#E8D5B7] rounded-full overflow-hidden border-2 border-[#3D3D3D]">
@@ -101,7 +110,7 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
 
       {/* Steam API制限の注意書き */}
       <p className="mt-4 text-xs text-gray-500 text-center">
-        ※Steamの公開設定によっては一部のゲームが取得できない場合があります
+        {t('profile.notice')}
       </p>
     </div>
   );
