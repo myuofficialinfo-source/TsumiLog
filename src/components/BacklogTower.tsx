@@ -72,7 +72,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       canvas.style.width = `${width}px`;
       canvas.style.height = `${height}px`;
 
-      const { Engine, World, Bodies, Runner } = Matter;
+      const { Engine, World, Bodies, Runner, Body } = Matter;
 
       const engine = Engine.create();
       engine.gravity.y = 1;
@@ -170,8 +170,37 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
 
       render();
 
+      // クリックで跳ねる機能
+      const handleClick = (e: MouseEvent) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+
+        // クリック位置にあるボディを取得
+        const bodies = engine.world.bodies.filter(
+          (b: { label: string }) => b.label !== 'ground' && b.label !== 'wall'
+        );
+
+        for (const body of bodies) {
+          const dx = body.position.x - mouseX;
+          const dy = body.position.y - mouseY;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+
+          // ボディの近くをクリックしたら跳ねさせる
+          if (distance < 60) {
+            Body.applyForce(body, body.position, {
+              x: (Math.random() - 0.5) * 0.3,
+              y: -0.15 - Math.random() * 0.1,
+            });
+          }
+        }
+      };
+
+      canvas.addEventListener('click', handleClick);
+
       cleanup = () => {
         clearInterval(dropInterval);
+        canvas.removeEventListener('click', handleClick);
         Runner.stop(runner);
         World.clear(engine.world, false);
         Engine.clear(engine);
