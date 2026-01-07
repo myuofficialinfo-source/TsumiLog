@@ -1,0 +1,11 @@
+# TsumiNavi / ツミナビ - Steam Backlog Manager
+# Currently blocking all crawlers until official release
+# TODO: Remove Disallow when ready to launch
+
+User-agent: *
+Disallow: /
+
+# When ready to launch, replace with:
+# User-agent: *
+# Allow: /
+# Sitemap: https://tsumi-log.vercel.app/sitemap.xml

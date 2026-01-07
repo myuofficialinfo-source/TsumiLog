@@ -15,34 +15,63 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "ツミナビ | Tsumi-Navi - Steam積みゲー管理",
-  description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析しておすすめを提案します。",
-  metadataBase: new URL('https://tsumi-navi.vercel.app'),
+  title: {
+    default: "ツミナビ | TsumiNavi - Steam積みゲー管理・分析ツール",
+    template: "%s | ツミナビ",
+  },
+  description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析して、ゲーマータイプを診断！積みゲーからおすすめを提案します。Steam backlog manager with AI analysis.",
+  keywords: [
+    "Steam", "積みゲー", "バックログ", "ゲーム管理", "Steam backlog",
+    "backlog manager", "game library", "AI分析", "ゲーマー診断",
+    "TsumiNavi", "ツミナビ", "Steam games", "unplayed games"
+  ],
+  authors: [{ name: "TsumiNavi" }],
+  creator: "TsumiNavi",
+  publisher: "TsumiNavi",
+  metadataBase: new URL('https://tsumi-log.vercel.app'),
+  alternates: {
+    canonical: '/',
+    languages: {
+      'ja': '/',
+      'en': '/?lang=en',
+    },
+  },
   icons: {
     icon: '/icons/icom.ico',
     apple: '/icons/icom.png',
   },
+  // Block indexing until launch - remove robots when ready
+  robots: {
+    index: false,
+    follow: false,
+    googleBot: {
+      index: false,
+      follow: false,
+    },
+  },
   openGraph: {
-    title: "ツミナビ | Tsumi-Navi - Steam積みゲー管理",
-    description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析して、あなたのゲーマータイプを診断！",
-    url: 'https://tsumi-navi.vercel.app',
-    siteName: 'ツミナビ',
+    title: "ツミナビ | TsumiNavi - Steam積みゲー管理・AI分析",
+    description: "Steamの積みゲーを可視化・管理。AIがあなたのゲームライブラリを分析して、ゲーマータイプを診断！| Visualize and manage your Steam backlog with AI-powered analysis.",
+    url: 'https://tsumi-log.vercel.app',
+    siteName: 'ツミナビ | TsumiNavi',
     locale: 'ja_JP',
+    alternateLocale: 'en_US',
     type: 'website',
     images: [
       {
         url: '/og-image.png',
         width: 1200,
         height: 630,
-        alt: 'ツミナビ - Steam積みゲー管理',
+        alt: 'ツミナビ - Steam積みゲー管理 | TsumiNavi - Steam Backlog Manager',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: "ツミナビ | Tsumi-Navi - Steam積みゲー管理",
-    description: "Steamの積みゲーを可視化・管理。AIがあなたのゲーマータイプを診断！",
+    title: "ツミナビ | TsumiNavi - Steam積みゲー管理",
+    description: "Steamの積みゲーを可視化・管理。AIがあなたのゲーマータイプを診断！| AI-powered Steam backlog analysis",
     images: ['/og-image.png'],
+    creator: '@tsuninavi',
   },
 };
 
