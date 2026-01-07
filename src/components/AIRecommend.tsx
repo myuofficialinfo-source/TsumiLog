@@ -159,9 +159,23 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
         // キャッチコピーを抽出
         const lines = data.analysis.split('\n');
         let foundCatchphrase = '';
+
+        // 除外するフレーズ（AIの前置き）
+        const excludePhrases = [
+          'はい', '承知', 'わかりました', '了解', '以下', '分析', '出力',
+          'Sure', 'Okay', 'OK', 'I\'ll', 'Let me', 'Here'
+        ];
+
         for (const line of lines) {
           const trimmed = line.trim();
-          if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('【') && !trimmed.startsWith('---') && !trimmed.startsWith('1.') && !trimmed.startsWith('*')) {
+
+          // 除外フレーズが含まれている行はスキップ
+          const hasExcludedPhrase = excludePhrases.some(phrase =>
+            trimmed.includes(phrase)
+          );
+          if (hasExcludedPhrase) continue;
+
+          if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('---') && !trimmed.startsWith('1.') && !trimmed.startsWith('*')) {
             // 「」で囲まれているか確認（日本語）
             const jaMatch = trimmed.match(/「(.+?)」/);
             // "quotes" で囲まれているか確認（英語）
@@ -172,7 +186,8 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
             } else if (enMatch) {
               foundCatchphrase = enMatch[1];
               break;
-            } else if (trimmed.length < 40 && trimmed.length > 3) {
+            } else if (trimmed.length < 50 && trimmed.length > 5 && !trimmed.startsWith('【')) {
+              // 【キャッチコピー】などのヘッダーは除外
               foundCatchphrase = trimmed;
               break;
             }

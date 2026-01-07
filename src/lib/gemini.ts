@@ -118,8 +118,10 @@ ${genreSummary}
 
 ## 回答形式（必ずこの順番で出力してください）:
 
+【絶対厳守】「はい」「承知しました」「わかりました」「以下の形式で」などの前置きは絶対に禁止です。最初の1文字目から「【キャッチコピー】」と出力してください。
+
 【キャッチコピー】
-まず最初に、このユーザーを一言で表すキャッチーで面白い称号を1行で出力してください。
+このユーザーを一言で表すキャッチーで面白い称号を「」で囲んで1行で出力してください。
 例：「深夜のダンジョン探索者」「セール戦士・積みゲーマスター」「インディーゲームの目利き職人」など
 SNSでシェアしたくなるような、ユニークで印象的な称号にしてください。
 
@@ -140,8 +142,10 @@ ${genreSummary}
 
 ## Response Format (Please output in this order):
 
+【STRICT RULE】Do NOT include any preamble like "Sure", "Okay", "I'll analyze". Start your response IMMEDIATELY with "【Catchphrase】".
+
 【Catchphrase】
-First, output a catchy and fun title that describes this user in one line.
+Output a catchy and fun title that describes this user in one line, enclosed in quotes "".
 Examples: "Midnight Dungeon Explorer", "Sale Warrior & Backlog Master", "Indie Game Connoisseur"
 Make it unique and memorable, something worth sharing on social media.
 
