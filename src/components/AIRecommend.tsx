@@ -261,7 +261,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
 
   // シェア用ページのURLを生成
   const generateShareUrl = () => {
-    if (!catchphrase || !stats) return 'https://tsumi-log.vercel.app';
+    if (!catchphrase || !stats) return 'https://tsumi-navi.vercel.app';
     const topGenres = getTopGenres();
     const genresParam = topGenres.map(g => `${g.name}:${g.count}`).join(',');
 
@@ -273,7 +273,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
       genres: genresParam,
     });
 
-    return `https://tsumi-log.vercel.app/share?${params.toString()}`;
+    return `https://tsumi-navi.vercel.app/share?${params.toString()}`;
   };
 
   const shareToX = () => {

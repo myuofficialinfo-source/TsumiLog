@@ -22,7 +22,7 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     genres,
   });
 
-  const ogImageUrl = `https://tsumi-log.vercel.app/api/og?${ogParams.toString()}`;
+  const ogImageUrl = `https://tsumi-navi.vercel.app/api/og?${ogParams.toString()}`;
 
   return {
     title: `${catchphrase} | ツミナビ診断結果`,
