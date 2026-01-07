@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Download } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
@@ -215,6 +216,63 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const backlogGames = games.filter(g => g.isBacklog);
   if (backlogGames.length === 0) return null;
 
+  // 画像ダウンロード機能
+  const downloadImage = () => {
+    if (!canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // 新しいキャンバスを作成してタイトルとフッターを追加
+    const exportCanvas = document.createElement('canvas');
+    const exportCtx = exportCanvas.getContext('2d');
+    if (!exportCtx) return;
+
+    const headerHeight = 60;
+    const footerHeight = 50;
+    exportCanvas.width = canvas.width;
+    exportCanvas.height = canvas.height + headerHeight + footerHeight;
+
+    // 背景
+    exportCtx.fillStyle = '#FDF6E3';
+    exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+
+    // ヘッダー
+    exportCtx.fillStyle = '#3D3D3D';
+    exportCtx.font = 'bold 24px sans-serif';
+    exportCtx.textAlign = 'center';
+    exportCtx.fillText(
+      language === 'ja' ? `積みゲータワー【${backlogCount}本】` : `Backlog Tower【${backlogCount} games】`,
+      exportCanvas.width / 2,
+      40
+    );
+
+    // タワー画像をコピー
+    exportCtx.drawImage(canvas, 0, headerHeight);
+
+    // フッター
+    exportCtx.fillStyle = '#666666';
+    exportCtx.font = '16px sans-serif';
+    exportCtx.fillText('ツミナビ tsumi-navi.vercel.app', exportCanvas.width / 2, canvas.height + headerHeight + 30);
+
+    // ダウンロード
+    const link = document.createElement('a');
+    link.download = `backlog-tower-${backlogCount}.png`;
+    link.href = exportCanvas.toDataURL('image/png');
+    link.click();
+  };
+
+  // Xでシェア
+  const shareToX = () => {
+    const text = language === 'ja'
+      ? `私の積みゲータワー【${backlogCount}本】\n\n#ツミナビ #Steam #積みゲー\nhttps://tsumi-navi.vercel.app`
+      : `My Backlog Tower【${backlogCount} games】\n\n#TsumiNavi #Steam #Backlog\nhttps://tsumi-navi.vercel.app`;
+
+    const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+  };
+
   return (
     <div className="pop-card p-6 mb-6 overflow-hidden">
       <div className="text-center mb-4">
@@ -247,6 +305,39 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         )}
       </div>
 
+      {/* シェアボタン */}
+      {isComplete && (
+        <div className="flex justify-center gap-3 mt-4">
+          <button
+            onClick={downloadImage}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all hover:scale-105"
+            style={{
+              backgroundColor: '#457B9D',
+              color: 'white',
+              border: '3px solid #3D3D3D',
+              boxShadow: '3px 3px 0px #3D3D3D'
+            }}
+          >
+            <Download size={18} />
+            {language === 'ja' ? '画像を保存' : 'Save Image'}
+          </button>
+          <button
+            onClick={shareToX}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-bold transition-all hover:scale-105"
+            style={{
+              backgroundColor: '#000000',
+              color: 'white',
+              border: '3px solid #3D3D3D',
+              boxShadow: '3px 3px 0px #3D3D3D'
+            }}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            {language === 'ja' ? 'Xでシェア' : 'Share on X'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }
