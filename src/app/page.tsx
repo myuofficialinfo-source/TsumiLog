@@ -116,9 +116,12 @@ function HomeContent() {
     setGameDetails(new Map());
   };
 
-  // ゲーム詳細を少しずつ取得
+  // ゲーム詳細を少しずつ取得（言語変更時も再取得）
   useEffect(() => {
     if (!steamData?.games) return;
+
+    // 言語が変わったらキャッシュをクリア
+    setGameDetails(new Map());
 
     const fetchDetails = async () => {
       const gamesToFetch = steamData.games.slice(0, 50);
@@ -129,7 +132,7 @@ function HomeContent() {
         const appIds = batch.map((g) => g.appid).join(',');
 
         try {
-          const response = await fetch(`/api/steam/details?appIds=${appIds}`);
+          const response = await fetch(`/api/steam/details?appIds=${appIds}&language=${language}`);
           const data = await response.json();
 
           if (data.details) {
@@ -151,7 +154,7 @@ function HomeContent() {
     };
 
     fetchDetails();
-  }, [steamData?.games]);
+  }, [steamData?.games, language]);
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
@@ -162,7 +165,7 @@ function HomeContent() {
             {/* ロゴアイコン */}
             <Image src="/icons/icom.png" alt={t('app.title')} width={48} height={48} />
             <div>
-              <h1 className="text-2xl font-black gradient-text">{t('app.title')}</h1>
+              <h1 className="text-2xl font-black gradient-text">{t('app.title')}<span className="text-sm font-medium text-gray-500 ml-1">{language === 'ja' ? '（β版）' : '(beta)'}</span></h1>
               <p className="text-xs text-gray-500 font-medium">{t('app.subtitle')}</p>
             </div>
           </div>

@@ -42,10 +42,11 @@ export async function getOwnedGames(steamId: string): Promise<SteamGame[]> {
   return data.response.games || [];
 }
 
-export async function getGameDetails(appId: number): Promise<SteamGameDetails | null> {
+export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'): Promise<SteamGameDetails | null> {
   try {
+    const steamLang = language === 'ja' ? 'japanese' : 'english';
     const response = await fetch(
-      `${STEAM_STORE_API}/appdetails?appids=${appId}&l=japanese`
+      `${STEAM_STORE_API}/appdetails?appids=${appId}&l=${steamLang}`
     );
     const data = await response.json();
 

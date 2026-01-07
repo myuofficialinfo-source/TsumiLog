@@ -4,6 +4,7 @@ import { getGameDetails } from '@/lib/steam';
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
   const appIds = searchParams.get('appIds');
+  const language = (searchParams.get('language') || 'ja') as 'ja' | 'en';
 
   if (!appIds) {
     return NextResponse.json(
@@ -18,7 +19,7 @@ export async function GET(request: NextRequest) {
     // Steam Store APIはレート制限があるので、少しずつ取得
     const details = [];
     for (const appId of ids.slice(0, 20)) { // 最大20件
-      const detail = await getGameDetails(appId);
+      const detail = await getGameDetails(appId, language);
       if (detail) {
         details.push(detail);
       }
