@@ -35,7 +35,7 @@ export async function getUserProfile(steamId: string): Promise<UserProfile | nul
 
 export async function getOwnedGames(steamId: string): Promise<SteamGame[]> {
   const response = await fetch(
-    `${STEAM_API_BASE}/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_appinfo=1&include_played_free_games=1&skip_unvetted_apps=0`
+    `${STEAM_API_BASE}/IPlayerService/GetOwnedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&include_appinfo=1&include_played_free_games=1&skip_unvetted_apps=0&include_free_sub=1`
   );
   const data = await response.json();
 
