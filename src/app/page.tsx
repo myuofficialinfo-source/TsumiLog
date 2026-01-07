@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import Link from 'next/link';
 import ProfileCard from '@/components/ProfileCard';
 import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
@@ -303,6 +304,18 @@ function HomeContent() {
             <Image src="/icons/icom.png" alt={t('app.title')} width={40} height={40} />
           </div>
           <p className="font-bold text-gray-600">{t('app.title')} - {t('app.subtitle')}</p>
+          <p className="text-sm text-gray-500 mt-2">
+            A personal project | Powered by Steam
+          </p>
+          <div className="flex justify-center gap-4 mt-3 text-xs text-gray-400">
+            <Link href="/privacy" className="hover:text-gray-300 transition-colors">
+              {language === 'ja' ? 'プライバシーポリシー' : 'Privacy Policy'}
+            </Link>
+            <span>|</span>
+            <Link href="/terms" className="hover:text-gray-300 transition-colors">
+              {language === 'ja' ? '利用規約' : 'Terms of Service'}
+            </Link>
+          </div>
         </div>
       </footer>
     </div>
