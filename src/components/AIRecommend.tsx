@@ -32,6 +32,7 @@ interface NewGameRecommendation {
   genre: string;
   storeUrl: string;
   headerImage: string;
+  description?: string;
 }
 
 interface WishlistGame {
@@ -622,7 +623,9 @@ function NewReleaseCard({ game }: { game: NewGameRecommendation }) {
             {game.genre}
           </span>
         </div>
-        <p className="text-gray-600 text-xs mt-1 line-clamp-2">{game.reason}</p>
+        {game.description && (
+          <p className="text-gray-600 text-xs mt-1 line-clamp-2">{game.description}</p>
+        )}
       </div>
     </a>
   );
