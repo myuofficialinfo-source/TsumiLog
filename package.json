@@ -16,6 +16,7 @@
     "@vercel/analytics": "^1.6.1",
     "@vercel/og": "^0.8.6",
     "lucide-react": "^0.562.0",
+    "matter-js": "^0.20.0",
     "next": "16.1.1",
     "openid": "^2.0.14",
     "react": "19.2.3",
@@ -25,6 +26,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
+    "@types/matter-js": "^0.20.2",
     "@types/node": "^20",
     "@types/openid": "^2.0.5",
     "@types/react": "^19",

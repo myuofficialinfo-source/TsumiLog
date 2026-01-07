@@ -8,6 +8,7 @@ import ProfileCard from '@/components/ProfileCard';
 import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
 import AIRecommend from '@/components/AIRecommend';
+import BacklogTower from '@/components/BacklogTower';
 import { Loader2, LogOut, Globe } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -279,6 +280,9 @@ function HomeContent() {
         {/* 結果表示 */}
         {steamData && !isLoading && (
           <div className="space-y-6">
+            {/* 積みゲータワー */}
+            <BacklogTower games={steamData.games} backlogCount={steamData.stats.backlogCount} />
+
             {/* プロフィールカード */}
             <ProfileCard profile={steamData.profile} stats={steamData.stats} />
 
