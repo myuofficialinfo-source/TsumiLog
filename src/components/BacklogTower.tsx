@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Download } from 'lucide-react';
+import { Download, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
@@ -20,6 +20,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isComplete, setIsComplete] = useState(false);
+  const [showImageModal, setShowImageModal] = useState(false);
+  const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
   const { language } = useLanguage();
 
   useEffect(() => {
@@ -216,18 +218,16 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const backlogGames = games.filter(g => g.isBacklog);
   if (backlogGames.length === 0) return null;
 
-  // 画像ダウンロード機能
-  const downloadImage = () => {
-    if (!canvasRef.current) return;
+  // エクスポート用キャンバスを生成
+  const createExportCanvas = () => {
+    if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
 
     // 新しいキャンバスを作成してタイトルとフッターを追加
     const exportCanvas = document.createElement('canvas');
     const exportCtx = exportCanvas.getContext('2d');
-    if (!exportCtx) return;
+    if (!exportCtx) return null;
 
     const headerHeight = 60;
     const footerHeight = 50;
@@ -256,7 +256,48 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     exportCtx.font = '16px sans-serif';
     exportCtx.fillText('ツミナビ tsumi-navi.vercel.app', exportCanvas.width / 2, canvas.height + headerHeight + 30);
 
-    // ダウンロード
+    return exportCanvas;
+  };
+
+  // 画像ダウンロード機能
+  const downloadImage = async () => {
+    const exportCanvas = createExportCanvas();
+    if (!exportCanvas) return;
+
+    // Web Share API対応チェック（主にモバイル）
+    if (navigator.share && navigator.canShare) {
+      try {
+        const blob = await new Promise<Blob | null>((resolve) => {
+          exportCanvas.toBlob(resolve, 'image/png');
+        });
+
+        if (blob) {
+          const file = new File([blob], `backlog-tower-${backlogCount}.png`, { type: 'image/png' });
+
+          if (navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: language === 'ja' ? '積みゲータワー' : 'Backlog Tower',
+            });
+            return;
+          }
+        }
+      } catch (err) {
+        // ユーザーがキャンセルした場合は何もしない
+        if (err instanceof Error && err.name === 'AbortError') return;
+      }
+    }
+
+    // PCの場合、または共有APIが使えない場合は従来のダウンロード
+    // iOS Safariの場合はモーダルで画像を表示
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (isIOS) {
+      setModalImageUrl(exportCanvas.toDataURL('image/png'));
+      setShowImageModal(true);
+      return;
+    }
+
+    // その他のブラウザは従来のダウンロード
     const link = document.createElement('a');
     link.download = `backlog-tower-${backlogCount}.png`;
     link.href = exportCanvas.toDataURL('image/png');
@@ -339,6 +380,34 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
             </svg>
             {language === 'ja' ? 'Xでシェア' : 'Share on X'}
           </button>
+        </div>
+      )}
+
+      {/* iOS Safari用の画像保存モーダル */}
+      {showImageModal && modalImageUrl && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4"
+          onClick={() => setShowImageModal(false)}
+        >
+          <div
+            className="relative bg-white rounded-xl p-4 max-w-md w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setShowImageModal(false)}
+              className="absolute top-2 right-2 p-1 rounded-full hover:bg-gray-100"
+            >
+              <X size={24} />
+            </button>
+            <p className="text-center font-bold mb-3 text-gray-700">
+              {language === 'ja' ? '画像を長押しして保存してください' : 'Long press image to save'}
+            </p>
+            <img
+              src={modalImageUrl}
+              alt="Backlog Tower"
+              className="w-full rounded-lg border-2 border-gray-300"
+            />
+          </div>
         </div>
       )}
     </div>
