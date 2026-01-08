@@ -338,7 +338,56 @@ export async function getNewReleases(userGenres: string[] = []): Promise<NewRele
     });
 
     const results = await Promise.all(detailsPromises);
-    return results.filter((r): r is NewReleaseGame => r !== null);
+    const validResults = results.filter((r): r is NewReleaseGame => r !== null);
+
+    // 詳細取得が全部失敗した場合はハードコードされたフォールバック
+    if (validResults.length === 0) {
+      console.log('All game details fetch failed, using hardcoded fallback');
+      return [
+        {
+          appid: 1245620,
+          name: 'ELDEN RING',
+          genres: ['アクション', 'RPG'],
+          tags: ['ソウルライク', 'オープンワールド'],
+          description: 'フロム・ソフトウェアの最新アクションRPG',
+          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg',
+        },
+        {
+          appid: 1091500,
+          name: 'Cyberpunk 2077',
+          genres: ['RPG', 'アドベンチャー'],
+          tags: ['オープンワールド', 'サイバーパンク'],
+          description: 'CD Projekt REDが贈るオープンワールドRPG',
+          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg',
+        },
+        {
+          appid: 1174180,
+          name: 'Red Dead Redemption 2',
+          genres: ['アクション', 'アドベンチャー'],
+          tags: ['オープンワールド', '西部劇'],
+          description: 'Rockstar Gamesの壮大な西部劇アドベンチャー',
+          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1174180/header.jpg',
+        },
+        {
+          appid: 582010,
+          name: 'Monster Hunter: World',
+          genres: ['アクション', 'RPG'],
+          tags: ['協力プレイ', 'ハンティング'],
+          description: 'カプコンの人気ハンティングアクション',
+          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/582010/header.jpg',
+        },
+        {
+          appid: 1593500,
+          name: 'God of War',
+          genres: ['アクション', 'アドベンチャー'],
+          tags: ['アクションRPG', '神話'],
+          description: 'クレイトスと息子アトレウスの壮大な旅',
+          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1593500/header.jpg',
+        },
+      ];
+    }
+
+    return validResults;
   } catch {
     return [];
   }
