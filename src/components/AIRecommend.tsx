@@ -160,47 +160,47 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
         const lines = data.analysis.split('\n');
         let foundCatchphrase = '';
 
-        // 除外するフレーズ（AIの前置き）
-        const excludePhrases = [
-          'はい', '承知', 'わかりました', '了解', '以下', '分析', '出力',
-          'Sure', 'Okay', 'OK', 'I\'ll', 'Let me', 'Here'
-        ];
+        // まず全文から「」や""で囲まれたキャッチフレーズを探す（最初に見つかったもの）
+        const fullTextJaMatch = data.analysis.match(/「([^」]{5,50})」/);
+        const fullTextEnMatch = data.analysis.match(/"([^"]{5,50})"/);
 
-        for (const line of lines) {
-          const trimmed = line.trim();
+        if (fullTextJaMatch) {
+          foundCatchphrase = fullTextJaMatch[1];
+        } else if (fullTextEnMatch) {
+          foundCatchphrase = fullTextEnMatch[1];
+        } else {
+          // 「」や""が見つからない場合は行単位で探す
+          const excludePhrases = [
+            'はい', '承知', 'わかりました', '了解', '以下', '分析', '出力',
+            'Sure', 'Okay', 'OK', 'I\'ll', 'Let me', 'Here', 'キャッチコピー', 'Catchphrase'
+          ];
 
-          // 除外フレーズが含まれている行はスキップ
-          const hasExcludedPhrase = excludePhrases.some(phrase =>
-            trimmed.includes(phrase)
-          );
-          if (hasExcludedPhrase) continue;
+          for (const line of lines) {
+            const trimmed = line.trim();
 
-          // 番号付きリスト、Markdown記号、ヘッダーなどをスキップ
-          if (
-            !trimmed ||
-            trimmed.startsWith('#') ||
-            trimmed.startsWith('---') ||
-            /^\d+\./.test(trimmed) ||  // 1. 2. 3. などの番号付きリスト
-            trimmed.startsWith('*') ||
-            trimmed.startsWith('【') ||
-            trimmed.includes('**')  // Markdown太字
-          ) {
-            continue;
-          }
+            // 空行、ヘッダー、リストなどをスキップ
+            if (
+              !trimmed ||
+              trimmed.startsWith('#') ||
+              trimmed.startsWith('---') ||
+              /^\d+\./.test(trimmed) ||
+              trimmed.startsWith('*') ||
+              trimmed.includes('**')
+            ) {
+              continue;
+            }
 
-          // 「」で囲まれているか確認（日本語）
-          const jaMatch = trimmed.match(/「(.+?)」/);
-          // "quotes" で囲まれているか確認（英語）
-          const enMatch = trimmed.match(/"(.+?)"/);
-          if (jaMatch) {
-            foundCatchphrase = jaMatch[1];
-            break;
-          } else if (enMatch) {
-            foundCatchphrase = enMatch[1];
-            break;
-          } else if (trimmed.length < 50 && trimmed.length > 5) {
-            foundCatchphrase = trimmed;
-            break;
+            // 除外フレーズが含まれている行はスキップ
+            const hasExcludedPhrase = excludePhrases.some(phrase =>
+              trimmed.includes(phrase)
+            );
+            if (hasExcludedPhrase) continue;
+
+            // 短い行（5-50文字）をキャッチフレーズとして採用
+            if (trimmed.length >= 5 && trimmed.length <= 50) {
+              foundCatchphrase = trimmed;
+              break;
+            }
           }
         }
         setCatchphrase(foundCatchphrase || (language === 'ja' ? 'ゲーマー' : 'Gamer'));
