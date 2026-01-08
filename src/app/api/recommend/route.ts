@@ -9,7 +9,12 @@ interface CacheEntry {
   data: string;
   timestamp: number;
 }
+interface NewReleasesCacheEntry {
+  data: unknown;
+  timestamp: number;
+}
 const analysisCache = new Map<string, CacheEntry>();
+const newReleasesCache = new Map<string, NewReleasesCacheEntry>();
 const CACHE_TTL = 5 * 60 * 1000; // 5分
 
 // ジャンル統計からキャッシュキーを生成
@@ -22,12 +27,26 @@ function generateCacheKey(genreStats: GenreStats[], totalGames: number): string 
   return `${topGenres.join('|')}|games:${gamesBucket}`;
 }
 
+// new-releases用のキャッシュキー生成
+function generateNewReleasesKey(genreStats: GenreStats[]): string {
+  const topGenres = genreStats
+    .sort((a, b) => b.totalPlaytime - a.totalPlaytime)
+    .slice(0, 5)
+    .map(g => g.genre);
+  return `new-releases:${topGenres.join('|')}`;
+}
+
 // 古いキャッシュを削除
 function cleanupCache() {
   const now = Date.now();
   for (const [key, entry] of analysisCache.entries()) {
     if (now - entry.timestamp > CACHE_TTL) {
       analysisCache.delete(key);
+    }
+  }
+  for (const [key, entry] of newReleasesCache.entries()) {
+    if (now - entry.timestamp > CACHE_TTL) {
+      newReleasesCache.delete(key);
     }
   }
 }
@@ -89,6 +108,18 @@ export async function POST(request: NextRequest) {
         );
       }
 
+      // キャッシュをチェック
+      cleanupCache();
+      const nrCacheKey = generateNewReleasesKey(genreStats);
+      const nrCached = newReleasesCache.get(nrCacheKey);
+
+      if (nrCached && Date.now() - nrCached.timestamp < CACHE_TTL) {
+        console.log('Cache hit for new-releases:', nrCacheKey);
+        return NextResponse.json({ newReleases: nrCached.data, cached: true });
+      }
+
+      console.log('Cache miss for new-releases:', nrCacheKey);
+
       // フロントから送られてくるユーザー情報
       const favoriteGames = (body.favoriteGames || []) as FavoriteGame[];
       const wishlistNames = (body.wishlistNames || []) as string[];
@@ -116,6 +147,9 @@ export async function POST(request: NextRequest) {
         wishlistNames,
         lang
       );
+
+      // キャッシュに保存
+      newReleasesCache.set(nrCacheKey, { data: newReleases, timestamp: Date.now() });
 
       // 成功した場合のみカウントを増やす
       incrementRateLimit('gemini-api');
