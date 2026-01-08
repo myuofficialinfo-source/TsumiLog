@@ -55,6 +55,7 @@ function HomeContent() {
   const [error, setError] = useState<string | null>(null);
   const [steamData, setSteamData] = useState<SteamData | null>(null);
   const [gameDetails, setGameDetails] = useState<Map<number, { genres: { description: string }[] }>>(new Map());
+  const [gameDetailsTimedOut, setGameDetailsTimedOut] = useState(false);
   const [steamId, setSteamId] = useState<string | null>(null);
 
   // 起動時にlocalStorageからsteamIdを復元
@@ -122,14 +123,27 @@ function HomeContent() {
   useEffect(() => {
     if (!steamData?.games) return;
 
-    // 言語が変わったらキャッシュをクリア
+    // 言語が変わったらキャッシュとタイムアウト状態をクリア
     setGameDetails(new Map());
+    setGameDetailsTimedOut(false);
+
+    let isCancelled = false;
+    let hasReceivedData = false;
+
+    // 30秒のタイムアウト
+    const timeoutId = setTimeout(() => {
+      if (!hasReceivedData && !isCancelled) {
+        setGameDetailsTimedOut(true);
+      }
+    }, 30000);
 
     const fetchDetails = async () => {
       const gamesToFetch = steamData.games.slice(0, 50);
       const batchSize = 5;
 
       for (let i = 0; i < gamesToFetch.length; i += batchSize) {
+        if (isCancelled) break;
+
         const batch = gamesToFetch.slice(i, i + batchSize);
         const appIds = batch.map((g) => g.appid).join(',');
 
@@ -137,7 +151,9 @@ function HomeContent() {
           const response = await fetch(`/api/steam/details?appIds=${appIds}&language=${language}`);
           const data = await response.json();
 
-          if (data.details) {
+          if (data.details && data.details.length > 0) {
+            hasReceivedData = true;
+            setGameDetailsTimedOut(false);
             setGameDetails((prev) => {
               const newMap = new Map(prev);
               data.details.forEach((detail: { appid: number; genres: { description: string }[] }) => {
@@ -156,6 +172,11 @@ function HomeContent() {
     };
 
     fetchDetails();
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timeoutId);
+    };
   }, [steamData?.games, language]);
 
   return (
@@ -289,7 +310,7 @@ function HomeContent() {
             {/* グリッドレイアウト */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               {/* ジャンルチャート */}
-              <GenreChart games={steamData.games} gameDetails={gameDetails} />
+              <GenreChart games={steamData.games} gameDetails={gameDetails} isTimedOut={gameDetailsTimedOut} />
 
               {/* AI分析 */}
               <AIRecommend games={steamData.games} gameDetails={gameDetails} stats={steamData.stats} wishlist={steamData.wishlist} />

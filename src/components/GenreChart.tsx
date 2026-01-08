@@ -26,6 +26,7 @@ interface Game {
 interface GenreChartProps {
   games: Game[];
   gameDetails: Map<number, { genres: { description: string }[] }>;
+  isTimedOut?: boolean;
 }
 
 const COLORS = [
@@ -33,7 +34,7 @@ const COLORS = [
   '#F15BB5', '#00BBF9', '#84CC16', '#F97316', '#6366F1',
 ];
 
-export default function GenreChart({ games, gameDetails }: GenreChartProps) {
+export default function GenreChart({ games, gameDetails, isTimedOut }: GenreChartProps) {
   const { language, t } = useLanguage();
   const [chartType, setChartType] = useState<'pie' | 'bar'>('pie');
 
@@ -69,7 +70,11 @@ export default function GenreChart({ games, gameDetails }: GenreChartProps) {
     return (
       <div className="pop-card p-6">
         <h3 className="text-xl font-black text-[#3D3D3D] mb-4">{t('genre.title')}</h3>
-        <p className="text-gray-600">{language === 'ja' ? 'ゲーム詳細を読み込み中...' : 'Loading game details...'}</p>
+        <p className="text-gray-600">
+          {isTimedOut
+            ? (language === 'ja' ? '混雑中です。時間をおいてアクセスしてください。' : 'Server is busy. Please try again later.')
+            : (language === 'ja' ? 'ゲーム詳細を読み込み中...' : 'Loading game details...')}
+        </p>
       </div>
     );
   }
