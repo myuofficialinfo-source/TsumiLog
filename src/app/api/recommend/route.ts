@@ -4,7 +4,7 @@ import { getNewReleases } from '@/lib/steam';
 import { checkRateLimit, incrementRateLimit } from '@/lib/rate-limit';
 import { GenreStats, BacklogGame } from '@/types/steam';
 
-// キャッシュ（5分間有効）
+// キャッシュ（30分間有効）
 interface CacheEntry {
   data: string;
   timestamp: number;
@@ -15,7 +15,7 @@ interface NewReleasesCacheEntry {
 }
 const analysisCache = new Map<string, CacheEntry>();
 const newReleasesCache = new Map<string, NewReleasesCacheEntry>();
-const CACHE_TTL = 5 * 60 * 1000; // 5分
+const CACHE_TTL = 30 * 60 * 1000; // 30分
 
 // ジャンル統計からキャッシュキーを生成
 function generateCacheKey(genreStats: GenreStats[], totalGames: number): string {
