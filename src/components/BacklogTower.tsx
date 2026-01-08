@@ -218,13 +218,13 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const backlogGames = games.filter(g => g.isBacklog);
   if (backlogGames.length === 0) return null;
 
-  // エクスポート用キャンバスを生成（SNSシェア用に最適化）
+  // エクスポート用キャンバスを生成
   const createExportCanvas = () => {
     if (!canvasRef.current) return null;
 
     const canvas = canvasRef.current;
 
-    // SNSシェア用に正方形に近いサイズで出力（最小幅600px）
+    // 最小幅600pxに拡大（スマホ対応）
     const minWidth = 600;
     const exportWidth = Math.max(canvas.width, minWidth);
     const scale = exportWidth / canvas.width;
@@ -235,8 +235,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     const exportCtx = exportCanvas.getContext('2d');
     if (!exportCtx) return null;
 
-    const headerHeight = 80;
-    const footerHeight = 60;
+    const headerHeight = 60;
+    const footerHeight = 50;
     exportCanvas.width = exportWidth;
     exportCanvas.height = scaledHeight + headerHeight + footerHeight;
 
@@ -244,31 +244,23 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     exportCtx.fillStyle = '#FDF6E3';
     exportCtx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
 
-    // ヘッダー背景（グラデーション風）
+    // ヘッダー
     exportCtx.fillStyle = '#3D3D3D';
-    exportCtx.fillRect(0, 0, exportCanvas.width, headerHeight);
-
-    // ヘッダーテキスト
-    exportCtx.fillStyle = '#FFFFFF';
-    exportCtx.font = 'bold 32px sans-serif';
+    exportCtx.font = 'bold 24px sans-serif';
     exportCtx.textAlign = 'center';
     exportCtx.fillText(
-      language === 'ja' ? `🎮 積みゲータワー【${backlogCount}本】` : `🎮 Backlog Tower【${backlogCount} games】`,
+      language === 'ja' ? `積みゲータワー【${backlogCount}本】` : `Backlog Tower【${backlogCount} games】`,
       exportCanvas.width / 2,
-      52
+      40
     );
 
     // タワー画像をスケーリングしてコピー
     exportCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height, 0, headerHeight, exportWidth, scaledHeight);
 
-    // フッター背景
-    exportCtx.fillStyle = '#3D3D3D';
-    exportCtx.fillRect(0, headerHeight + scaledHeight, exportCanvas.width, footerHeight);
-
-    // フッターテキスト
-    exportCtx.fillStyle = '#FFFFFF';
-    exportCtx.font = 'bold 20px sans-serif';
-    exportCtx.fillText('ツミナビ tsumi-navi.vercel.app', exportCanvas.width / 2, headerHeight + scaledHeight + 38);
+    // フッター
+    exportCtx.fillStyle = '#666666';
+    exportCtx.font = '16px sans-serif';
+    exportCtx.fillText('ツミナビ tsumi-navi.vercel.app', exportCanvas.width / 2, headerHeight + scaledHeight + 30);
 
     return exportCanvas;
   };
