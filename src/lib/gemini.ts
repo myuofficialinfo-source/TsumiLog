@@ -13,7 +13,7 @@ const genAI = new GoogleGenerativeAI(apiKey || '');
 async function generateWithRetry(
   model: GenerativeModel,
   prompt: string,
-  maxRetries: number = 3
+  maxRetries: number = 5
 ): Promise<string> {
   let lastError: Error | null = null;
 

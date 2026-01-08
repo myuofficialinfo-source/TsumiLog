@@ -90,14 +90,28 @@ export async function POST(request: NextRequest) {
       }
 
       console.log('Cache miss, calling Gemini API:', cacheKey);
-      const analysis = await analyzeGamingPreferences(genreStats, totalGames, totalPlaytime, lang);
 
-      // キャッシュに保存
-      analysisCache.set(cacheKey, { data: analysis, timestamp: Date.now() });
+      try {
+        const analysis = await analyzeGamingPreferences(genreStats, totalGames, totalPlaytime, lang);
 
-      // 成功した場合のみカウントを増やす
-      incrementRateLimit('gemini-api');
-      return NextResponse.json({ analysis });
+        // キャッシュに保存
+        analysisCache.set(cacheKey, { data: analysis, timestamp: Date.now() });
+
+        // 成功した場合のみカウントを増やす
+        incrementRateLimit('gemini-api');
+        return NextResponse.json({ analysis });
+      } catch (geminiError) {
+        console.error('Gemini API error for analyze:', geminiError);
+        return NextResponse.json(
+          {
+            error: lang === 'ja'
+              ? 'AIサーバーが混雑しています。しばらく待ってから再度お試しください。'
+              : 'AI server is busy. Please try again later.',
+            busy: true
+          },
+          { status: 503 }
+        );
+      }
     }
 
     if (type === 'new-releases') {
@@ -140,20 +154,33 @@ export async function POST(request: NextRequest) {
       }
 
       // Geminiで最適な新作を選定
-      const newReleases = await recommendNewReleases(
-        genreStats,
-        candidates,
-        favoriteGames,
-        wishlistNames,
-        lang
-      );
+      try {
+        const newReleases = await recommendNewReleases(
+          genreStats,
+          candidates,
+          favoriteGames,
+          wishlistNames,
+          lang
+        );
 
-      // キャッシュに保存
-      newReleasesCache.set(nrCacheKey, { data: newReleases, timestamp: Date.now() });
+        // キャッシュに保存
+        newReleasesCache.set(nrCacheKey, { data: newReleases, timestamp: Date.now() });
 
-      // 成功した場合のみカウントを増やす
-      incrementRateLimit('gemini-api');
-      return NextResponse.json({ newReleases });
+        // 成功した場合のみカウントを増やす
+        incrementRateLimit('gemini-api');
+        return NextResponse.json({ newReleases });
+      } catch (geminiError) {
+        console.error('Gemini API error for new-releases:', geminiError);
+        return NextResponse.json(
+          {
+            error: lang === 'ja'
+              ? 'AIサーバーが混雑しています。しばらく待ってから再度お試しください。'
+              : 'AI server is busy. Please try again later.',
+            busy: true
+          },
+          { status: 503 }
+        );
+      }
     }
 
     if (!backlogGames || !genreStats) {
@@ -163,16 +190,29 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const recommendations = await generateRecommendations(
-      backlogGames,
-      genreStats,
-      userPreferences,
-      lang
-    );
+    try {
+      const recommendations = await generateRecommendations(
+        backlogGames,
+        genreStats,
+        userPreferences,
+        lang
+      );
 
-    // 成功した場合のみカウントを増やす
-    incrementRateLimit('gemini-api');
-    return NextResponse.json({ recommendations });
+      // 成功した場合のみカウントを増やす
+      incrementRateLimit('gemini-api');
+      return NextResponse.json({ recommendations });
+    } catch (geminiError) {
+      console.error('Gemini API error for recommend:', geminiError);
+      return NextResponse.json(
+        {
+          error: lang === 'ja'
+            ? 'AIサーバーが混雑しています。しばらく待ってから再度お試しください。'
+            : 'AI server is busy. Please try again later.',
+          busy: true
+        },
+        { status: 503 }
+      );
+    }
   } catch (error) {
     console.error('Recommendation error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
