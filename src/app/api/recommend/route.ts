@@ -148,8 +148,13 @@ export async function POST(request: NextRequest) {
       const candidates = await getNewReleases(topGenres);
       if (candidates.length === 0) {
         return NextResponse.json(
-          { error: 'ゲームの取得に失敗しました' },
-          { status: 500 }
+          {
+            error: lang === 'ja'
+              ? 'サーバーが混雑しています。しばらく待ってから再度お試しください。'
+              : 'Server is busy. Please try again later.',
+            busy: true
+          },
+          { status: 503 }
         );
       }
 
