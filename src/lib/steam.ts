@@ -192,20 +192,20 @@ const GENRE_TO_TAG: Record<string, string> = {
   'Puzzle': '1664',
 };
 
-// リトライ付きfetch
-async function fetchWithRetry(url: string, maxRetries: number = 2): Promise<Response | null> {
+// リトライ付きfetch（5回まで）
+async function fetchWithRetry(url: string, maxRetries: number = 5): Promise<Response | null> {
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(url);
       if (response.ok) return response;
-      // 429の場合は待機してリトライ
-      if (response.status === 429 && attempt < maxRetries) {
+      // 429やその他のエラーの場合は待機してリトライ
+      if (attempt < maxRetries) {
         await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
     } catch {
       if (attempt < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
         continue;
       }
     }
