@@ -192,10 +192,52 @@ const GENRE_TO_TAG: Record<string, string> = {
   'Puzzle': '1664',
 };
 
+// リトライ付きfetch
+async function fetchWithRetry(url: string, maxRetries: number = 2): Promise<Response | null> {
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      const response = await fetch(url);
+      if (response.ok) return response;
+      // 429の場合は待機してリトライ
+      if (response.status === 429 && attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * (attempt + 1)));
+        continue;
+      }
+    } catch {
+      if (attempt < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 500));
+        continue;
+      }
+    }
+  }
+  return null;
+}
+
 // ユーザーのジャンルに基づいて最近リリースされたゲームを取得
 export async function getNewReleases(userGenres: string[] = []): Promise<NewReleaseGame[]> {
   try {
     const appIds: number[] = [];
+
+    // まずfeaturedcategoriesから取得（より安定している）
+    try {
+      const featuredRes = await fetchWithRetry(`${STEAM_STORE_API}/featuredcategories?l=japanese`);
+      if (featuredRes) {
+        const data = await featuredRes.json();
+        if (data.new_releases?.items) {
+          for (const item of data.new_releases.items) {
+            if (!appIds.includes(item.id)) appIds.push(item.id);
+          }
+        }
+        // top_sellersからも取得
+        if (data.top_sellers?.items) {
+          for (const item of data.top_sellers.items) {
+            if (!appIds.includes(item.id)) appIds.push(item.id);
+          }
+        }
+      }
+    } catch {
+      console.log('Featured categories fetch failed');
+    }
 
     // ユーザーのジャンルからタグIDを取得
     const tagIds = userGenres
@@ -203,14 +245,14 @@ export async function getNewReleases(userGenres: string[] = []): Promise<NewRele
       .filter(Boolean)
       .slice(0, 3); // 最大3つのタグで検索
 
-    // タグIDがある場合はSteam検索APIを使用
-    if (tagIds.length > 0) {
+    // タグIDがある場合はSteam検索APIを使用（追加で取得）
+    if (tagIds.length > 0 && appIds.length < 20) {
       for (const tagId of tagIds) {
         try {
-          const searchRes = await fetch(
+          const searchRes = await fetchWithRetry(
             `https://store.steampowered.com/search/results/?query&start=0&count=15&sort_by=Released_DESC&category1=998&tags=${tagId}&json=1`
           );
-          if (searchRes.ok) {
+          if (searchRes) {
             const searchData = await searchRes.json();
             if (searchData.items) {
               for (const item of searchData.items) {
@@ -228,30 +270,26 @@ export async function getNewReleases(userGenres: string[] = []): Promise<NewRele
       }
     }
 
-    // タグ検索で十分なゲームが取得できない場合はfeaturedcategoriesからも取得
-    if (appIds.length < 10) {
-      const featuredRes = await fetch(`${STEAM_STORE_API}/featuredcategories?l=japanese`);
-      if (featuredRes.ok) {
-        const data = await featuredRes.json();
-        if (data.new_releases?.items) {
-          for (const item of data.new_releases.items) {
-            if (!appIds.includes(item.id)) appIds.push(item.id);
-          }
-        }
-      }
-    }
-
     // 3ヶ月前の日付を計算
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-    // 各ゲームの詳細を取得（並列で最大25本）
+    // appIdsが取得できなかった場合のログ
+    if (appIds.length === 0) {
+      console.log('No appIds found from Steam API');
+      return [];
+    }
+
+    console.log(`Found ${appIds.length} candidate games from Steam`);
+
+    // 各ゲームの詳細を取得（並列で最大25本、レート制限対策でバッチ処理）
     const targetAppIds = appIds.slice(0, 25);
     const detailsPromises = targetAppIds.map(async (appid) => {
       try {
-        const detailRes = await fetch(
+        const detailRes = await fetchWithRetry(
           `${STEAM_STORE_API}/appdetails?appids=${appid}&l=japanese`
         );
+        if (!detailRes) return null;
         const detailData = await detailRes.json();
 
         if (!detailData[appid]?.success) return null;

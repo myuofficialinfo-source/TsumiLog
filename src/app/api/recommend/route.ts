@@ -4,6 +4,34 @@ import { getNewReleases } from '@/lib/steam';
 import { checkRateLimit, incrementRateLimit } from '@/lib/rate-limit';
 import { GenreStats, BacklogGame } from '@/types/steam';
 
+// キャッシュ（5分間有効）
+interface CacheEntry {
+  data: string;
+  timestamp: number;
+}
+const analysisCache = new Map<string, CacheEntry>();
+const CACHE_TTL = 5 * 60 * 1000; // 5分
+
+// ジャンル統計からキャッシュキーを生成
+function generateCacheKey(genreStats: GenreStats[], totalGames: number): string {
+  const topGenres = genreStats
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5)
+    .map(g => `${g.genre}:${Math.floor(g.count / 10) * 10}`); // 10本単位で丸める
+  const gamesBucket = Math.floor(totalGames / 50) * 50; // 50本単位で丸める
+  return `${topGenres.join('|')}|games:${gamesBucket}`;
+}
+
+// 古いキャッシュを削除
+function cleanupCache() {
+  const now = Date.now();
+  for (const [key, entry] of analysisCache.entries()) {
+    if (now - entry.timestamp > CACHE_TTL) {
+      analysisCache.delete(key);
+    }
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     // レート制限チェック
@@ -31,7 +59,23 @@ export async function POST(request: NextRequest) {
     if (type === 'analyze') {
       const totalGames = body.totalGames || 0;
       const totalPlaytime = body.totalPlaytime || 0;
+
+      // キャッシュをチェック
+      cleanupCache();
+      const cacheKey = generateCacheKey(genreStats, totalGames);
+      const cached = analysisCache.get(cacheKey);
+
+      if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
+        console.log('Cache hit for analysis:', cacheKey);
+        return NextResponse.json({ analysis: cached.data, cached: true });
+      }
+
+      console.log('Cache miss, calling Gemini API:', cacheKey);
       const analysis = await analyzeGamingPreferences(genreStats, totalGames, totalPlaytime, lang);
+
+      // キャッシュに保存
+      analysisCache.set(cacheKey, { data: analysis, timestamp: Date.now() });
+
       // 成功した場合のみカウントを増やす
       incrementRateLimit('gemini-api');
       return NextResponse.json({ analysis });
