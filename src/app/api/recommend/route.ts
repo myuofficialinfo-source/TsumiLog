@@ -105,8 +105,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: lang === 'ja'
-              ? 'AIサーバーが混雑しています。しばらく待ってから再度お試しください。'
-              : 'AI server is busy. Please try again later.',
+              ? 'サーバーが混雑しています。しばらく待ってから再度お試しください。'
+              : 'Server is busy. Please try again later.',
             busy: true
           },
           { status: 503 }
@@ -174,8 +174,8 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(
           {
             error: lang === 'ja'
-              ? 'AIサーバーが混雑しています。しばらく待ってから再度お試しください。'
-              : 'AI server is busy. Please try again later.',
+              ? 'サーバーが混雑しています。しばらく待ってから再度お試しください。'
+              : 'Server is busy. Please try again later.',
             busy: true
           },
           { status: 503 }
