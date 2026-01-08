@@ -279,6 +279,9 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         <h2 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
           {language === 'ja' ? 'あなたの積みゲータワー' : 'Your Backlog Tower'}
         </h2>
+        <p className="text-sm text-gray-500 mt-1">
+          {language === 'ja' ? 'クリックすると跳ねます' : 'Click to bounce'}
+        </p>
       </div>
 
       <div ref={containerRef} className="relative w-full" style={{ height: '400px' }}>
