@@ -274,23 +274,10 @@ export async function getNewReleases(userGenres: string[] = []): Promise<NewRele
     const threeMonthsAgo = new Date();
     threeMonthsAgo.setMonth(threeMonthsAgo.getMonth() - 3);
 
-    // appIdsが取得できなかった場合はフォールバック
+    // appIdsが取得できなかった場合は空配列（APIで503を返す）
     if (appIds.length === 0) {
-      console.log('No appIds found from Steam API, using fallback');
-      // 人気の新作/定番ゲームをフォールバックとして使用
-      const fallbackIds = [
-        2358720,  // Black Myth: Wukong
-        1245620,  // Elden Ring
-        1091500,  // Cyberpunk 2077
-        1172470,  // Apex Legends
-        1593500,  // God of War
-        1817070,  // Marvel's Spider-Man Remastered
-        1151640,  // Horizon Zero Dawn
-        2050650,  // Resident Evil 4
-        1174180,  // Red Dead Redemption 2
-        582010,   // Monster Hunter: World
-      ];
-      appIds.push(...fallbackIds);
+      console.log('No appIds found from Steam API');
+      return [];
     }
 
     console.log(`Found ${appIds.length} candidate games from Steam`);
