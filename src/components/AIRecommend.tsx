@@ -175,22 +175,32 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
           );
           if (hasExcludedPhrase) continue;
 
-          if (trimmed && !trimmed.startsWith('#') && !trimmed.startsWith('---') && !trimmed.startsWith('1.') && !trimmed.startsWith('*')) {
-            // 「」で囲まれているか確認（日本語）
-            const jaMatch = trimmed.match(/「(.+?)」/);
-            // "quotes" で囲まれているか確認（英語）
-            const enMatch = trimmed.match(/"(.+?)"/);
-            if (jaMatch) {
-              foundCatchphrase = jaMatch[1];
-              break;
-            } else if (enMatch) {
-              foundCatchphrase = enMatch[1];
-              break;
-            } else if (trimmed.length < 50 && trimmed.length > 5 && !trimmed.startsWith('【')) {
-              // 【キャッチコピー】などのヘッダーは除外
-              foundCatchphrase = trimmed;
-              break;
-            }
+          // 番号付きリスト、Markdown記号、ヘッダーなどをスキップ
+          if (
+            !trimmed ||
+            trimmed.startsWith('#') ||
+            trimmed.startsWith('---') ||
+            /^\d+\./.test(trimmed) ||  // 1. 2. 3. などの番号付きリスト
+            trimmed.startsWith('*') ||
+            trimmed.startsWith('【') ||
+            trimmed.includes('**')  // Markdown太字
+          ) {
+            continue;
+          }
+
+          // 「」で囲まれているか確認（日本語）
+          const jaMatch = trimmed.match(/「(.+?)」/);
+          // "quotes" で囲まれているか確認（英語）
+          const enMatch = trimmed.match(/"(.+?)"/);
+          if (jaMatch) {
+            foundCatchphrase = jaMatch[1];
+            break;
+          } else if (enMatch) {
+            foundCatchphrase = enMatch[1];
+            break;
+          } else if (trimmed.length < 50 && trimmed.length > 5) {
+            foundCatchphrase = trimmed;
+            break;
           }
         }
         setCatchphrase(foundCatchphrase || (language === 'ja' ? 'ゲーマー' : 'Gamer'));
