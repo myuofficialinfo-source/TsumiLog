@@ -1,7 +1,7 @@
 'use client';
 
 import Image from 'next/image';
-import { Gamepad2, Clock, Package, PlayCircle } from 'lucide-react';
+import { Gamepad2, Clock, Package, PlayCircle, AlertTriangle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface ProfileCardProps {
@@ -108,10 +108,38 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
         </div>
       </div>
 
-      {/* Steam API制限の注意書き */}
-      <p className="mt-4 text-xs text-gray-500 text-center">
-        {t('profile.notice')}
-      </p>
+      {/* ゲームデータが取得できなかった場合の警告 */}
+      {stats.totalPlaytimeHours === 0 ? (
+        <div className="mt-4 p-3 rounded-lg border-2 border-[#E63946] bg-red-50">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-[#E63946] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-[#E63946]">
+                {language === 'ja'
+                  ? 'ゲームデータが取得できませんでした'
+                  : 'Game data could not be retrieved'}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {language === 'ja'
+                  ? 'Steamの「ゲームの詳細」が非公開になっている可能性があります。'
+                  : 'Your Steam "Game details" may be set to private.'}
+              </p>
+              <a
+                href="https://steamcommunity.com/my/edit/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-2 text-xs font-bold text-[#457B9D] hover:underline"
+              >
+                {language === 'ja' ? '→ Steamプライバシー設定を開く' : '→ Open Steam Privacy Settings'}
+              </a>
+            </div>
+          </div>
+        </div>
+      ) : (
+        <p className="mt-4 text-xs text-gray-500 text-center">
+          {t('profile.notice')}
+        </p>
+      )}
     </div>
   );
 }
