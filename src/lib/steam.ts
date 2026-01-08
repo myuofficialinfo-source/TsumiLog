@@ -109,6 +109,61 @@ export function identifyBacklog(games: SteamGame[], thresholdMinutes = 30): Stea
   return games.filter(game => game.playtime_forever < thresholdMinutes);
 }
 
+// ユーザーの全実績達成率を取得
+export async function getPlayerAchievements(steamId: string, appId: number): Promise<{ achieved: number; total: number } | null> {
+  try {
+    const response = await fetch(
+      `${STEAM_API_BASE}/ISteamUserStats/GetPlayerAchievements/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&appid=${appId}`
+    );
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    if (!data.playerstats?.success || !data.playerstats?.achievements) {
+      return null;
+    }
+
+    const achievements = data.playerstats.achievements;
+    const total = achievements.length;
+    const achieved = achievements.filter((a: { achieved: number }) => a.achieved === 1).length;
+
+    return { achieved, total };
+  } catch {
+    return null;
+  }
+}
+
+// 複数ゲームのトロコン状態を一括取得（実績100%達成）
+export async function getCompletedGames(steamId: string, appIds: number[]): Promise<Set<number>> {
+  const completedGames = new Set<number>();
+
+  // 並列で取得（ただしレート制限を考慮して10本ずつ）
+  const batchSize = 10;
+  for (let i = 0; i < appIds.length; i += batchSize) {
+    const batch = appIds.slice(i, i + batchSize);
+    const results = await Promise.all(
+      batch.map(async (appId) => {
+        const achievement = await getPlayerAchievements(steamId, appId);
+        if (achievement && achievement.total > 0 && achievement.achieved === achievement.total) {
+          return appId;
+        }
+        return null;
+      })
+    );
+
+    results.forEach(appId => {
+      if (appId !== null) completedGames.add(appId);
+    });
+
+    // レート制限対策
+    if (i + batchSize < appIds.length) {
+      await new Promise(resolve => setTimeout(resolve, 200));
+    }
+  }
+
+  return completedGames;
+}
+
 export interface NewReleaseGame {
   appid: number;
   name: string;

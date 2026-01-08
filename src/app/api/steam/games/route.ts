@@ -4,8 +4,8 @@ import {
   getUserProfile,
   resolveVanityURL,
   extractSteamId,
-  identifyBacklog,
   getWishlist,
+  getCompletedGames,
 } from '@/lib/steam';
 
 export async function GET(request: NextRequest) {
@@ -49,8 +49,17 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // 積みゲーを特定
-    const backlog = identifyBacklog(ownedGames);
+    // プレイ時間30分未満のゲームを抽出
+    const potentialBacklog = ownedGames.filter(g => g.playtime_forever < 30);
+
+    // トロコン済み（実績100%）のゲームを取得
+    const completedGames = await getCompletedGames(
+      steamId,
+      potentialBacklog.map(g => g.appid)
+    );
+
+    // 積みゲーを特定（30分未満 かつ トロコンしていない）
+    const backlog = potentialBacklog.filter(g => !completedGames.has(g.appid));
 
     // ジャンル統計は別途詳細取得が必要なので、クライアント側で行う
     const totalPlaytime = ownedGames.reduce((sum, g) => sum + g.playtime_forever, 0);
@@ -65,7 +74,7 @@ export async function GET(request: NextRequest) {
       },
       games: ownedGames.map(game => ({
         ...game,
-        isBacklog: game.playtime_forever < 30,
+        isBacklog: game.playtime_forever < 30 && !completedGames.has(game.appid),
         playtimeHours: Math.round(game.playtime_forever / 60 * 10) / 10,
         headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
       })),
