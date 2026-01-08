@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
 import { GenreStats, BacklogGame } from '@/types/steam';
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
@@ -8,6 +8,39 @@ if (!apiKey) {
 }
 
 const genAI = new GoogleGenerativeAI(apiKey || '');
+
+// リトライ処理付きのコンテンツ生成
+async function generateWithRetry(
+  model: GenerativeModel,
+  prompt: string,
+  maxRetries: number = 3
+): Promise<string> {
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const result = await model.generateContent(prompt);
+      return result.response.text();
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown error');
+
+      // 429エラー（レート制限）の場合はリトライ
+      const errorMessage = lastError.message.toLowerCase();
+      if (errorMessage.includes('429') || errorMessage.includes('rate') || errorMessage.includes('quota')) {
+        // 指数バックオフ: 1秒、2秒、4秒...
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`Rate limited. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${maxRetries})`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        continue;
+      }
+
+      // その他のエラーはリトライしない
+      throw lastError;
+    }
+  }
+
+  throw lastError || new Error('Max retries exceeded');
+}
 
 export type Language = 'ja' | 'en';
 
@@ -76,9 +109,7 @@ Select 5 games from the backlog list and respond in the following format.
 Consider the user's preferred genres and tendencies to suggest the best games from their backlog.`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    return response.text();
+    return await generateWithRetry(model, prompt);
   } catch (error) {
     console.error('Gemini API error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -157,9 +188,7 @@ Make it unique and memorable, something worth sharing on social media.
 4. **Recommended Play Style**: Advice for clearing their backlog`;
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    return response.text();
+    return await generateWithRetry(model, prompt);
   } catch (error) {
     console.error('Gemini API error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -304,9 +333,7 @@ Select 5 games from the candidate list.`;
   const validAppIds = new Set(newGames.map(g => g.appid));
 
   try {
-    const result = await model.generateContent(prompt);
-    const response = result.response;
-    const text = response.text();
+    const text = await generateWithRetry(model, prompt);
 
     // JSONを抽出
     const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\[[\s\S]*\]/);
