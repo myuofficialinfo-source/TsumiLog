@@ -340,51 +340,9 @@ export async function getNewReleases(userGenres: string[] = []): Promise<NewRele
     const results = await Promise.all(detailsPromises);
     const validResults = results.filter((r): r is NewReleaseGame => r !== null);
 
-    // 全ての詳細取得が失敗した場合はフォールバック
+    // 全ての詳細取得が失敗した場合は空配列（APIで503を返す）
     if (validResults.length === 0) {
-      console.log('All game details fetch failed, using fallback');
-      return [
-        {
-          appid: 1245620,
-          name: 'ELDEN RING',
-          genres: ['アクション', 'RPG'],
-          tags: ['Souls-like', 'オープンワールド'],
-          description: 'フロム・ソフトウェアの最新アクションRPG',
-          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1245620/header.jpg',
-        },
-        {
-          appid: 2358720,
-          name: 'Black Myth: Wukong',
-          genres: ['アクション', 'アドベンチャー'],
-          tags: ['Souls-like', 'アクションRPG'],
-          description: '中国神話に基づくアクションRPG',
-          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/2358720/header.jpg',
-        },
-        {
-          appid: 1091500,
-          name: 'Cyberpunk 2077',
-          genres: ['RPG', 'アクション'],
-          tags: ['オープンワールド', 'サイバーパンク'],
-          description: 'CD Projekt REDのオープンワールドRPG',
-          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1091500/header.jpg',
-        },
-        {
-          appid: 1174180,
-          name: 'Red Dead Redemption 2',
-          genres: ['アクション', 'アドベンチャー'],
-          tags: ['オープンワールド', '西部劇'],
-          description: 'Rockstar Gamesのオープンワールドアクション',
-          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/1174180/header.jpg',
-        },
-        {
-          appid: 582010,
-          name: 'Monster Hunter: World',
-          genres: ['アクション', 'RPG'],
-          tags: ['協力プレイ', 'ハンティング'],
-          description: 'カプコンのハンティングアクション',
-          headerImage: 'https://cdn.cloudflare.steamstatic.com/steam/apps/582010/header.jpg',
-        },
-      ];
+      console.log('All game details fetch failed');
     }
 
     return validResults;
