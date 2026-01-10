@@ -73,3 +73,98 @@ body {
   -webkit-text-fill-color: transparent;
   background-clip: text;
 }
+
+/* カードバトル用アニメーション */
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes rainbow-border {
+  0% { border-color: #E63946; }
+  17% { border-color: #F4A261; }
+  33% { border-color: #F59E0B; }
+  50% { border-color: #22C55E; }
+  67% { border-color: #3B82F6; }
+  83% { border-color: #A855F7; }
+  100% { border-color: #E63946; }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* レジェンダリーカード */
+.legendary-card {
+  animation: rainbow-border 3s linear infinite;
+}
+
+.legendary-card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.legendary-border {
+  background: linear-gradient(
+    45deg,
+    #E63946,
+    #F4A261,
+    #F59E0B,
+    #22C55E,
+    #3B82F6,
+    #A855F7,
+    #E63946
+  );
+  background-size: 400% 400%;
+  animation: gradient-rotate 3s ease infinite;
+  opacity: 0.3;
+}
+
+@keyframes gradient-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* バトルアニメーション */
+@keyframes attack-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes damage-flash {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(2) saturate(0); }
+}
+
+.attack-animation {
+  animation: attack-shake 0.3s ease-in-out;
+}
+
+.damage-animation {
+  animation: damage-flash 0.2s ease-in-out;
+}

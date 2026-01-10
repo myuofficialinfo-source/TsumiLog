@@ -9,7 +9,7 @@ import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
 import AIRecommend from '@/components/AIRecommend';
 import BacklogTower from '@/components/BacklogTower';
-import { Loader2, LogOut, Globe } from 'lucide-react';
+import { Loader2, LogOut, Globe, Swords } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
@@ -301,6 +301,30 @@ function HomeContent() {
         {/* 結果表示 */}
         {steamData && !isLoading && (
           <div className="space-y-6">
+            {/* バトルモードへのリンク */}
+            <Link
+              href="/battle"
+              className="pop-card p-4 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer block"
+            >
+              <div className="flex items-center gap-4">
+                <div
+                  className="w-12 h-12 rounded-xl flex items-center justify-center"
+                  style={{ backgroundColor: 'var(--pop-red)' }}
+                >
+                  <Swords className="w-6 h-6 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-black text-[#3D3D3D]">
+                    {language === 'ja' ? '積みゲーバトル' : 'Backlog Battle'}
+                  </h3>
+                  <p className="text-sm text-gray-500">
+                    {language === 'ja' ? '積みゲーでカードバトル！' : 'Battle with your backlog games!'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-2xl">→</span>
+            </Link>
+
             {/* 積みゲータワー */}
             <BacklogTower games={steamData.games} backlogCount={steamData.stats.backlogCount} />
 
