@@ -112,10 +112,17 @@ export async function GET(request: NextRequest) {
     }
 
     // ユーザーがDBにいなければ登録
-    await upsertUser(steamId, personaName || undefined, avatarUrl || undefined);
+    try {
+      await upsertUser(steamId, personaName || undefined, avatarUrl || undefined);
+    } catch (upsertError) {
+      console.error('Failed to upsert user:', upsertError);
+      // upsert失敗しても続行（既存ユーザーの場合も考慮）
+    }
 
     const userScore = await getUserScore(steamId);
     const userRank = await getUserRank(steamId);
+
+    console.log('User stats for', steamId, ':', { userScore, userRank });
 
     return NextResponse.json({
       steamId,
