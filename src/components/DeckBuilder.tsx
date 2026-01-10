@@ -14,7 +14,8 @@ import {
   GenreSkill,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building } from 'lucide-react';
+import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy } from 'lucide-react';
+import Link from 'next/link';
 
 interface Game {
   appid: number;
@@ -299,6 +300,14 @@ export default function DeckBuilder({
           </p>
         </div>
         <div className="flex gap-2">
+          <Link
+            href="/battle/ranking"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:opacity-90 text-white font-bold"
+            style={{ backgroundColor: 'var(--pop-yellow)' }}
+          >
+            <Trophy className="w-4 h-4" />
+            {language === 'ja' ? 'ランキング' : 'Ranking'}
+          </Link>
           <button
             onClick={shuffle}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"

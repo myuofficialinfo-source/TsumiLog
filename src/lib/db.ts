@@ -228,3 +228,62 @@ export async function getUserGraduations(steamId: string): Promise<Array<{
     graduatedAt: new Date(row.graduated_at as string),
   }));
 }
+
+// ゲーム使用テーブル初期化
+export async function initGameUsageTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS game_usage (
+      id SERIAL PRIMARY KEY,
+      appid INTEGER NOT NULL,
+      game_name VARCHAR(200),
+      steam_id VARCHAR(20) NOT NULL,
+      used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(steam_id, appid, used_at::date)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_game_usage_appid ON game_usage(appid)`;
+}
+
+// デッキで使用されたゲームを記録
+export async function recordGameUsage(steamId: string, games: Array<{ appid: number; name: string }>) {
+  for (const game of games) {
+    try {
+      await sql`
+        INSERT INTO game_usage (appid, game_name, steam_id)
+        VALUES (${game.appid}, ${game.name}, ${steamId})
+        ON CONFLICT (steam_id, appid, (used_at::date)) DO NOTHING
+      `;
+    } catch {
+      // 重複エラーは無視
+    }
+  }
+}
+
+// 最も使用されているゲームランキング
+export async function getMostUsedGames(limit: number = 20): Promise<Array<{
+  rank: number;
+  appid: number;
+  gameName: string;
+  usageCount: number;
+  uniqueUsers: number;
+}>> {
+  const result = await sql`
+    SELECT
+      appid,
+      game_name,
+      COUNT(*) as usage_count,
+      COUNT(DISTINCT steam_id) as unique_users
+    FROM game_usage
+    GROUP BY appid, game_name
+    ORDER BY usage_count DESC, unique_users DESC
+    LIMIT ${limit}
+  `;
+
+  return result.map((row, index) => ({
+    rank: index + 1,
+    appid: row.appid as number,
+    gameName: row.game_name as string || 'Unknown',
+    usageCount: parseInt(row.usage_count as string, 10),
+    uniqueUsers: parseInt(row.unique_users as string, 10),
+  }));
+}

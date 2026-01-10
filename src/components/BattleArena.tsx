@@ -186,6 +186,9 @@ export default function BattleArena({
           .filter(c => c.playtimeMinutes >= 600) // 10時間 = 600分
           .map(c => ({ appid: c.appid, name: c.name }));
 
+        // デッキで使用したゲーム一覧
+        const deckGames = allCards.map(c => ({ appid: c.appid, name: c.name }));
+
         const result = winner === 'player' ? 'win' : winner === 'opponent' ? 'lose' : 'draw';
 
         const response = await fetch('/api/battle', {
@@ -197,6 +200,7 @@ export default function BattleArena({
             personaName,
             avatarUrl,
             graduatedGames,
+            deckGames,
           }),
         });
 

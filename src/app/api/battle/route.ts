@@ -6,6 +6,8 @@ import {
   getUserScore,
   getUserRank,
   initDatabase,
+  initGameUsageTable,
+  recordGameUsage,
 } from '@/lib/db';
 
 // DB初期化フラグ
@@ -14,6 +16,7 @@ let dbInitialized = false;
 async function ensureDbInitialized() {
   if (!dbInitialized) {
     await initDatabase();
+    await initGameUsageTable();
     dbInitialized = true;
   }
 }
@@ -30,6 +33,7 @@ export async function POST(request: NextRequest) {
       personaName,
       avatarUrl,
       graduatedGames, // 新しく卒業したゲームのリスト [{appid, name}]
+      deckGames, // デッキで使用したゲームのリスト [{appid, name}]
     } = body;
 
     if (!steamId || !result) {
@@ -61,6 +65,11 @@ export async function POST(request: NextRequest) {
           newGraduations.push(game);
         }
       }
+    }
+
+    // デッキで使用したゲームを記録
+    if (deckGames && Array.isArray(deckGames)) {
+      await recordGameUsage(steamId, deckGames);
     }
 
     // 更新後のスコアを取得
