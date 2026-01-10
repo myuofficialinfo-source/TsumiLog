@@ -9,7 +9,7 @@ import {
   GENRE_SKILL_MAP,
   calculateAttack,
   calculateHP,
-  getGrowthStage,
+  isBacklogGame,
   GenreSkill,
   RARITY_CONFIG,
   SKILL_DESCRIPTIONS,
@@ -93,8 +93,6 @@ function createBattleCard(
     .map(genre => GENRE_SKILL_MAP[genre])
     .filter((skill): skill is GenreSkill => skill !== undefined);
 
-  const baseAttack = 50; // 基礎攻撃力
-
   // 高評価率でHP決定（取得できない場合はデフォルト75%）
   const positiveRate = details?.positiveRate ?? 75;
 
@@ -108,8 +106,7 @@ function createBattleCard(
     headerImage: game.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
     hp: calculateHP(positiveRate),
     maxHp: calculateHP(positiveRate),
-    attack: calculateAttack(baseAttack, game.playtime_forever, rarity),
-    baseAttack,
+    attack: calculateAttack(game.playtime_forever, rarity),
     rarity,
     genres,
     skills: [...new Set(skills)], // 重複除去
@@ -117,8 +114,7 @@ function createBattleCard(
     publisher: details?.publishers?.[0],
     tags: [...userTags, ...categories],  // ユーザータグ + カテゴリーを結合
     playtimeMinutes: game.playtime_forever,
-    isGraduated: getGrowthStage(game.playtime_forever) === 'graduated',
-    ownershipRate: reviewCount, // レビュー数を保存（参考用）
+    reviewCount, // レビュー数を保存（参考用）
   };
 }
 
@@ -230,12 +226,9 @@ export default function DeckBuilder({
     fetchUserStats();
   }, [steamId, personaName, avatarUrl]);
 
-  // 積みゲー（5時間以下）のみをフィルター
+  // 積みゲー（30分未満）のみをフィルター
   const availableGames = useMemo(() => {
-    return games.filter(game => {
-      const stage = getGrowthStage(game.playtime_forever);
-      return stage !== 'graduated'; // 卒業済みは除外
-    });
+    return games.filter(game => isBacklogGame(game.playtime_forever));
   }, [games]);
 
   // バトルカードに変換（重複除去）
@@ -281,7 +274,7 @@ export default function DeckBuilder({
 
   // ソートされたカード（安定ソート：同値の場合はappidでソート）
   const sortedCards = useMemo(() => {
-    const cards = [...availableCards].filter(card => !selectedAppIds.has(card.appid) && !card.isGraduated);
+    const cards = [...availableCards].filter(card => !selectedAppIds.has(card.appid));
 
     switch (sortBy) {
       case 'rarity':
@@ -393,7 +386,6 @@ export default function DeckBuilder({
   // おまかせ編成
   const autoFill = useCallback(() => {
     const shuffled = [...availableCards]
-      .filter(c => !c.isGraduated)
       .sort(() => Math.random() - 0.5);
 
     const newFront: (BattleCardType | null)[] = [];
@@ -420,7 +412,6 @@ export default function DeckBuilder({
   // シャッフル
   const shuffle = useCallback(() => {
     const shuffled = [...availableCards]
-      .filter(c => !c.isGraduated)
       .sort(() => Math.random() - 0.5);
 
     const newFront: (BattleCardType | null)[] = [];

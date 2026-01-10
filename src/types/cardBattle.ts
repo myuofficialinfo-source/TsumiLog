@@ -91,8 +91,7 @@ export interface BattleCard {
   // ステータス
   hp: number;           // レビュースコア × 10
   maxHp: number;
-  attack: number;       // プレイ時間で成長
-  baseAttack: number;   // 基礎攻撃力
+  attack: number;       // プレイ時間で算出（0〜30分）
 
   // メタ情報
   rarity: Rarity;
@@ -107,10 +106,9 @@ export interface BattleCard {
 
   // プレイ情報
   playtimeMinutes: number;
-  isGraduated: boolean; // 5時間超えで卒業
 
-  // 所有率（シナジー計算用）
-  ownershipRate?: number;
+  // レビュー数（表示用）
+  reviewCount?: number;
 }
 
 // シナジータイプ
@@ -157,46 +155,28 @@ export interface BattleLogEntry {
   healAmount?: number;
 }
 
-// プレイ時間による成長段階
-export type GrowthStage = 'weak' | 'normal' | 'strong' | 'graduated';
+// 積みゲー判定（30分未満 = 積みゲー）
+export const BACKLOG_THRESHOLD_MINUTES = 30;
 
-export function getGrowthStage(playtimeMinutes: number): GrowthStage {
-  if (playtimeMinutes >= 300) return 'graduated';  // 5時間以上
-  if (playtimeMinutes >= 120) return 'strong';     // 2-5時間
-  if (playtimeMinutes >= 30) return 'normal';      // 30分-2時間
-  return 'weak';                                    // 0-30分
+// 積みゲーかどうかを判定
+export function isBacklogGame(playtimeMinutes: number): boolean {
+  return playtimeMinutes < BACKLOG_THRESHOLD_MINUTES;
 }
 
-// 成長段階による攻撃力倍率
-export const GROWTH_MULTIPLIER: Record<GrowthStage, number> = {
-  weak: 0.5,
-  normal: 1.0,
-  strong: 1.5,
-  graduated: 0,  // 使用不可
-};
-
-// レアリティ判定（所有率から）
-export function calculateRarity(ownershipRate: number): Rarity {
-  // 所有率が低いほどレア
-  if (ownershipRate <= 1) return 'ultraRare';    // 1%以下 → UC
-  if (ownershipRate <= 5) return 'superRare';    // 5%以下 → SR
-  if (ownershipRate <= 20) return 'rare';        // 20%以下 → R
-  return 'common';                                // それ以上 → C
-}
-
-// 攻撃力計算
+// 攻撃力計算（プレイ時間0〜30分で算出、30分が最大）
+// 攻撃力 = (プレイ時間 / 30) × 100 × レアリティ倍率
 export function calculateAttack(
-  baseAttack: number,
   playtimeMinutes: number,
   rarity: Rarity
 ): number {
-  const stage = getGrowthStage(playtimeMinutes);
-  if (stage === 'graduated') return 0;
+  // 30分以上は積みゲーではないので0
+  if (playtimeMinutes >= BACKLOG_THRESHOLD_MINUTES) return 0;
 
-  const growthMultiplier = GROWTH_MULTIPLIER[stage];
   const rarityCap = RARITY_CONFIG[rarity].growthCap;
+  // プレイ時間に応じて0〜100の攻撃力、それにレアリティ倍率をかける
+  const baseAttack = (playtimeMinutes / BACKLOG_THRESHOLD_MINUTES) * 100;
 
-  return Math.floor(baseAttack * growthMultiplier * rarityCap);
+  return Math.floor(baseAttack * rarityCap);
 }
 
 // HP計算（高評価率から）

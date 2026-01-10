@@ -11,7 +11,7 @@ import {
   GENRE_SKILL_MAP,
   calculateAttack,
   calculateHP,
-  getGrowthStage,
+  isBacklogGame,
   GenreSkill,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -50,10 +50,9 @@ interface SteamData {
 }
 
 
-// AIのデッキを生成
+// AIのデッキを生成（積みゲーのみ）
 function generateAIDeck(availableCards: BattleCardType[]): Deck {
   const shuffled = [...availableCards]
-    .filter(c => !c.isGraduated)
     .sort(() => Math.random() - 0.5);
 
   const frontLine: (BattleCardType | null)[] = [];
@@ -94,7 +93,6 @@ function createBattleCard(
     .map(genre => GENRE_SKILL_MAP[genre])
     .filter((skill): skill is GenreSkill => skill !== undefined);
 
-  const baseAttack = 50;
   const reviewScore = 75;
 
   return {
@@ -103,16 +101,14 @@ function createBattleCard(
     headerImage: game.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
     hp: calculateHP(reviewScore),
     maxHp: calculateHP(reviewScore),
-    attack: calculateAttack(baseAttack, game.playtime_forever, rarity),
-    baseAttack,
+    attack: calculateAttack(game.playtime_forever, rarity),
     rarity,
     genres,
     skills: [...new Set(skills)],
     developer: details?.developers?.[0],
     publisher: details?.publishers?.[0],
     playtimeMinutes: game.playtime_forever,
-    isGraduated: getGrowthStage(game.playtime_forever) === 'graduated',
-    ownershipRate: reviewCount, // レビュー数を保存（表示用）
+    reviewCount,
   };
 }
 
@@ -244,10 +240,10 @@ function BattleContent() {
   const handleDeckComplete = (deck: Deck) => {
     setPlayerDeck(deck);
 
-    // AI対戦相手のデッキを生成
+    // AI対戦相手のデッキを生成（積みゲーのみ = 30分未満）
     if (steamData) {
       const availableCards = steamData.games
-        .filter(g => getGrowthStage(g.playtime_forever) !== 'graduated')
+        .filter(g => isBacklogGame(g.playtime_forever))
         .map(g => createBattleCard(g, gameDetails.get(g.appid)));
       const aiDeck = generateAIDeck(availableCards);
       setOpponentDeck(aiDeck);
