@@ -49,123 +49,6 @@ interface SteamData {
   games: Game[];
 }
 
-// ダミーゲームデータ（テスト用）
-const DUMMY_GAMES: Game[] = [
-  // レジェンダリー級（インディー・レア）
-  { appid: 251570, name: '7 Days to Die', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 108600, name: 'Project Zomboid', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 322330, name: "Don't Starve Together", playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  { appid: 242760, name: 'The Forest', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 892970, name: 'Valheim', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  // エピック級（RPG）
-  { appid: 814380, name: 'Sekiro: Shadows Die Twice', playtime_forever: 150, playtimeHours: 2.5, isBacklog: true, headerImage: '' },
-  { appid: 1245620, name: 'ELDEN RING', playtime_forever: 180, playtimeHours: 3, isBacklog: true, headerImage: '' },
-  { appid: 374320, name: 'DARK SOULS III', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 1091500, name: 'Cyberpunk 2077', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 1174180, name: 'Red Dead Redemption 2', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  // レア級（アクション）
-  { appid: 292030, name: 'The Witcher 3: Wild Hunt', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 1151640, name: 'Horizon Zero Dawn', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  { appid: 1593500, name: "God of War", playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 1817070, name: 'Marvels Spider-Man Remastered', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 1817190, name: 'Marvels Spider-Man: Miles Morales', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  // アンコモン級（ストラテジー）
-  { appid: 289070, name: 'Civilization VI', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 281990, name: 'Stellaris', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 236390, name: 'War Thunder', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 1158310, name: 'Crusader Kings III', playtime_forever: 150, playtimeHours: 2.5, isBacklog: true, headerImage: '' },
-  { appid: 394360, name: 'Hearts of Iron IV', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  // コモン級（人気ゲー）
-  { appid: 730, name: 'Counter-Strike 2', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  { appid: 570, name: 'Dota 2', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 440, name: 'Team Fortress 2', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 271590, name: 'Grand Theft Auto V', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 252490, name: 'Rust', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  // ホラー
-  { appid: 381210, name: 'Dead by Daylight', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 268500, name: 'Outlast', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  { appid: 251060, name: 'Resident Evil 2', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 1196590, name: 'Resident Evil Village', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 418370, name: 'Resident Evil 7 Biohazard', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  // パズル
-  { appid: 400, name: 'Portal', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  { appid: 620, name: 'Portal 2', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 504230, name: 'Celeste', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 367520, name: 'Hollow Knight', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 1794680, name: 'Vampire Survivors', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  // シミュレーション
-  { appid: 255710, name: 'Cities: Skylines', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 313160, name: 'Farming Simulator 15', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  { appid: 294100, name: 'RimWorld', playtime_forever: 150, playtimeHours: 2.5, isBacklog: true, headerImage: '' },
-  { appid: 526870, name: 'Satisfactory', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 427520, name: 'Factorio', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  // 追加インディー
-  { appid: 413150, name: 'Stardew Valley', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 105600, name: 'Terraria', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 548430, name: 'Deep Rock Galactic', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 1145360, name: 'Hades', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 960090, name: 'Bloons TD 6', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  // FPS
-  { appid: 1085660, name: 'Destiny 2', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 359550, name: "Tom Clancy's Rainbow Six Siege", playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 578080, name: 'PUBG: BATTLEGROUNDS', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 1172470, name: 'Apex Legends', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 1938090, name: 'Call of Duty', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  // 格ゲー
-  { appid: 678950, name: 'DRAGON BALL FighterZ', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 1384160, name: 'Guilty Gear -Strive-', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 310950, name: 'Mortal Kombat X', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 1496790, name: 'TEKKEN 8', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 1811260, name: 'Street Fighter 6', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  // レース
-  { appid: 1551360, name: 'Forza Horizon 5', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 1293830, name: 'Forza Horizon 4', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 244210, name: 'Assetto Corsa', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 805550, name: 'BeamNG.drive', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 310560, name: 'DiRT Rally', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  // VR
-  { appid: 546560, name: 'Half-Life: Alyx', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 438100, name: 'VRChat', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 617830, name: 'SUPERHOT VR', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 450540, name: 'Hot Dogs, Horseshoes & Hand Grenades', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 620980, name: 'Beat Saber', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  // MMO/オンライン
-  { appid: 306130, name: 'The Elder Scrolls Online', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 1449850, name: 'Yu-Gi-Oh! Master Duel', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 230410, name: 'Warframe', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 39210, name: 'FINAL FANTASY XIV Online', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 582010, name: 'Monster Hunter: World', playtime_forever: 150, playtimeHours: 2.5, isBacklog: true, headerImage: '' },
-  // アドベンチャー
-  { appid: 391540, name: 'Undertale', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  { appid: 1382330, name: 'Persona 5 Royal', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 1113560, name: 'NieR Replicant', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 524220, name: 'NieR:Automata', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 1366540, name: 'Dyson Sphere Program', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  // スポーツ
-  { appid: 1811270, name: 'EA SPORTS FC 24', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 252950, name: 'Rocket League', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 2369390, name: 'NBA 2K24', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 1151340, name: 'Fallout 76', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 377160, name: 'Fallout 4', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  // クラフト/サバイバル
-  { appid: 346110, name: 'ARK: Survival Evolved', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 22380, name: 'Fallout: New Vegas', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 304930, name: 'Unturned', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 4000, name: "Garry's Mod", playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 550, name: 'Left 4 Dead 2', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  // ローグライク
-  { appid: 250900, name: 'The Binding of Isaac: Rebirth', playtime_forever: 60, playtimeHours: 1, isBacklog: true, headerImage: '' },
-  { appid: 632360, name: 'Risk of Rain 2', playtime_forever: 90, playtimeHours: 1.5, isBacklog: true, headerImage: '' },
-  { appid: 1092790, name: 'Inscryption', playtime_forever: 45, playtimeHours: 0.75, isBacklog: true, headerImage: '' },
-  { appid: 242680, name: 'Nuclear Throne', playtime_forever: 120, playtimeHours: 2, isBacklog: true, headerImage: '' },
-  { appid: 311690, name: 'Enter the Gungeon', playtime_forever: 30, playtimeHours: 0.5, isBacklog: true, headerImage: '' },
-  // 弱めの育成中カード（0-30分）
-  { appid: 1172620, name: 'Sea of Thieves', playtime_forever: 15, playtimeHours: 0.25, isBacklog: true, headerImage: '' },
-  { appid: 601150, name: 'Devil May Cry 5', playtime_forever: 20, playtimeHours: 0.33, isBacklog: true, headerImage: '' },
-  { appid: 814380, name: 'DOOM Eternal', playtime_forever: 25, playtimeHours: 0.42, isBacklog: true, headerImage: '' },
-  { appid: 1238810, name: 'Battlefield 2042', playtime_forever: 10, playtimeHours: 0.17, isBacklog: true, headerImage: '' },
-  { appid: 1599340, name: "Call of Duty: Modern Warfare II", playtime_forever: 5, playtimeHours: 0.08, isBacklog: true, headerImage: '' },
-];
 
 // AIのデッキを生成
 function generateAIDeck(availableCards: BattleCardType[]): Deck {
@@ -247,7 +130,7 @@ function BattleContent() {
   const [opponentDeck, setOpponentDeck] = useState<Deck | null>(null);
   const [, setBattleResult] = useState<BattleResult | null>(null);
 
-  // Steam IDの取得とデータ読み込み
+  // Steam IDの取得とデータ読み込み（キャッシュ対応）
   useEffect(() => {
     const savedSteamId = localStorage.getItem('steamId');
     if (!savedSteamId) {
@@ -256,18 +139,28 @@ function BattleContent() {
     }
     setSteamId(savedSteamId);
 
+    // セッションキャッシュを確認
+    const cacheKey = `battleSteamData_${savedSteamId}`;
+    const cachedData = sessionStorage.getItem(cacheKey);
+    if (cachedData) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        setSteamData(parsed);
+        setIsLoading(false);
+        return;
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+      }
+    }
+
     const fetchData = async () => {
       try {
         const response = await fetch(`/api/steam/games?steamId=${encodeURIComponent(savedSteamId)}`);
         const data = await response.json();
         if (response.ok) {
-          // ダミーゲームを追加（テスト用）
-          const existingAppIds = new Set(data.games.map((g: Game) => g.appid));
-          const newDummyGames = DUMMY_GAMES.filter(g => !existingAppIds.has(g.appid));
-          data.games = [...data.games, ...newDummyGames];
-          data.stats.totalGames = data.games.length;
-          data.stats.backlogCount = data.games.filter((g: Game) => g.isBacklog).length;
           setSteamData(data);
+          // セッションにキャッシュ
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
         } else {
           router.push('/');
         }
@@ -281,9 +174,24 @@ function BattleContent() {
     fetchData();
   }, [router]);
 
-  // ゲーム詳細の取得（全部読み込んでから表示）
+  // ゲーム詳細の取得（キャッシュ対応、全部読み込んでから表示）
   useEffect(() => {
-    if (!steamData?.games) return;
+    if (!steamData?.games || !steamId) return;
+
+    const detailsCacheKey = `battleGameDetails_${steamId}_${language}`;
+
+    // キャッシュを確認
+    const cachedDetails = sessionStorage.getItem(detailsCacheKey);
+    if (cachedDetails) {
+      try {
+        const parsed = JSON.parse(cachedDetails);
+        setGameDetails(new Map(Object.entries(parsed).map(([k, v]) => [Number(k), v as GameDetail])));
+        setIsLoadingDetails(false);
+        return;
+      } catch {
+        sessionStorage.removeItem(detailsCacheKey);
+      }
+    }
 
     const fetchDetails = async () => {
       setIsLoadingDetails(true);
@@ -322,10 +230,15 @@ function BattleContent() {
       // 全部読み込んでから一括で設定
       setGameDetails(allDetails);
       setIsLoadingDetails(false);
+
+      // キャッシュに保存
+      const detailsObj: Record<number, GameDetail> = {};
+      allDetails.forEach((v, k) => { detailsObj[k] = v; });
+      sessionStorage.setItem(detailsCacheKey, JSON.stringify(detailsObj));
     };
 
     fetchDetails();
-  }, [steamData?.games, language]);
+  }, [steamData?.games, steamId, language]);
 
   // デッキ完成時
   const handleDeckComplete = (deck: Deck) => {
