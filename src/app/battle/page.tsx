@@ -228,6 +228,7 @@ function BattleContent() {
   const router = useRouter();
   const { language, setLanguage } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
+  const [steamId, setSteamId] = useState<string | null>(null);
   const [steamData, setSteamData] = useState<SteamData | null>(null);
   const [gameDetails, setGameDetails] = useState<Map<number, GameDetail>>(new Map());
   const [phase, setPhase] = useState<'deck' | 'battle' | 'result'>('deck');
@@ -242,6 +243,7 @@ function BattleContent() {
       router.push('/');
       return;
     }
+    setSteamId(savedSteamId);
 
     const fetchData = async () => {
       try {
@@ -409,6 +411,9 @@ function BattleContent() {
             onBattleEnd={handleBattleEnd}
             onRematch={handleRematch}
             onBackToLobby={handleCancel}
+            steamId={steamId || undefined}
+            personaName={steamData?.profile?.personaName}
+            avatarUrl={steamData?.profile?.avatarUrl}
           />
         )}
       </main>

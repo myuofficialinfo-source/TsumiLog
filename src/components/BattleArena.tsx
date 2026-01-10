@@ -18,6 +18,9 @@ interface BattleArenaProps {
   onBattleEnd: (result: BattleResult) => void;
   onRematch: () => void;
   onBackToLobby: () => void;
+  steamId?: string;
+  personaName?: string;
+  avatarUrl?: string;
 }
 
 // カードの攻撃インターバルを計算
@@ -97,12 +100,23 @@ export default function BattleArena({
   opponentDeck,
   onRematch,
   onBackToLobby,
+  steamId,
+  personaName,
+  avatarUrl,
 }: BattleArenaProps) {
   const { language } = useLanguage();
   const [battleState, setBattleState] = useState<'preparing' | 'fighting' | 'finished'>('preparing');
   const [showBattleStart, setShowBattleStart] = useState(true);
   const [showResultPopup, setShowResultPopup] = useState(false);
   const [winner, setWinner] = useState<'player' | 'opponent' | 'draw' | null>(null);
+  const [battleStats, setBattleStats] = useState<{
+    graduations: number;
+    wins: number;
+    score: number;
+    rank: number | null;
+    newGraduations: Array<{ appid: number; name: string }>;
+  } | null>(null);
+  const battleReportedRef = useRef(false);
 
   // リアルタイムバトル用state
   const [battleCards, setBattleCards] = useState<BattleCardState[]>([]);
@@ -154,6 +168,55 @@ export default function BattleArena({
     const timer = setTimeout(() => setShowBattleStart(false), 2000);
     return () => clearTimeout(timer);
   }, [showBattleStart]);
+
+  // バトル結果をAPIに送信
+  useEffect(() => {
+    if (battleState !== 'finished' || !winner || battleReportedRef.current) return;
+    if (!steamId) return;
+
+    battleReportedRef.current = true;
+
+    const reportBattle = async () => {
+      try {
+        // 卒業済みカード（10時間以上プレイ）を抽出
+        const allCards = [...playerDeck.frontLine, ...playerDeck.backLine].filter(
+          (c): c is BattleCardType => c !== null
+        );
+        const graduatedGames = allCards
+          .filter(c => c.playtimeMinutes >= 600) // 10時間 = 600分
+          .map(c => ({ appid: c.appid, name: c.name }));
+
+        const result = winner === 'player' ? 'win' : winner === 'opponent' ? 'lose' : 'draw';
+
+        const response = await fetch('/api/battle', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            steamId,
+            result,
+            personaName,
+            avatarUrl,
+            graduatedGames,
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setBattleStats({
+            graduations: data.userStats.graduations,
+            wins: data.userStats.wins,
+            score: data.userStats.score,
+            rank: data.userStats.rank,
+            newGraduations: data.newGraduations || [],
+          });
+        }
+      } catch (error) {
+        console.error('Failed to report battle:', error);
+      }
+    };
+
+    reportBattle();
+  }, [battleState, winner, steamId, personaName, avatarUrl, playerDeck]);
 
   // バトル初期化
   useEffect(() => {
@@ -898,11 +961,62 @@ export default function BattleArena({
               {winner === 'opponent' && <span style={{ color: 'var(--pop-red)' }}>{language === 'ja' ? '敗北...' : 'Defeat...'}</span>}
               {winner === 'draw' && <span style={{ color: 'var(--pop-yellow)' }}>{language === 'ja' ? '引き分け' : 'Draw'}</span>}
             </h2>
-            <p className="text-gray-600 mb-6">
+            <p className="text-gray-600 mb-4">
               {winner === 'player' && (language === 'ja' ? 'おめでとうございます！' : 'Congratulations!')}
               {winner === 'opponent' && (language === 'ja' ? 'また挑戦しよう！' : 'Try again!')}
               {winner === 'draw' && (language === 'ja' ? '互角の戦いでした！' : 'It was a close fight!')}
             </p>
+
+            {/* ランキング情報 */}
+            {battleStats && steamId && (
+              <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left">
+                <h3 className="text-sm font-bold text-gray-600 mb-2">
+                  {language === 'ja' ? 'あなたの戦績' : 'Your Stats'}
+                </h3>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <p className="text-2xl font-black" style={{ color: 'var(--pop-green)' }}>
+                      {battleStats.wins}
+                    </p>
+                    <p className="text-xs text-gray-500">{language === 'ja' ? '勝利' : 'Wins'}</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black" style={{ color: 'var(--pop-blue)' }}>
+                      {battleStats.graduations}
+                    </p>
+                    <p className="text-xs text-gray-500">{language === 'ja' ? '卒業' : 'Grads'}</p>
+                  </div>
+                  <div>
+                    <p className="text-2xl font-black" style={{ color: 'var(--pop-purple)' }}>
+                      {battleStats.score}
+                    </p>
+                    <p className="text-xs text-gray-500">{language === 'ja' ? 'スコア' : 'Score'}</p>
+                  </div>
+                </div>
+                {battleStats.rank && (
+                  <p className="text-center mt-2 text-sm">
+                    <span className="font-bold" style={{ color: 'var(--pop-yellow)' }}>
+                      #{battleStats.rank}
+                    </span>
+                    <span className="text-gray-500 ml-1">
+                      {language === 'ja' ? '位' : 'Rank'}
+                    </span>
+                  </p>
+                )}
+                {battleStats.newGraduations.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-300">
+                    <p className="text-xs font-bold text-green-600 mb-1">
+                      🎓 {language === 'ja' ? '新しく卒業！' : 'New Graduations!'}
+                    </p>
+                    {battleStats.newGraduations.map(g => (
+                      <p key={g.appid} className="text-xs text-gray-600 truncate">
+                        {g.name}
+                      </p>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="flex flex-col gap-3">
               <button
