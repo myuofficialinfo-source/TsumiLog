@@ -1,17 +1,16 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import BattleCard from './BattleCard';
 import {
   BattleCard as BattleCardType,
   Deck,
-  BattleLogEntry,
   BattleResult,
   GenreSkill,
   SKILL_DESCRIPTIONS,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Swords, Zap, Trophy, RotateCcw, Home, X } from 'lucide-react';
+import { Swords, Zap, Trophy, RotateCcw, Home, X, Play, FastForward } from 'lucide-react';
 
 interface BattleArenaProps {
   playerDeck: Deck;
@@ -19,6 +18,19 @@ interface BattleArenaProps {
   onBattleEnd: (result: BattleResult) => void;
   onRematch: () => void;
   onBackToLobby: () => void;
+}
+
+// カードの攻撃インターバルを計算（攻撃力が高いほど遅い、HPが高いほど速い）
+function calculateInterval(card: BattleCardType): number {
+  // 基本インターバル: 2000ms
+  // 攻撃力補正: 攻撃力10ごとに+100ms（最大+500ms）
+  // HP補正: HP100ごとに-50ms（最大-300ms）
+  const baseInterval = 2000;
+  const attackPenalty = Math.min(500, Math.floor(card.attack / 10) * 100);
+  const hpBonus = Math.min(300, Math.floor(card.hp / 100) * 50);
+  // 先制攻撃持ちは最初のインターバルが半分
+  const firstStrikeBonus = card.skills.includes('firstStrike') ? -500 : 0;
+  return Math.max(800, baseInterval + attackPenalty - hpBonus + firstStrikeBonus);
 }
 
 // スキル効果の適用
@@ -42,11 +54,11 @@ function applySkillEffect(
   // 攻撃者のスキル
   attacker.skills.forEach(skill => {
     switch (skill) {
-      case 'absorb': // 吸収
+      case 'absorb':
         healAmount = Math.floor(damage * 0.3);
         skillUsed = skill;
         break;
-      case 'ambush': // 奇襲
+      case 'ambush':
         if (Math.random() < 0.25) {
           damage *= 2;
           isCritical = true;
@@ -59,15 +71,15 @@ function applySkillEffect(
   // 防御者のスキル
   defender.skills.forEach(skill => {
     switch (skill) {
-      case 'defense': // 防御
+      case 'defense':
         damage = Math.floor(damage * 0.7);
         skillUsed = skill;
         break;
-      case 'reflect': // 反射
+      case 'reflect':
         isReflected = true;
         skillUsed = skill;
         break;
-      case 'fear': // 恐怖
+      case 'fear':
         damage = Math.floor(damage * 0.8);
         skillUsed = skill;
         break;
@@ -77,130 +89,14 @@ function applySkillEffect(
   return { damage, healAmount, isReflected, isCritical, skillUsed };
 }
 
-// バトルシミュレーション
-function simulateBattle(
-  playerDeck: Deck,
-  opponentDeck: Deck
-): { log: BattleLogEntry[]; winner: 'player' | 'opponent' | 'draw' } {
-  const log: BattleLogEntry[] = [];
-  let turn = 0;
-
-  // カードのコピーを作成（HPを変更するため）
-  const playerCards = [
-    ...playerDeck.frontLine.filter((c): c is BattleCardType => c !== null).map(c => ({ ...c })),
-    ...playerDeck.backLine.filter((c): c is BattleCardType => c !== null).map(c => ({ ...c })),
-  ];
-  const opponentCards = [
-    ...opponentDeck.frontLine.filter((c): c is BattleCardType => c !== null).map(c => ({ ...c })),
-    ...opponentDeck.backLine.filter((c): c is BattleCardType => c !== null).map(c => ({ ...c })),
-  ];
-
-  // 先制攻撃持ちを先に
-  playerCards.sort((a, b) => {
-    const aFirst = a.skills.includes('firstStrike') ? 1 : 0;
-    const bFirst = b.skills.includes('firstStrike') ? 1 : 0;
-    return bFirst - aFirst;
-  });
-  opponentCards.sort((a, b) => {
-    const aFirst = a.skills.includes('firstStrike') ? 1 : 0;
-    const bFirst = b.skills.includes('firstStrike') ? 1 : 0;
-    return bFirst - aFirst;
-  });
-
-  // シナジーボーナスを適用
-  const applyBonuses = (cards: BattleCardType[], synergies: typeof playerDeck.synergies) => {
-    synergies.forEach(synergy => {
-      cards.forEach(card => {
-        if (synergy.effect.attackBonus) {
-          card.attack = Math.floor(card.attack * (1 + synergy.effect.attackBonus / 100));
-        }
-        if (synergy.effect.hpBonus) {
-          card.hp = Math.floor(card.hp * (1 + synergy.effect.hpBonus / 100));
-          card.maxHp = card.hp;
-        }
-      });
-    });
-  };
-  applyBonuses(playerCards, playerDeck.synergies);
-  applyBonuses(opponentCards, opponentDeck.synergies);
-
-  // バトルループ
-  while (playerCards.some(c => c.hp > 0) && opponentCards.some(c => c.hp > 0) && turn < 100) {
-    turn++;
-
-    // プレイヤーの攻撃
-    const playerAttacker = playerCards.find(c => c.hp > 0);
-    const opponentDefender = opponentCards.find(c => c.hp > 0);
-
-    if (playerAttacker && opponentDefender) {
-      const result = applySkillEffect(playerAttacker, opponentDefender, playerAttacker.attack);
-      opponentDefender.hp -= result.damage;
-
-      if (result.healAmount > 0) {
-        playerAttacker.hp = Math.min(playerAttacker.maxHp, playerAttacker.hp + result.healAmount);
-      }
-
-      if (result.isReflected) {
-        const reflectDamage = Math.floor(result.damage * 0.2);
-        playerAttacker.hp -= reflectDamage;
-      }
-
-      log.push({
-        turn,
-        attacker: playerAttacker.name,
-        defender: opponentDefender.name,
-        damage: result.damage,
-        skill: result.skillUsed,
-        isCritical: result.isCritical,
-        isReflected: result.isReflected,
-        healAmount: result.healAmount,
-      });
-    }
-
-    // 相手の攻撃
-    const opponentAttacker = opponentCards.find(c => c.hp > 0);
-    const playerDefender = playerCards.find(c => c.hp > 0);
-
-    if (opponentAttacker && playerDefender) {
-      const result = applySkillEffect(opponentAttacker, playerDefender, opponentAttacker.attack);
-      playerDefender.hp -= result.damage;
-
-      if (result.healAmount > 0) {
-        opponentAttacker.hp = Math.min(opponentAttacker.maxHp, opponentAttacker.hp + result.healAmount);
-      }
-
-      if (result.isReflected) {
-        const reflectDamage = Math.floor(result.damage * 0.2);
-        opponentAttacker.hp -= reflectDamage;
-      }
-
-      log.push({
-        turn,
-        attacker: opponentAttacker.name,
-        defender: playerDefender.name,
-        damage: result.damage,
-        skill: result.skillUsed,
-        isCritical: result.isCritical,
-        isReflected: result.isReflected,
-        healAmount: result.healAmount,
-      });
-    }
-  }
-
-  // 勝敗判定
-  const playerAlive = playerCards.filter(c => c.hp > 0).length;
-  const opponentAlive = opponentCards.filter(c => c.hp > 0).length;
-
-  let winner: 'player' | 'opponent' | 'draw';
-  if (playerAlive > opponentAlive) {
-    winner = 'player';
-  } else if (opponentAlive > playerAlive) {
-    winner = 'opponent';
-  } else {
-    winner = 'draw';
-  }
-
-  return { log, winner };
+// リアルタイムバトル用カード型
+interface BattleCardState extends BattleCardType {
+  currentHp: number;
+  currentTimer: number;
+  maxTimer: number;
+  isPlayer: boolean;
+  position: 'front' | 'back';
+  index: number;
 }
 
 export default function BattleArena({
@@ -213,153 +109,355 @@ export default function BattleArena({
   const [battleState, setBattleState] = useState<'preparing' | 'fighting' | 'finished'>('preparing');
   const [showBattleStart, setShowBattleStart] = useState(true);
   const [showResultPopup, setShowResultPopup] = useState(false);
-  const [currentLogIndex, setCurrentLogIndex] = useState(0);
-  const [battleLog, setBattleLog] = useState<BattleLogEntry[]>([]);
   const [winner, setWinner] = useState<'player' | 'opponent' | 'draw' | null>(null);
-  const [displayedCards, setDisplayedCards] = useState<{
-    player: { front: BattleCardType[]; back: BattleCardType[] };
-    opponent: { front: BattleCardType[]; back: BattleCardType[] };
-  }>({
-    player: { front: [], back: [] },
-    opponent: { front: [], back: [] },
-  });
+
+  // リアルタイムバトル用state
+  const [battleCards, setBattleCards] = useState<BattleCardState[]>([]);
   const [playerTotalHp, setPlayerTotalHp] = useState(0);
   const [playerMaxHp, setPlayerMaxHp] = useState(0);
   const [opponentTotalHp, setOpponentTotalHp] = useState(0);
   const [opponentMaxHp, setOpponentMaxHp] = useState(0);
+  const [speed, setSpeed] = useState(1);
 
-  // バトルエフェクト用state
+  // エフェクト用state
   const [currentAction, setCurrentAction] = useState<{
     attacker: string;
+    attackerIndex: number;
+    attackerIsPlayer: boolean;
     defender: string;
     damage: number;
     isCritical: boolean;
     isPlayerAttacking: boolean;
     skill?: GenreSkill;
   } | null>(null);
-  const [showDamage, setShowDamage] = useState(false);
+  const [damageDisplay, setDamageDisplay] = useState<{
+    target: 'player' | 'opponent';
+    damage: number;
+    isCritical: boolean;
+  } | null>(null);
   const [shakeTarget, setShakeTarget] = useState<'player' | 'opponent' | null>(null);
 
-  // バトル開始演出後にバトルを開始
+  // バトルログ
+  const [battleLog, setBattleLog] = useState<string[]>([]);
+
+  // アニメーションフレーム用ref
+  const animationRef = useRef<number | null>(null);
+  const lastTimeRef = useRef<number>(0);
+
+  // バトル開始演出
   useEffect(() => {
     if (!showBattleStart) return;
-
-    const timer = setTimeout(() => {
-      setShowBattleStart(false);
-    }, 2000);
-
+    const timer = setTimeout(() => setShowBattleStart(false), 2000);
     return () => clearTimeout(timer);
   }, [showBattleStart]);
 
-  // バトル開始
+  // バトル初期化
   useEffect(() => {
     if (battleState !== 'preparing' || showBattleStart) return;
 
-    // カードを前衛・後衛に分けて初期化
-    const playerFront = playerDeck.frontLine.filter((c): c is BattleCardType => c !== null);
-    const playerBack = playerDeck.backLine.filter((c): c is BattleCardType => c !== null);
-    const opponentFront = opponentDeck.frontLine.filter((c): c is BattleCardType => c !== null);
-    const opponentBack = opponentDeck.backLine.filter((c): c is BattleCardType => c !== null);
+    const cards: BattleCardState[] = [];
 
-    setDisplayedCards({
-      player: { front: playerFront, back: playerBack },
-      opponent: { front: opponentFront, back: opponentBack },
+    // プレイヤーカード初期化
+    playerDeck.frontLine.forEach((card, index) => {
+      if (card) {
+        const interval = calculateInterval(card);
+        cards.push({
+          ...card,
+          currentHp: card.hp,
+          currentTimer: 0,
+          maxTimer: interval,
+          isPlayer: true,
+          position: 'front',
+          index,
+        });
+      }
+    });
+    playerDeck.backLine.forEach((card, index) => {
+      if (card) {
+        const interval = calculateInterval(card);
+        cards.push({
+          ...card,
+          currentHp: card.hp,
+          currentTimer: 0,
+          maxTimer: interval,
+          isPlayer: true,
+          position: 'back',
+          index,
+        });
+      }
     });
 
-    // 合計HPを計算
-    const playerTotal = [...playerFront, ...playerBack].reduce((sum, c) => sum + c.hp, 0);
-    const opponentTotal = [...opponentFront, ...opponentBack].reduce((sum, c) => sum + c.hp, 0);
-    setPlayerTotalHp(playerTotal);
-    setPlayerMaxHp(playerTotal);
-    setOpponentTotalHp(opponentTotal);
-    setOpponentMaxHp(opponentTotal);
+    // 相手カード初期化
+    opponentDeck.frontLine.forEach((card, index) => {
+      if (card) {
+        const interval = calculateInterval(card);
+        cards.push({
+          ...card,
+          currentHp: card.hp,
+          currentTimer: 0,
+          maxTimer: interval,
+          isPlayer: false,
+          position: 'front',
+          index,
+        });
+      }
+    });
+    opponentDeck.backLine.forEach((card, index) => {
+      if (card) {
+        const interval = calculateInterval(card);
+        cards.push({
+          ...card,
+          currentHp: card.hp,
+          currentTimer: 0,
+          maxTimer: interval,
+          isPlayer: false,
+          position: 'back',
+          index,
+        });
+      }
+    });
 
-    // バトルシミュレーション
-    const { log, winner } = simulateBattle(playerDeck, opponentDeck);
-    setBattleLog(log);
-    setWinner(winner);
+    // シナジーボーナス適用
+    const applyBonus = (isPlayer: boolean, synergies: typeof playerDeck.synergies) => {
+      synergies.forEach(synergy => {
+        cards.forEach(card => {
+          if (card.isPlayer === isPlayer) {
+            if (synergy.effect.attackBonus) {
+              card.attack = Math.floor(card.attack * (1 + synergy.effect.attackBonus / 100));
+            }
+            if (synergy.effect.hpBonus) {
+              card.hp = Math.floor(card.hp * (1 + synergy.effect.hpBonus / 100));
+              card.currentHp = card.hp;
+              card.maxHp = card.hp;
+            }
+          }
+        });
+      });
+    };
+    applyBonus(true, playerDeck.synergies);
+    applyBonus(false, opponentDeck.synergies);
+
+    setBattleCards(cards);
+
+    // HP計算
+    const playerHp = cards.filter(c => c.isPlayer).reduce((sum, c) => sum + c.hp, 0);
+    const opponentHp = cards.filter(c => !c.isPlayer).reduce((sum, c) => sum + c.hp, 0);
+    setPlayerTotalHp(playerHp);
+    setPlayerMaxHp(playerHp);
+    setOpponentTotalHp(opponentHp);
+    setOpponentMaxHp(opponentHp);
+
     setBattleState('fighting');
   }, [battleState, playerDeck, opponentDeck, showBattleStart]);
 
-  // ログを再生
+  // アクション処理用のref
+  const pendingActionRef = useRef<{
+    attacker: string;
+    attackerIndex: number;
+    attackerIsPlayer: boolean;
+    defender: string;
+    damage: number;
+    isCritical: boolean;
+    isPlayerAttacking: boolean;
+    skill?: GenreSkill;
+  } | null>(null);
+
+  // リアルタイムバトルループ
   useEffect(() => {
-    if (battleState !== 'fighting' || currentLogIndex >= battleLog.length) {
-      if (battleState === 'fighting' && currentLogIndex >= battleLog.length) {
-        setBattleState('finished');
-        // HP0になったら1秒待ってからポップアップを表示
-        setTimeout(() => setShowResultPopup(true), 1000);
+    if (battleState !== 'fighting') return;
+
+    const tick = (timestamp: number) => {
+      if (!lastTimeRef.current) lastTimeRef.current = timestamp;
+      const deltaTime = (timestamp - lastTimeRef.current) * speed;
+      lastTimeRef.current = timestamp;
+
+      setBattleCards(prevCards => {
+        const newCards = [...prevCards];
+        let actionOccurred = false;
+
+        // 生存カードのみ処理
+        const aliveCards = newCards.filter(c => c.currentHp > 0);
+        const playerAlive = aliveCards.filter(c => c.isPlayer);
+        const opponentAlive = aliveCards.filter(c => !c.isPlayer);
+
+        // 勝敗判定
+        if (playerAlive.length === 0 || opponentAlive.length === 0) {
+          if (playerAlive.length === 0 && opponentAlive.length === 0) {
+            setWinner('draw');
+          } else if (playerAlive.length === 0) {
+            setWinner('opponent');
+          } else {
+            setWinner('player');
+          }
+          setBattleState('finished');
+          setTimeout(() => setShowResultPopup(true), 1000);
+          return newCards;
+        }
+
+        // 各カードのタイマー更新
+        aliveCards.forEach(card => {
+          if (actionOccurred) return;
+
+          card.currentTimer += deltaTime;
+
+          // タイマーが満タンになったら攻撃
+          if (card.currentTimer >= card.maxTimer) {
+            card.currentTimer = 0;
+
+            // ターゲット選択（前衛優先）
+            const enemies = card.isPlayer ? opponentAlive : playerAlive;
+            const frontEnemies = enemies.filter(e => e.position === 'front' && e.currentHp > 0);
+            const target = frontEnemies.length > 0
+              ? frontEnemies[Math.floor(Math.random() * frontEnemies.length)]
+              : enemies.filter(e => e.currentHp > 0)[0];
+
+            if (target) {
+              const result = applySkillEffect(card, target, card.attack);
+              target.currentHp = Math.max(0, target.currentHp - result.damage);
+
+              // HP回復
+              if (result.healAmount > 0) {
+                card.currentHp = Math.min(card.maxHp, card.currentHp + result.healAmount);
+              }
+
+              // 反射ダメージ
+              if (result.isReflected) {
+                const reflectDamage = Math.floor(result.damage * 0.2);
+                card.currentHp = Math.max(0, card.currentHp - reflectDamage);
+              }
+
+              pendingActionRef.current = {
+                attacker: card.name,
+                attackerIndex: card.index,
+                attackerIsPlayer: card.isPlayer,
+                defender: target.name,
+                damage: result.damage,
+                isCritical: result.isCritical,
+                isPlayerAttacking: card.isPlayer,
+                skill: result.skillUsed,
+              };
+              actionOccurred = true;
+            }
+          }
+        });
+
+        // HP合計更新
+        const newPlayerHp = newCards.filter(c => c.isPlayer).reduce((sum, c) => sum + Math.max(0, c.currentHp), 0);
+        const newOpponentHp = newCards.filter(c => !c.isPlayer).reduce((sum, c) => sum + Math.max(0, c.currentHp), 0);
+        setPlayerTotalHp(newPlayerHp);
+        setOpponentTotalHp(newOpponentHp);
+
+        return newCards;
+      });
+
+      // エフェクト表示（コールバック外で処理）
+      const action = pendingActionRef.current;
+      if (action) {
+        pendingActionRef.current = null;
+        setCurrentAction(action);
+        setDamageDisplay({
+          target: action.isPlayerAttacking ? 'opponent' : 'player',
+          damage: action.damage,
+          isCritical: action.isCritical,
+        });
+        setShakeTarget(action.isPlayerAttacking ? 'opponent' : 'player');
+
+        // ログ追加
+        setBattleLog(prev => [
+          `${action.attacker} → ${action.defender} (-${action.damage}${action.isCritical ? ' CRIT!' : ''})`,
+          ...prev.slice(0, 9),
+        ]);
+
+        // エフェクトクリア
+        setTimeout(() => {
+          setCurrentAction(null);
+          setDamageDisplay(null);
+          setShakeTarget(null);
+        }, 400 / speed);
       }
-      return;
-    }
 
-    const entry = battleLog[currentLogIndex];
-    const allPlayerCards = [...displayedCards.player.front, ...displayedCards.player.back];
-    const isPlayerAttacker = allPlayerCards.some(c => c.name === entry.attacker);
+      animationRef.current = requestAnimationFrame(tick);
+    };
 
-    // アクション設定（攻撃エフェクト表示）
-    setCurrentAction({
-      attacker: entry.attacker,
-      defender: entry.defender,
-      damage: entry.damage,
-      isCritical: entry.isCritical ?? false,
-      isPlayerAttacking: isPlayerAttacker,
-      skill: entry.skill,
-    });
-    setShowDamage(true);
-    setShakeTarget(isPlayerAttacker ? 'opponent' : 'player');
-
-    // ダメージ表示後にHPを更新
-    const damageTimer = setTimeout(() => {
-      if (isPlayerAttacker) {
-        setOpponentTotalHp(prev => Math.max(0, prev - entry.damage));
-      } else {
-        setPlayerTotalHp(prev => Math.max(0, prev - entry.damage));
-      }
-    }, 300);
-
-    // エフェクトをクリア
-    const clearTimer = setTimeout(() => {
-      setShowDamage(false);
-      setShakeTarget(null);
-      setCurrentAction(null);
-      setCurrentLogIndex(i => i + 1);
-    }, 800);
+    animationRef.current = requestAnimationFrame(tick);
 
     return () => {
-      clearTimeout(damageTimer);
-      clearTimeout(clearTimer);
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+      lastTimeRef.current = 0;
     };
-  }, [battleState, currentLogIndex, battleLog, displayedCards]);
+  }, [battleState, speed]);
 
   // スキップ
   const skipToEnd = useCallback(() => {
-    // 全ダメージを即座に適用
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+
+    // 即座にバトル終了
     let playerHp = playerMaxHp;
     let opponentHp = opponentMaxHp;
-    const allPlayerCards = [...displayedCards.player.front, ...displayedCards.player.back];
 
-    battleLog.forEach(entry => {
-      const isPlayerAttacker = allPlayerCards.some(c => c.name === entry.attacker);
-      if (isPlayerAttacker) {
-        opponentHp = Math.max(0, opponentHp - entry.damage);
-      } else {
-        playerHp = Math.max(0, playerHp - entry.damage);
-      }
-    });
+    // 簡易シミュレーション
+    const playerCards = battleCards.filter(c => c.isPlayer);
+    const opponentCards = battleCards.filter(c => !c.isPlayer);
+    const playerDps = playerCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
+    const opponentDps = opponentCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
+
+    // DPS比較で勝敗決定
+    const playerTime = opponentHp / playerDps;
+    const opponentTime = playerHp / opponentDps;
+
+    if (playerTime < opponentTime) {
+      opponentHp = 0;
+      setWinner('player');
+    } else if (opponentTime < playerTime) {
+      playerHp = 0;
+      setWinner('opponent');
+    } else {
+      setWinner('draw');
+    }
 
     setPlayerTotalHp(playerHp);
     setOpponentTotalHp(opponentHp);
-    setCurrentLogIndex(battleLog.length);
     setCurrentAction(null);
-    setShowDamage(false);
+    setDamageDisplay(null);
     setShakeTarget(null);
     setBattleState('finished');
-    // 1秒待ってからポップアップ
     setTimeout(() => setShowResultPopup(true), 1000);
-  }, [battleLog, playerMaxHp, opponentMaxHp, displayedCards]);
+  }, [battleCards, playerMaxHp, opponentMaxHp]);
+
+  // カードのタイマーバー表示用
+  const getCardTimerPercent = (card: BattleCardState) => {
+    return Math.min(100, (card.currentTimer / card.maxTimer) * 100);
+  };
+
+  // 表示用カード取得
+  const playerFrontCards = battleCards.filter(c => c.isPlayer && c.position === 'front');
+  const playerBackCards = battleCards.filter(c => c.isPlayer && c.position === 'back');
+  const opponentFrontCards = battleCards.filter(c => !c.isPlayer && c.position === 'front');
+  const opponentBackCards = battleCards.filter(c => !c.isPlayer && c.position === 'back');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* 速度コントロール */}
+      <div className="flex justify-center gap-2">
+        {[1, 2, 3, 5].map(s => (
+          <button
+            key={s}
+            onClick={() => setSpeed(s)}
+            className={`flex items-center gap-1 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] font-bold transition-all ${
+              speed === s ? 'bg-[#3D3D3D] text-white' : 'hover:bg-gray-100'
+            }`}
+            style={{ backgroundColor: speed === s ? '#3D3D3D' : 'var(--card-bg)' }}
+          >
+            {s === 1 ? <Play className="w-4 h-4" /> : <FastForward className="w-4 h-4" />}
+            x{s}
+          </button>
+        ))}
+      </div>
+
       {/* ヘッダー */}
       <div className="text-center">
         <h2 className="text-2xl font-black text-[#3D3D3D]">
@@ -378,52 +476,94 @@ export default function BattleArena({
       </div>
 
       {/* バトルフィールド */}
-      <div className="pop-card p-6 space-y-6 relative overflow-hidden">
+      <div className="pop-card p-6 space-y-4 relative overflow-hidden">
         {/* 相手側 */}
-        <div className={`space-y-3 transition-transform duration-100 ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}>
+        <div className={`space-y-2 transition-transform duration-100 ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}>
           {/* 相手HPバー */}
-          <div className="flex items-center gap-3 relative">
-            <span className="text-sm font-bold text-gray-500 w-16">
-              {language === 'ja' ? '相手' : 'Opponent'}
-            </span>
-            <div className={`flex-1 h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D] ${shakeTarget === 'opponent' ? 'animate-pulse' : ''}`}>
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
-                  backgroundColor: 'var(--pop-red)',
-                }}
-              />
-            </div>
-            <span className="text-sm font-bold w-20 text-right" style={{ color: 'var(--pop-red)' }}>
-              {opponentTotalHp} / {opponentMaxHp}
-            </span>
-            {/* ダメージ表示 */}
-            {showDamage && currentAction && currentAction.isPlayerAttacking && (
-              <div
-                className="absolute right-24 top-1/2 -translate-y-1/2 animate-damage-pop"
-                style={{ animation: 'damage-pop 0.5s ease-out forwards' }}
-              >
-                <span className={`text-2xl font-black ${currentAction.isCritical ? 'text-yellow-500' : 'text-red-500'}`}>
-                  -{currentAction.damage}
-                  {currentAction.isCritical && <span className="text-sm ml-1">CRIT!</span>}
-                </span>
+          <div className="relative">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-gray-500 w-16">
+                {language === 'ja' ? '相手' : 'Opponent'}
+              </span>
+              <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D] relative">
+                <div
+                  className="h-full rounded-full transition-all duration-200"
+                  style={{
+                    width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
+                    backgroundColor: 'var(--pop-red)',
+                  }}
+                />
+                {/* ダメージ表示（HPバー中央） */}
+                {damageDisplay && damageDisplay.target === 'opponent' && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ animation: 'damage-pop 0.4s ease-out forwards' }}
+                  >
+                    <span className={`text-3xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-white'}`}>
+                      -{damageDisplay.damage}
+                      {damageDisplay.isCritical && <span className="text-lg ml-1">!</span>}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
+              <span className="text-sm font-bold w-24 text-right" style={{ color: 'var(--pop-red)' }}>
+                {opponentTotalHp} / {opponentMaxHp}
+              </span>
+            </div>
           </div>
 
           {/* 相手後衛 */}
           <div className="flex gap-2 justify-center">
-            {displayedCards.opponent.back.map((card, index) => (
-              <BattleCard key={`opponent-back-${index}`} card={card} size="small" showStats={false} />
+            {opponentBackCards.map((card, index) => (
+              <div key={`opponent-back-${index}`} className="relative">
+                <BattleCard
+                  card={card}
+                  size="small"
+                  showStats={false}
+                  disabled={card.currentHp <= 0}
+                />
+                {/* タイマーバー */}
+                {card.currentHp > 0 && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b">
+                    <div
+                      className="h-full bg-yellow-400 rounded-b transition-all"
+                      style={{ width: `${getCardTimerPercent(card)}%` }}
+                    />
+                  </div>
+                )}
+                {/* 攻撃中エフェクト */}
+                {currentAction?.attacker === card.name && currentAction.attackerIsPlayer === false && (
+                  <div className="absolute inset-0 border-4 border-yellow-400 rounded-xl animate-pulse" />
+                )}
+              </div>
             ))}
           </div>
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '後衛' : 'Back Line'}</p>
 
           {/* 相手前衛 */}
           <div className="flex gap-2 justify-center">
-            {displayedCards.opponent.front.map((card, index) => (
-              <BattleCard key={`opponent-front-${index}`} card={card} size="small" showStats={false} />
+            {opponentFrontCards.map((card, index) => (
+              <div key={`opponent-front-${index}`} className="relative">
+                <BattleCard
+                  card={card}
+                  size="small"
+                  showStats={false}
+                  disabled={card.currentHp <= 0}
+                />
+                {/* タイマーバー */}
+                {card.currentHp > 0 && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b">
+                    <div
+                      className="h-full bg-yellow-400 rounded-b transition-all"
+                      style={{ width: `${getCardTimerPercent(card)}%` }}
+                    />
+                  </div>
+                )}
+                {/* 攻撃中エフェクト */}
+                {currentAction?.attacker === card.name && currentAction.attackerIsPlayer === false && (
+                  <div className="absolute inset-0 border-4 border-yellow-400 rounded-xl animate-pulse" />
+                )}
+              </div>
             ))}
           </div>
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
@@ -432,68 +572,109 @@ export default function BattleArena({
         {/* VS + アクション表示 */}
         <div className="text-center py-2 relative">
           <span className="text-4xl font-black text-gray-300">VS</span>
-          {/* 攻撃アクション表示 */}
           {currentAction && (
             <div
               className="absolute inset-0 flex items-center justify-center pointer-events-none"
-              style={{ animation: 'bounce-in 0.3s ease-out' }}
+              style={{ animation: 'bounce-in 0.2s ease-out' }}
             >
               <div className="bg-black/80 px-4 py-2 rounded-xl flex items-center gap-2">
-                <span className="text-white font-bold text-sm truncate max-w-20">{currentAction.attacker}</span>
+                <span className="text-white font-bold text-sm truncate max-w-24">{currentAction.attacker}</span>
                 <Swords className="w-5 h-5 text-orange-400 animate-pulse" />
-                <span className="text-white font-bold text-sm truncate max-w-20">{currentAction.defender}</span>
+                <span className="text-white font-bold text-sm truncate max-w-24">{currentAction.defender}</span>
               </div>
             </div>
           )}
         </div>
 
         {/* プレイヤー側 */}
-        <div className={`space-y-3 transition-transform duration-100 ${shakeTarget === 'player' ? 'animate-shake' : ''}`}>
+        <div className={`space-y-2 transition-transform duration-100 ${shakeTarget === 'player' ? 'animate-shake' : ''}`}>
           {/* プレイヤー前衛 */}
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
           <div className="flex gap-2 justify-center">
-            {displayedCards.player.front.map((card, index) => (
-              <BattleCard key={`player-front-${index}`} card={card} size="small" showStats={false} />
+            {playerFrontCards.map((card, index) => (
+              <div key={`player-front-${index}`} className="relative">
+                <BattleCard
+                  card={card}
+                  size="small"
+                  showStats={false}
+                  disabled={card.currentHp <= 0}
+                />
+                {/* タイマーバー */}
+                {card.currentHp > 0 && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b">
+                    <div
+                      className="h-full bg-yellow-400 rounded-b transition-all"
+                      style={{ width: `${getCardTimerPercent(card)}%` }}
+                    />
+                  </div>
+                )}
+                {/* 攻撃中エフェクト */}
+                {currentAction?.attacker === card.name && currentAction.attackerIsPlayer && (
+                  <div className="absolute inset-0 border-4 border-yellow-400 rounded-xl animate-pulse" />
+                )}
+              </div>
             ))}
           </div>
 
           {/* プレイヤー後衛 */}
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '後衛' : 'Back Line'}</p>
           <div className="flex gap-2 justify-center">
-            {displayedCards.player.back.map((card, index) => (
-              <BattleCard key={`player-back-${index}`} card={card} size="small" showStats={false} />
+            {playerBackCards.map((card, index) => (
+              <div key={`player-back-${index}`} className="relative">
+                <BattleCard
+                  card={card}
+                  size="small"
+                  showStats={false}
+                  disabled={card.currentHp <= 0}
+                />
+                {/* タイマーバー */}
+                {card.currentHp > 0 && (
+                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b">
+                    <div
+                      className="h-full bg-yellow-400 rounded-b transition-all"
+                      style={{ width: `${getCardTimerPercent(card)}%` }}
+                    />
+                  </div>
+                )}
+                {/* 攻撃中エフェクト */}
+                {currentAction?.attacker === card.name && currentAction.attackerIsPlayer && (
+                  <div className="absolute inset-0 border-4 border-yellow-400 rounded-xl animate-pulse" />
+                )}
+              </div>
             ))}
           </div>
 
           {/* プレイヤーHPバー */}
-          <div className="flex items-center gap-3 pt-2 relative">
-            <span className="text-sm font-bold text-gray-500 w-16">
-              {language === 'ja' ? 'あなた' : 'You'}
-            </span>
-            <div className={`flex-1 h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D] ${shakeTarget === 'player' ? 'animate-pulse' : ''}`}>
-              <div
-                className="h-full rounded-full transition-all duration-300"
-                style={{
-                  width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
-                  backgroundColor: 'var(--pop-green)',
-                }}
-              />
-            </div>
-            <span className="text-sm font-bold w-20 text-right" style={{ color: 'var(--pop-green)' }}>
-              {playerTotalHp} / {playerMaxHp}
-            </span>
-            {/* ダメージ表示 */}
-            {showDamage && currentAction && !currentAction.isPlayerAttacking && (
-              <div
-                className="absolute right-24 top-1/2 -translate-y-1/2"
-                style={{ animation: 'damage-pop 0.5s ease-out forwards' }}
-              >
-                <span className={`text-2xl font-black ${currentAction.isCritical ? 'text-yellow-500' : 'text-red-500'}`}>
-                  -{currentAction.damage}
-                  {currentAction.isCritical && <span className="text-sm ml-1">CRIT!</span>}
-                </span>
+          <div className="relative pt-2">
+            <div className="flex items-center gap-3">
+              <span className="text-sm font-bold text-gray-500 w-16">
+                {language === 'ja' ? 'あなた' : 'You'}
+              </span>
+              <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D] relative">
+                <div
+                  className="h-full rounded-full transition-all duration-200"
+                  style={{
+                    width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
+                    backgroundColor: 'var(--pop-green)',
+                  }}
+                />
+                {/* ダメージ表示（HPバー中央） */}
+                {damageDisplay && damageDisplay.target === 'player' && (
+                  <div
+                    className="absolute inset-0 flex items-center justify-center"
+                    style={{ animation: 'damage-pop 0.4s ease-out forwards' }}
+                  >
+                    <span className={`text-3xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-white'}`}>
+                      -{damageDisplay.damage}
+                      {damageDisplay.isCritical && <span className="text-lg ml-1">!</span>}
+                    </span>
+                  </div>
+                )}
               </div>
-            )}
+              <span className="text-sm font-bold w-24 text-right" style={{ color: 'var(--pop-green)' }}>
+                {playerTotalHp} / {playerMaxHp}
+              </span>
+            </div>
           </div>
         </div>
 
@@ -501,7 +682,7 @@ export default function BattleArena({
         {currentAction?.skill && (
           <div
             className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ animation: 'skill-flash 0.5s ease-out' }}
+            style={{ animation: 'skill-flash 0.4s ease-out' }}
           >
             <div className="bg-purple-600/90 px-6 py-3 rounded-xl">
               <span className="text-white font-black text-xl">
@@ -513,27 +694,13 @@ export default function BattleArena({
       </div>
 
       {/* バトルログ */}
-      <div className="pop-card p-4 max-h-40 overflow-y-auto">
+      <div className="pop-card p-4 max-h-32 overflow-y-auto">
         <h3 className="text-sm font-bold text-gray-600 mb-2">
           {language === 'ja' ? 'バトルログ' : 'Battle Log'}
         </h3>
-        <div className="space-y-1 text-sm">
-          {battleLog.slice(0, currentLogIndex).map((entry, index) => (
-            <div key={index} className="flex items-center gap-2">
-              <span className="text-gray-400">T{entry.turn}</span>
-              <span className="font-medium">{entry.attacker}</span>
-              <Swords className="w-3 h-3 text-orange-500" />
-              <span className="font-medium">{entry.defender}</span>
-              <span className="text-red-500">-{entry.damage}</span>
-              {entry.isCritical && (
-                <span className="text-yellow-500 font-bold">CRIT!</span>
-              )}
-              {entry.skill && (
-                <span className="text-purple-500 text-xs">
-                  [{SKILL_DESCRIPTIONS[entry.skill][language === 'ja' ? 'ja' : 'en'].split('（')[0]}]
-                </span>
-              )}
-            </div>
+        <div className="space-y-1 text-xs">
+          {battleLog.map((log, index) => (
+            <div key={index} className="text-gray-600">{log}</div>
           ))}
         </div>
       </div>
@@ -555,10 +722,7 @@ export default function BattleArena({
       {/* バトル開始演出 */}
       {showBattleStart && (
         <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div
-            className="text-center"
-            style={{ animation: 'bounce-in 0.5s ease-out' }}
-          >
+          <div className="text-center" style={{ animation: 'bounce-in 0.5s ease-out' }}>
             <div
               className="text-6xl md:text-8xl font-black text-white"
               style={{
@@ -581,10 +745,9 @@ export default function BattleArena({
       {showResultPopup && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div
-            className="pop-card p-8 max-w-md w-full mx-4 text-center animate-bounce-in"
+            className="pop-card p-8 max-w-md w-full mx-4 text-center"
             style={{ animation: 'bounce-in 0.5s ease-out' }}
           >
-            {/* 結果アイコン */}
             <div className="mb-6">
               {winner === 'player' && (
                 <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--pop-green)' }}>
@@ -603,23 +766,10 @@ export default function BattleArena({
               )}
             </div>
 
-            {/* 結果テキスト */}
             <h2 className="text-3xl font-black mb-2">
-              {winner === 'player' && (
-                <span style={{ color: 'var(--pop-green)' }}>
-                  {language === 'ja' ? '勝利！' : 'Victory!'}
-                </span>
-              )}
-              {winner === 'opponent' && (
-                <span style={{ color: 'var(--pop-red)' }}>
-                  {language === 'ja' ? '敗北...' : 'Defeat...'}
-                </span>
-              )}
-              {winner === 'draw' && (
-                <span style={{ color: 'var(--pop-yellow)' }}>
-                  {language === 'ja' ? '引き分け' : 'Draw'}
-                </span>
-              )}
+              {winner === 'player' && <span style={{ color: 'var(--pop-green)' }}>{language === 'ja' ? '勝利！' : 'Victory!'}</span>}
+              {winner === 'opponent' && <span style={{ color: 'var(--pop-red)' }}>{language === 'ja' ? '敗北...' : 'Defeat...'}</span>}
+              {winner === 'draw' && <span style={{ color: 'var(--pop-yellow)' }}>{language === 'ja' ? '引き分け' : 'Draw'}</span>}
             </h2>
             <p className="text-gray-600 mb-6">
               {winner === 'player' && (language === 'ja' ? 'おめでとうございます！' : 'Congratulations!')}
@@ -627,7 +777,6 @@ export default function BattleArena({
               {winner === 'draw' && (language === 'ja' ? '互角の戦いでした！' : 'It was a close fight!')}
             </p>
 
-            {/* ボタン */}
             <div className="flex flex-col gap-3">
               <button
                 onClick={() => {
