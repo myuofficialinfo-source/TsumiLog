@@ -228,6 +228,18 @@ export default function BattleArena({
   const [opponentTotalHp, setOpponentTotalHp] = useState(0);
   const [opponentMaxHp, setOpponentMaxHp] = useState(0);
 
+  // バトルエフェクト用state
+  const [currentAction, setCurrentAction] = useState<{
+    attacker: string;
+    defender: string;
+    damage: number;
+    isCritical: boolean;
+    isPlayerAttacking: boolean;
+    skill?: GenreSkill;
+  } | null>(null);
+  const [showDamage, setShowDamage] = useState(false);
+  const [shakeTarget, setShakeTarget] = useState<'player' | 'opponent' | null>(null);
+
   // バトル開始演出後にバトルを開始
   useEffect(() => {
     if (!showBattleStart) return;
@@ -274,37 +286,77 @@ export default function BattleArena({
     if (battleState !== 'fighting' || currentLogIndex >= battleLog.length) {
       if (battleState === 'fighting' && currentLogIndex >= battleLog.length) {
         setBattleState('finished');
-        // バトル終了時にポップアップを表示
-        setTimeout(() => setShowResultPopup(true), 500);
+        // HP0になったら1秒待ってからポップアップを表示
+        setTimeout(() => setShowResultPopup(true), 1000);
       }
       return;
     }
 
-    const timer = setTimeout(() => {
-      const entry = battleLog[currentLogIndex];
+    const entry = battleLog[currentLogIndex];
+    const allPlayerCards = [...displayedCards.player.front, ...displayedCards.player.back];
+    const isPlayerAttacker = allPlayerCards.some(c => c.name === entry.attacker);
 
-      // 合計HPを更新
-      const allPlayerCards = [...displayedCards.player.front, ...displayedCards.player.back];
-      const isPlayerAttacker = allPlayerCards.some(c => c.name === entry.attacker);
+    // アクション設定（攻撃エフェクト表示）
+    setCurrentAction({
+      attacker: entry.attacker,
+      defender: entry.defender,
+      damage: entry.damage,
+      isCritical: entry.isCritical ?? false,
+      isPlayerAttacking: isPlayerAttacker,
+      skill: entry.skill,
+    });
+    setShowDamage(true);
+    setShakeTarget(isPlayerAttacker ? 'opponent' : 'player');
 
+    // ダメージ表示後にHPを更新
+    const damageTimer = setTimeout(() => {
       if (isPlayerAttacker) {
         setOpponentTotalHp(prev => Math.max(0, prev - entry.damage));
       } else {
         setPlayerTotalHp(prev => Math.max(0, prev - entry.damage));
       }
+    }, 300);
 
+    // エフェクトをクリア
+    const clearTimer = setTimeout(() => {
+      setShowDamage(false);
+      setShakeTarget(null);
+      setCurrentAction(null);
       setCurrentLogIndex(i => i + 1);
-    }, 500);
+    }, 800);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(damageTimer);
+      clearTimeout(clearTimer);
+    };
   }, [battleState, currentLogIndex, battleLog, displayedCards]);
 
   // スキップ
   const skipToEnd = useCallback(() => {
+    // 全ダメージを即座に適用
+    let playerHp = playerMaxHp;
+    let opponentHp = opponentMaxHp;
+    const allPlayerCards = [...displayedCards.player.front, ...displayedCards.player.back];
+
+    battleLog.forEach(entry => {
+      const isPlayerAttacker = allPlayerCards.some(c => c.name === entry.attacker);
+      if (isPlayerAttacker) {
+        opponentHp = Math.max(0, opponentHp - entry.damage);
+      } else {
+        playerHp = Math.max(0, playerHp - entry.damage);
+      }
+    });
+
+    setPlayerTotalHp(playerHp);
+    setOpponentTotalHp(opponentHp);
     setCurrentLogIndex(battleLog.length);
+    setCurrentAction(null);
+    setShowDamage(false);
+    setShakeTarget(null);
     setBattleState('finished');
-    setTimeout(() => setShowResultPopup(true), 500);
-  }, [battleLog.length]);
+    // 1秒待ってからポップアップ
+    setTimeout(() => setShowResultPopup(true), 1000);
+  }, [battleLog, playerMaxHp, opponentMaxHp, displayedCards]);
 
   return (
     <div className="space-y-6">
@@ -326,17 +378,17 @@ export default function BattleArena({
       </div>
 
       {/* バトルフィールド */}
-      <div className="pop-card p-6 space-y-6">
+      <div className="pop-card p-6 space-y-6 relative overflow-hidden">
         {/* 相手側 */}
-        <div className="space-y-3">
+        <div className={`space-y-3 transition-transform duration-100 ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}>
           {/* 相手HPバー */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 relative">
             <span className="text-sm font-bold text-gray-500 w-16">
               {language === 'ja' ? '相手' : 'Opponent'}
             </span>
-            <div className="flex-1 h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D]">
+            <div className={`flex-1 h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D] ${shakeTarget === 'opponent' ? 'animate-pulse' : ''}`}>
               <div
-                className="h-full rounded-full transition-all duration-500"
+                className="h-full rounded-full transition-all duration-300"
                 style={{
                   width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
                   backgroundColor: 'var(--pop-red)',
@@ -346,6 +398,18 @@ export default function BattleArena({
             <span className="text-sm font-bold w-20 text-right" style={{ color: 'var(--pop-red)' }}>
               {opponentTotalHp} / {opponentMaxHp}
             </span>
+            {/* ダメージ表示 */}
+            {showDamage && currentAction && currentAction.isPlayerAttacking && (
+              <div
+                className="absolute right-24 top-1/2 -translate-y-1/2 animate-damage-pop"
+                style={{ animation: 'damage-pop 0.5s ease-out forwards' }}
+              >
+                <span className={`text-2xl font-black ${currentAction.isCritical ? 'text-yellow-500' : 'text-red-500'}`}>
+                  -{currentAction.damage}
+                  {currentAction.isCritical && <span className="text-sm ml-1">CRIT!</span>}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 相手後衛 */}
@@ -365,13 +429,26 @@ export default function BattleArena({
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
         </div>
 
-        {/* VS */}
-        <div className="text-center py-2">
+        {/* VS + アクション表示 */}
+        <div className="text-center py-2 relative">
           <span className="text-4xl font-black text-gray-300">VS</span>
+          {/* 攻撃アクション表示 */}
+          {currentAction && (
+            <div
+              className="absolute inset-0 flex items-center justify-center pointer-events-none"
+              style={{ animation: 'bounce-in 0.3s ease-out' }}
+            >
+              <div className="bg-black/80 px-4 py-2 rounded-xl flex items-center gap-2">
+                <span className="text-white font-bold text-sm truncate max-w-20">{currentAction.attacker}</span>
+                <Swords className="w-5 h-5 text-orange-400 animate-pulse" />
+                <span className="text-white font-bold text-sm truncate max-w-20">{currentAction.defender}</span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* プレイヤー側 */}
-        <div className="space-y-3">
+        <div className={`space-y-3 transition-transform duration-100 ${shakeTarget === 'player' ? 'animate-shake' : ''}`}>
           {/* プレイヤー前衛 */}
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
           <div className="flex gap-2 justify-center">
@@ -389,13 +466,13 @@ export default function BattleArena({
           </div>
 
           {/* プレイヤーHPバー */}
-          <div className="flex items-center gap-3 pt-2">
+          <div className="flex items-center gap-3 pt-2 relative">
             <span className="text-sm font-bold text-gray-500 w-16">
               {language === 'ja' ? 'あなた' : 'You'}
             </span>
-            <div className="flex-1 h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D]">
+            <div className={`flex-1 h-6 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D] ${shakeTarget === 'player' ? 'animate-pulse' : ''}`}>
               <div
-                className="h-full rounded-full transition-all duration-500"
+                className="h-full rounded-full transition-all duration-300"
                 style={{
                   width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
                   backgroundColor: 'var(--pop-green)',
@@ -405,8 +482,34 @@ export default function BattleArena({
             <span className="text-sm font-bold w-20 text-right" style={{ color: 'var(--pop-green)' }}>
               {playerTotalHp} / {playerMaxHp}
             </span>
+            {/* ダメージ表示 */}
+            {showDamage && currentAction && !currentAction.isPlayerAttacking && (
+              <div
+                className="absolute right-24 top-1/2 -translate-y-1/2"
+                style={{ animation: 'damage-pop 0.5s ease-out forwards' }}
+              >
+                <span className={`text-2xl font-black ${currentAction.isCritical ? 'text-yellow-500' : 'text-red-500'}`}>
+                  -{currentAction.damage}
+                  {currentAction.isCritical && <span className="text-sm ml-1">CRIT!</span>}
+                </span>
+              </div>
+            )}
           </div>
         </div>
+
+        {/* スキル発動エフェクト */}
+        {currentAction?.skill && (
+          <div
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ animation: 'skill-flash 0.5s ease-out' }}
+          >
+            <div className="bg-purple-600/90 px-6 py-3 rounded-xl">
+              <span className="text-white font-black text-xl">
+                {SKILL_DESCRIPTIONS[currentAction.skill][language === 'ja' ? 'ja' : 'en'].split('（')[0]}
+              </span>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* バトルログ */}
