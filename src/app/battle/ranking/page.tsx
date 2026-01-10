@@ -2,15 +2,15 @@
 
 import { useState, useEffect } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Trophy, Medal, Crown, ArrowLeft, Gamepad2, Users, Star } from 'lucide-react';
-import Link from 'next/link';
+import { Trophy, Medal, Crown, Gamepad2, Users, Star } from 'lucide-react';
+import { Header, Footer } from '@/components/Layout';
 
 interface RankingUser {
   rank: number;
   steamId: string;
   personaName: string;
   avatarUrl: string;
-  graduations: number;
+  sublimations: number;
   wins: number;
   score: number;
 }
@@ -89,26 +89,20 @@ export default function RankingPage() {
   }
 
   return (
-    <div className="min-h-screen py-8 px-4" style={{ backgroundColor: 'var(--background)' }}>
-      <div className="max-w-4xl mx-auto">
-        {/* ヘッダー */}
-        <div className="flex items-center gap-4 mb-6">
-          <Link
-            href="/battle"
-            className="p-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
-            style={{ backgroundColor: 'var(--card-bg)' }}
-          >
-            <ArrowLeft className="w-5 h-5" />
-          </Link>
-          <div className="flex items-center gap-3">
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
+      <Header showBack backHref="/battle" />
+
+      <main className="flex-grow py-8 px-4">
+        <div className="max-w-4xl mx-auto">
+          {/* ページタイトル */}
+          <div className="flex items-center gap-3 mb-6">
             <Trophy className="w-8 h-8" style={{ color: 'var(--pop-yellow)' }} />
             <h1 className="text-2xl font-black text-[#3D3D3D]">
               {language === 'ja' ? '世界ランキング' : 'World Ranking'}
             </h1>
           </div>
-        </div>
 
-        {/* ユーザー情報 */}
+          {/* ユーザー情報 */}
         {userInfo && (
           <div className="pop-card p-4 mb-6 border-4" style={{ borderColor: 'var(--pop-yellow)' }}>
             <div className="flex items-center gap-4">
@@ -139,7 +133,7 @@ export default function RankingPage() {
                     {language === 'ja' ? '勝利' : 'Wins'}: {userInfo.wins}
                   </span>
                   <span className="text-blue-600">
-                    {language === 'ja' ? '卒業' : 'Graduations'}: {userInfo.graduations}
+                    {language === 'ja' ? '昇華' : 'Sublimated'}: {userInfo.sublimations}
                   </span>
                 </div>
               </div>
@@ -207,7 +201,7 @@ export default function RankingPage() {
                       <p className="font-bold truncate">{user.personaName || 'Unknown'}</p>
                       <div className="flex gap-3 text-xs text-gray-600">
                         <span>{language === 'ja' ? '勝利' : 'Wins'}: {user.wins}</span>
-                        <span>{language === 'ja' ? '卒業' : 'Grad'}: {user.graduations}</span>
+                        <span>{language === 'ja' ? '昇華' : 'Sub'}: {user.sublimations}</span>
                       </div>
                     </div>
                     <div className="text-right">
@@ -274,19 +268,22 @@ export default function RankingPage() {
           </div>
         )}
 
-        {/* スコア計算方法の説明 */}
-        <div className="mt-6 pop-card p-4 text-sm text-gray-600">
-          <h3 className="font-bold mb-2 flex items-center gap-2">
-            <Star className="w-4 h-4 text-yellow-500" />
-            {language === 'ja' ? 'スコア計算方法' : 'Score Calculation'}
-          </h3>
-          <p>
-            {language === 'ja'
-              ? 'スコア = 卒業したゲーム数 × 勝利数。積みゲーを10時間以上プレイすると「卒業」になり、バトルに勝つとポイントになります！'
-              : 'Score = Graduated Games × Wins. Play backlog games for 10+ hours to graduate them, and win battles to earn points!'}
-          </p>
+          {/* スコア計算方法の説明 */}
+          <div className="mt-6 pop-card p-4 text-sm text-gray-600">
+            <h3 className="font-bold mb-2 flex items-center gap-2">
+              <Star className="w-4 h-4 text-yellow-500" />
+              {language === 'ja' ? 'スコア計算方法' : 'Score Calculation'}
+            </h3>
+            <p>
+              {language === 'ja'
+                ? 'スコア = (昇華数 × 10) + 勝利数。積みゲーを10時間以上プレイすると「昇華」になり、バトルに勝つとボーナスポイントになります！'
+                : 'Score = (Sublimated × 10) + Wins. Play backlog games for 10+ hours to sublimate them, and win battles to earn bonus points!'}
+            </p>
+          </div>
         </div>
-      </div>
+      </main>
+
+      <Footer />
     </div>
   );
 }

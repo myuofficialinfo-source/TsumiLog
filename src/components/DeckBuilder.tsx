@@ -196,7 +196,7 @@ export default function DeckBuilder({
 
   // ユーザーのランキング情報
   const [userStats, setUserStats] = useState<{
-    graduations: number;
+    sublimations: number;
     wins: number;
     score: number;
     rank: number | null;
@@ -216,7 +216,7 @@ export default function DeckBuilder({
         if (response.ok) {
           const data = await response.json();
           setUserStats({
-            graduations: data.graduations || 0,
+            sublimations: data.sublimations || 0,
             wins: data.wins || 0,
             score: data.score || 0,
             rank: data.rank,
@@ -510,8 +510,8 @@ export default function DeckBuilder({
                 <p className="text-xs text-gray-500">{language === 'ja' ? '勝利' : 'Wins'}</p>
               </div>
               <div>
-                <p className="text-lg font-black" style={{ color: 'var(--pop-blue)' }}>{userStats?.graduations ?? 0}</p>
-                <p className="text-xs text-gray-500">{language === 'ja' ? '卒業' : 'Grads'}</p>
+                <p className="text-lg font-black" style={{ color: 'var(--pop-blue)' }}>{userStats?.sublimations ?? 0}</p>
+                <p className="text-xs text-gray-500">{language === 'ja' ? '昇華' : 'Sublimated'}</p>
               </div>
             </div>
             <Link

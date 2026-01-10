@@ -2,8 +2,6 @@
 
 import { useState, useEffect, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import Link from 'next/link';
 import DeckBuilder from '@/components/DeckBuilder';
 import BattleArena from '@/components/BattleArena';
 import {
@@ -18,7 +16,8 @@ import {
   GenreSkill,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Loader2, ArrowLeft, Globe } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
+import { Header, Footer } from '@/components/Layout';
 
 interface Game {
   appid: number;
@@ -226,7 +225,7 @@ function createBattleCard(
 
 function BattleContent() {
   const router = useRouter();
-  const { language, setLanguage } = useLanguage();
+  const { language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [steamId, setSteamId] = useState<string | null>(null);
   const [steamData, setSteamData] = useState<SteamData | null>(null);
@@ -355,42 +354,7 @@ function BattleContent() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {/* ヘッダー */}
-      <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <Image src="/icons/icom.png" alt="TsumiNavi" width={48} height={48} />
-              <div>
-                <h1 className="text-2xl font-black gradient-text">
-                  {language === 'ja' ? '積みゲーバトル' : 'Backlog Battle'}
-                </h1>
-                <p className="text-xs text-gray-500 font-medium">
-                  {language === 'ja' ? '積みゲーで対戦しよう' : 'Battle with your backlog'}
-                </p>
-              </div>
-            </Link>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
-              style={{ backgroundColor: 'var(--card-bg)' }}
-            >
-              <Globe className="w-4 h-4" />
-              {language === 'ja' ? 'EN' : 'JA'}
-            </button>
-            <Link
-              href="/"
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
-              style={{ backgroundColor: 'var(--card-bg)' }}
-            >
-              <ArrowLeft className="w-4 h-4" />
-              {language === 'ja' ? '戻る' : 'Back'}
-            </Link>
-          </div>
-        </div>
-      </header>
+      <Header showBack backHref="/" />
 
       <main className="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
         {/* デッキ構築フェーズ */}
@@ -421,29 +385,7 @@ function BattleContent() {
         )}
       </main>
 
-      {/* フッター */}
-      <footer className="border-t-3 border-[#3D3D3D] py-8 mt-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
-        <div className="max-w-7xl mx-auto px-4 text-center">
-          <div className="flex justify-center mb-4">
-            <Image src="/icons/icom.png" alt="TsumiNavi" width={40} height={40} />
-          </div>
-          <p className="font-bold text-gray-600">
-            {language === 'ja' ? 'TsumiNavi - 積みゲーを見える化' : 'TsumiNavi - Visualize your backlog'}
-          </p>
-          <p className="text-sm text-gray-500 mt-2">
-            A personal project | Powered by Steam
-          </p>
-          <div className="flex justify-center gap-4 mt-3 text-xs text-gray-400">
-            <Link href="/privacy" className="hover:text-gray-300 transition-colors">
-              {language === 'ja' ? 'プライバシーポリシー' : 'Privacy Policy'}
-            </Link>
-            <span>|</span>
-            <Link href="/terms" className="hover:text-gray-300 transition-colors">
-              {language === 'ja' ? '利用規約' : 'Terms of Service'}
-            </Link>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 }

@@ -102,33 +102,32 @@ export async function getWinCount(steamId: string): Promise<number> {
   return parseInt(result[0]?.count || '0', 10);
 }
 
-// ユーザーのスコア計算（卒業数ベース + 勝利ボーナス）
-// スコア = 卒業数 + (勝利数 × 0.1)
-// 卒業がメイン、勝利は小さなボーナス
+// ユーザーのスコア計算（昇華数ベース + 勝利ボーナス）
+// スコア = (昇華数 × 10) + 勝利数
+// 昇華がメイン、勝利は小さなボーナス
 export async function getUserScore(steamId: string): Promise<{
-  graduations: number;
+  sublimations: number;
   wins: number;
   score: number;
 }> {
-  const graduations = await getGraduationCount(steamId);
+  const sublimations = await getGraduationCount(steamId);
   const wins = await getWinCount(steamId);
-  // スコアは小数点以下2桁まで（表示用に100倍して整数化することも可能）
-  const score = graduations + (wins * 0.1);
+  const score = (sublimations * 10) + wins;
   return {
-    graduations,
+    sublimations,
     wins,
-    score: Math.round(score * 100) / 100, // 小数点2桁
+    score,
   };
 }
 
 // ランキング取得（1勝以上のユーザーのみ）
-// スコア = 卒業数 + (勝利数 × 0.1)
+// スコア = (昇華数 × 10) + 勝利数
 export async function getRanking(limit: number = 100): Promise<Array<{
   rank: number;
   steamId: string;
   personaName: string;
   avatarUrl: string;
-  graduations: number;
+  sublimations: number;
   wins: number;
   score: number;
 }>> {
@@ -139,9 +138,9 @@ export async function getRanking(limit: number = 100): Promise<Array<{
         u.persona_name,
         u.avatar_url,
         u.created_at,
-        COALESCE(g.graduation_count, 0) as graduations,
+        COALESCE(g.graduation_count, 0) as sublimations,
         COALESCE(b.win_count, 0) as wins,
-        COALESCE(g.graduation_count, 0) + (COALESCE(b.win_count, 0) * 0.1) as score
+        (COALESCE(g.graduation_count, 0) * 10) + COALESCE(b.win_count, 0) as score
       FROM users u
       LEFT JOIN (
         SELECT steam_id, COUNT(*) as graduation_count
@@ -156,16 +155,16 @@ export async function getRanking(limit: number = 100): Promise<Array<{
       ) b ON u.steam_id = b.steam_id
     )
     SELECT
-      ROW_NUMBER() OVER (ORDER BY score DESC, graduations DESC, wins DESC, created_at ASC) as rank,
+      ROW_NUMBER() OVER (ORDER BY score DESC, sublimations DESC, wins DESC, created_at ASC) as rank,
       steam_id,
       persona_name,
       avatar_url,
-      graduations,
+      sublimations,
       wins,
       score
     FROM user_stats
     WHERE wins >= 1
-    ORDER BY score DESC, graduations DESC, wins DESC, created_at ASC
+    ORDER BY score DESC, sublimations DESC, wins DESC, created_at ASC
     LIMIT ${limit}
   `;
 
@@ -174,9 +173,9 @@ export async function getRanking(limit: number = 100): Promise<Array<{
     steamId: row.steam_id as string,
     personaName: row.persona_name as string || 'Unknown',
     avatarUrl: row.avatar_url as string || '',
-    graduations: parseInt(row.graduations as string, 10),
+    sublimations: parseInt(row.sublimations as string, 10),
     wins: parseInt(row.wins as string, 10),
-    score: parseFloat(row.score as string),
+    score: parseInt(row.score as string, 10),
   }));
 }
 
@@ -198,9 +197,9 @@ export async function getUserRank(steamId: string): Promise<number | null> {
     WITH user_stats AS (
       SELECT
         u.steam_id,
-        COALESCE(g.graduation_count, 0) + (COALESCE(b.win_count, 0) * 0.1) as score,
+        (COALESCE(g.graduation_count, 0) * 10) + COALESCE(b.win_count, 0) as score,
         COALESCE(b.win_count, 0) as wins,
-        COALESCE(g.graduation_count, 0) as graduations,
+        COALESCE(g.graduation_count, 0) as sublimations,
         u.created_at
       FROM users u
       LEFT JOIN (
@@ -219,7 +218,7 @@ export async function getUserRank(steamId: string): Promise<number | null> {
     ranked AS (
       SELECT
         steam_id,
-        ROW_NUMBER() OVER (ORDER BY score DESC, graduations DESC, wins DESC, created_at ASC) as rank
+        ROW_NUMBER() OVER (ORDER BY score DESC, sublimations DESC, wins DESC, created_at ASC) as rank
       FROM user_stats
     )
     SELECT rank FROM ranked WHERE steam_id = ${steamId}
