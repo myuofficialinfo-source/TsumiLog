@@ -9,7 +9,7 @@ import {
   getGrowthStage,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Swords, Shield, Heart, Sparkles, Zap } from 'lucide-react';
+import { Swords, Shield, Heart, Sparkles } from 'lucide-react';
 
 interface BattleCardProps {
   card: BattleCardType;
@@ -33,11 +33,11 @@ export default function BattleCard({
   const rarityConfig = RARITY_CONFIG[card.rarity];
   const growthStage = getGrowthStage(card.playtimeMinutes);
 
-  // サイズ設定
+  // サイズ設定（縦長カプセル画像用に調整）
   const sizeClasses = {
-    small: 'w-24 h-36',
-    medium: 'w-32 h-48',
-    large: 'w-40 h-60',
+    small: 'w-20 h-28',
+    medium: 'w-28 h-40',
+    large: 'w-36 h-52',
   };
 
   const fontSizes = {
@@ -90,11 +90,18 @@ export default function BattleCard({
       {/* カード画像 */}
       <div className="relative w-full h-full">
         <Image
-          src={card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`}
+          src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/library_600x900.jpg`}
           alt={card.name}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 200px"
+          onError={(e) => {
+            // カプセル画像がない場合はヘッダー画像にフォールバック
+            const target = e.target as HTMLImageElement;
+            if (!target.src.includes('header.jpg')) {
+              target.src = card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`;
+            }
+          }}
         />
 
         {/* オーバーレイ */}
@@ -194,9 +201,9 @@ export function CardSlot({
   const { language } = useLanguage();
 
   const sizeClasses = {
-    small: 'w-24 h-36',
-    medium: 'w-32 h-48',
-    large: 'w-40 h-60',
+    small: 'w-20 h-28',
+    medium: 'w-28 h-40',
+    large: 'w-36 h-52',
   };
 
   return (
@@ -205,7 +212,7 @@ export function CardSlot({
       className={`
         ${sizeClasses[size]}
         border-3 border-dashed border-gray-400 rounded-xl
-        flex flex-col items-center justify-center gap-2
+        flex flex-col items-center justify-center gap-1
         cursor-pointer hover:border-gray-600 hover:bg-gray-100/50
         transition-all duration-200
       `}
