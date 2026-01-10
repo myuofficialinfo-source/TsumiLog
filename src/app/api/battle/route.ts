@@ -101,6 +101,8 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const steamId = searchParams.get('steamId');
+    const personaName = searchParams.get('personaName');
+    const avatarUrl = searchParams.get('avatarUrl');
 
     if (!steamId) {
       return NextResponse.json(
@@ -108,6 +110,9 @@ export async function GET(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    // ユーザーがDBにいなければ登録
+    await upsertUser(steamId, personaName || undefined, avatarUrl || undefined);
 
     const userScore = await getUserScore(steamId);
     const userRank = await getUserRank(steamId);

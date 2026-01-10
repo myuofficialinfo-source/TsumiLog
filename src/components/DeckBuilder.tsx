@@ -208,7 +208,11 @@ export default function DeckBuilder({
 
     const fetchUserStats = async () => {
       try {
-        const response = await fetch(`/api/battle?steamId=${steamId}`);
+        const params = new URLSearchParams({ steamId });
+        if (personaName) params.append('personaName', personaName);
+        if (avatarUrl) params.append('avatarUrl', avatarUrl);
+
+        const response = await fetch(`/api/battle?${params.toString()}`);
         if (response.ok) {
           const data = await response.json();
           setUserStats({
@@ -224,7 +228,7 @@ export default function DeckBuilder({
     };
 
     fetchUserStats();
-  }, [steamId]);
+  }, [steamId, personaName, avatarUrl]);
 
   // 積みゲー（5時間以下）のみをフィルター
   const availableGames = useMemo(() => {
@@ -275,17 +279,26 @@ export default function DeckBuilder({
     common: 1,
   };
 
-  // ソートされたカード
+  // ソートされたカード（安定ソート：同値の場合はappidでソート）
   const sortedCards = useMemo(() => {
     const cards = [...availableCards].filter(card => !selectedAppIds.has(card.appid) && !card.isGraduated);
 
     switch (sortBy) {
       case 'rarity':
-        return cards.sort((a, b) => (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0));
+        return cards.sort((a, b) => {
+          const diff = (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+          return diff !== 0 ? diff : a.appid - b.appid;
+        });
       case 'attack':
-        return cards.sort((a, b) => b.attack - a.attack);
+        return cards.sort((a, b) => {
+          const diff = b.attack - a.attack;
+          return diff !== 0 ? diff : a.appid - b.appid;
+        });
       case 'playtime':
-        return cards.sort((a, b) => b.playtimeMinutes - a.playtimeMinutes);
+        return cards.sort((a, b) => {
+          const diff = b.playtimeMinutes - a.playtimeMinutes;
+          return diff !== 0 ? diff : a.appid - b.appid;
+        });
       default:
         return cards;
     }
