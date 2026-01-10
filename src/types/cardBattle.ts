@@ -1,7 +1,8 @@
 // カードバトル用の型定義
 
 // レアリティ（所有率の逆数で決定）
-export type Rarity = 'common' | 'uncommon' | 'rare' | 'epic' | 'legendary';
+// C(コモン), R(レア), SR(スーパーレア), UC(ウルトラレア)
+export type Rarity = 'common' | 'rare' | 'superRare' | 'ultraRare';
 
 // ジャンルスキル
 export type GenreSkill =
@@ -52,39 +53,32 @@ export const RARITY_CONFIG: Record<Rarity, {
   glowIntensity: number;
 }> = {
   common: {
-    label: { ja: 'コモン', en: 'Common' },
+    label: { ja: 'C', en: 'C' },
     growthCap: 1.0,
-    color: '#9CA3AF',
+    color: '#9CA3AF',  // グレー
     glowColor: 'rgba(156, 163, 175, 0.5)',
     glowIntensity: 0,
   },
-  uncommon: {
-    label: { ja: 'アンコモン', en: 'Uncommon' },
-    growthCap: 1.3,
-    color: '#22C55E',
-    glowColor: 'rgba(34, 197, 94, 0.6)',
+  rare: {
+    label: { ja: 'R', en: 'R' },
+    growthCap: 1.5,
+    color: '#3B82F6',  // 青
+    glowColor: 'rgba(59, 130, 246, 0.7)',
     glowIntensity: 1,
   },
-  rare: {
-    label: { ja: 'レア', en: 'Rare' },
-    growthCap: 1.6,
-    color: '#3B82F6',
-    glowColor: 'rgba(59, 130, 246, 0.7)',
+  superRare: {
+    label: { ja: 'SR', en: 'SR' },
+    growthCap: 2.0,
+    color: '#FFD700',  // 金
+    glowColor: 'rgba(255, 215, 0, 0.8)',
     glowIntensity: 2,
   },
-  epic: {
-    label: { ja: 'エピック', en: 'Epic' },
-    growthCap: 2.0,
-    color: '#A855F7',
-    glowColor: 'rgba(168, 85, 247, 0.8)',
-    glowIntensity: 3,
-  },
-  legendary: {
-    label: { ja: 'レジェンダリー', en: 'Legendary' },
+  ultraRare: {
+    label: { ja: 'UC', en: 'UC' },
     growthCap: 2.5,
-    color: '#F59E0B',
-    glowColor: 'rgba(245, 158, 11, 0.9)',
-    glowIntensity: 4,
+    color: '#FF6B6B',  // 虹色（ベースカラー）
+    glowColor: 'rgba(255, 107, 107, 0.9)',
+    glowIntensity: 3,
   },
 };
 
@@ -184,11 +178,10 @@ export const GROWTH_MULTIPLIER: Record<GrowthStage, number> = {
 // レアリティ判定（所有率から）
 export function calculateRarity(ownershipRate: number): Rarity {
   // 所有率が低いほどレア
-  if (ownershipRate <= 0.5) return 'legendary';   // 0.5%以下
-  if (ownershipRate <= 2) return 'epic';          // 2%以下
-  if (ownershipRate <= 10) return 'rare';         // 10%以下
-  if (ownershipRate <= 30) return 'uncommon';     // 30%以下
-  return 'common';                                 // それ以上
+  if (ownershipRate <= 1) return 'ultraRare';    // 1%以下 → UC
+  if (ownershipRate <= 5) return 'superRare';    // 5%以下 → SR
+  if (ownershipRate <= 20) return 'rare';        // 20%以下 → R
+  return 'common';                                // それ以上 → C
 }
 
 // 攻撃力計算

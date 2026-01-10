@@ -229,6 +229,7 @@ export default function DeckBuilder({
   const [previewCard, setPreviewCard] = useState<BattleCardType | null>(null);
   const [draggedCard, setDraggedCard] = useState<BattleCardType | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
+  const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'playtime'>('rarity');
 
   // 選択済みカードのappid
   const selectedAppIds = useMemo(() => {
@@ -237,6 +238,30 @@ export default function DeckBuilder({
     backLine.forEach(card => card && ids.add(card.appid));
     return ids;
   }, [frontLine, backLine]);
+
+  // レアリティの順序（高い順）
+  const rarityOrder: Record<string, number> = {
+    ultraRare: 4,
+    superRare: 3,
+    rare: 2,
+    common: 1,
+  };
+
+  // ソートされたカード
+  const sortedCards = useMemo(() => {
+    const cards = [...availableCards].filter(card => !selectedAppIds.has(card.appid) && !card.isGraduated);
+
+    switch (sortBy) {
+      case 'rarity':
+        return cards.sort((a, b) => (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0));
+      case 'attack':
+        return cards.sort((a, b) => b.attack - a.attack);
+      case 'playtime':
+        return cards.sort((a, b) => b.playtimeMinutes - a.playtimeMinutes);
+      default:
+        return cards;
+    }
+  }, [availableCards, selectedAppIds, sortBy]);
 
   // シナジー計算
   const synergies = useMemo(() => {
@@ -408,29 +433,30 @@ export default function DeckBuilder({
               </div>
             )}
             <div>
-              <h3 className="font-bold text-lg">{personaName || 'Unknown'}</h3>
-              {userStats && (() => {
-                const rankTier = getRankTier(userStats.score);
-                return (
-                  <div className="flex items-center gap-2 mt-1">
-                    {/* ランクティア */}
-                    <span
-                      className="px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1"
-                      style={{ backgroundColor: rankTier.color, color: rankTier.color === '#E5E4E2' || rankTier.color === '#C0C0C0' || rankTier.color === '#B9F2FF' ? '#3D3D3D' : '#fff' }}
-                    >
-                      <span>{rankTier.icon}</span>
-                      {rankTier.name[language]}
-                    </span>
-                    {/* 世界ランキング順位 */}
-                    {userStats.rank && (
-                      <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white flex items-center gap-1" style={{ backgroundColor: 'var(--pop-yellow)' }}>
-                        <Trophy className="w-3 h-3" />
-                        #{userStats.rank}
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="font-bold text-lg">{personaName || 'Unknown'}</h3>
+                {/* ランクティアとランキング（名前の隣に表示） */}
+                {userStats && (() => {
+                  const rankTier = getRankTier(userStats.score);
+                  return (
+                    <>
+                      <span
+                        className="px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1"
+                        style={{ backgroundColor: rankTier.color, color: rankTier.color === '#E5E4E2' || rankTier.color === '#C0C0C0' || rankTier.color === '#B9F2FF' ? '#3D3D3D' : '#fff' }}
+                      >
+                        <span>{rankTier.icon}</span>
+                        {rankTier.name[language]}
                       </span>
-                    )}
-                  </div>
-                );
-              })()}
+                      {userStats.rank && (
+                        <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white flex items-center gap-1" style={{ backgroundColor: 'var(--pop-yellow)' }}>
+                          <Trophy className="w-3 h-3" />
+                          #{userStats.rank}
+                        </span>
+                      )}
+                    </>
+                  );
+                })()}
+              </div>
             </div>
           </div>
           <div className="flex items-center gap-4 flex-wrap">
@@ -622,21 +648,47 @@ export default function DeckBuilder({
 
       {/* カード選択エリア（常に表示） */}
       <div className="pop-card p-4">
-        <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className="text-sm font-bold text-gray-600">
-            {language === 'ja' ? 'カードを選択（ドラッグ＆ドロップ可）' : 'Select Cards (Drag & Drop)'}
+            {language === 'ja' ? 'カードを選択' : 'Select Cards'}
           </h3>
-          {selectedSlot && (
-            <span className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: selectedSlot.line === 'front' ? 'var(--pop-red)' : 'var(--pop-blue)' }}>
-              {language === 'ja'
-                ? `${selectedSlot.line === 'front' ? '前衛' : '後衛'}${selectedSlot.index + 1}番`
-                : `${selectedSlot.line === 'front' ? 'Front' : 'Back'} #${selectedSlot.index + 1}`}
-            </span>
-          )}
+          <div className="flex items-center gap-2">
+            {/* ソートボタン */}
+            <div className="flex gap-1">
+              <button
+                onClick={() => setSortBy('rarity')}
+                className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'rarity' ? 'text-white' : ''}`}
+                style={{ backgroundColor: sortBy === 'rarity' ? 'var(--pop-purple)' : 'var(--card-bg)' }}
+              >
+                {language === 'ja' ? 'レア度' : 'Rarity'}
+              </button>
+              <button
+                onClick={() => setSortBy('attack')}
+                className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'attack' ? 'text-white' : ''}`}
+                style={{ backgroundColor: sortBy === 'attack' ? 'var(--pop-red)' : 'var(--card-bg)' }}
+              >
+                {language === 'ja' ? '攻撃力' : 'ATK'}
+              </button>
+              <button
+                onClick={() => setSortBy('playtime')}
+                className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'playtime' ? 'text-white' : ''}`}
+                style={{ backgroundColor: sortBy === 'playtime' ? 'var(--pop-blue)' : 'var(--card-bg)' }}
+              >
+                {language === 'ja' ? 'プレイ時間' : 'Time'}
+              </button>
+            </div>
+            {selectedSlot && (
+              <span className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: selectedSlot.line === 'front' ? 'var(--pop-red)' : 'var(--pop-blue)' }}>
+                {language === 'ja'
+                  ? `${selectedSlot.line === 'front' ? '前衛' : '後衛'}${selectedSlot.index + 1}番`
+                  : `${selectedSlot.line === 'front' ? 'Front' : 'Back'} #${selectedSlot.index + 1}`}
+              </span>
+            )}
+          </div>
         </div>
         {!selectedSlot && !draggedCard && (
           <p className="text-sm text-gray-500 mb-3">
-            {language === 'ja' ? 'カードをドラッグしてスロットにドロップ、またはスロットをクリックして選択' : 'Drag cards to slots, or click a slot to select'}
+            {language === 'ja' ? 'カードをドラッグしてスロットにドロップ' : 'Drag cards to slots'}
           </p>
         )}
         {draggedCard && (
@@ -645,24 +697,22 @@ export default function DeckBuilder({
           </p>
         )}
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-80 overflow-y-auto">
-          {availableCards
-            .filter(card => !selectedAppIds.has(card.appid) && !card.isGraduated)
-            .map(card => (
-              <div
-                key={card.appid}
-                draggable
-                onDragStart={() => handleDragStart(card)}
-                onDragEnd={handleDragEnd}
-                className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
-              >
-                <BattleCard
-                  card={card}
-                  size="small"
-                  onClick={() => handleCardClick(card)}
-                  showStats={false}
-                />
-              </div>
-            ))}
+          {sortedCards.map(card => (
+            <div
+              key={card.appid}
+              draggable
+              onDragStart={() => handleDragStart(card)}
+              onDragEnd={handleDragEnd}
+              className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
+            >
+              <BattleCard
+                card={card}
+                size="small"
+                onClick={() => handleCardClick(card)}
+                showStats={false}
+              />
+            </div>
+          ))}
         </div>
       </div>
 

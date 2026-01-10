@@ -105,9 +105,30 @@ body {
   }
 }
 
-/* レジェンダリーカード */
+/* ウルトラレアカード（虹色） */
 .legendary-card {
   animation: rainbow-border 3s linear infinite;
+}
+
+/* UCバッジ（虹色） */
+.uc-badge {
+  background: linear-gradient(
+    90deg,
+    #E63946,
+    #F4A261,
+    #F59E0B,
+    #22C55E,
+    #3B82F6,
+    #A855F7,
+    #E63946
+  );
+  background-size: 300% 100%;
+  animation: rainbow-badge 2s linear infinite;
+}
+
+@keyframes rainbow-badge {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
 }
 
 .legendary-card::before {

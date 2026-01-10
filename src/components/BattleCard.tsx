@@ -6,7 +6,6 @@ import {
   BattleCard as BattleCardType,
   RARITY_CONFIG,
   SKILL_DESCRIPTIONS,
-  getGrowthStage,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Swords, Shield, Heart, Sparkles } from 'lucide-react';
@@ -47,7 +46,6 @@ export default function BattleCard({
   const imageUrls = useMemo(() => getSteamImageUrls(card.appid, card.headerImage), [card.appid, card.headerImage]);
 
   const rarityConfig = RARITY_CONFIG[card.rarity];
-  const growthStage = getGrowthStage(card.playtimeMinutes);
 
   // サイズ設定（縦長カプセル画像用に調整）
   const sizeClasses = {
@@ -62,13 +60,12 @@ export default function BattleCard({
     large: 'text-sm',
   };
 
-  // レアリティによる光るエフェクト
+  // レアリティによる光るエフェクト（アニメーションなし）
   const glowStyle = useMemo(() => {
     const intensity = rarityConfig.glowIntensity;
     if (intensity === 0) return {};
 
     const glowSize = intensity * 8;
-    const animationDuration = 3 - intensity * 0.5;
 
     return {
       boxShadow: `
@@ -76,12 +73,11 @@ export default function BattleCard({
         0 0 ${glowSize * 2}px ${rarityConfig.glowColor},
         inset 0 0 ${glowSize / 2}px ${rarityConfig.glowColor}
       `,
-      animation: intensity >= 3 ? `pulse-glow ${animationDuration}s ease-in-out infinite` : undefined,
     };
   }, [rarityConfig]);
 
-  // レジェンダリー用の虹色エフェクト
-  const isLegendary = card.rarity === 'legendary';
+  // ウルトラレア用の虹色エフェクト
+  const isUltraRare = card.rarity === 'ultraRare';
 
   return (
     <div
@@ -91,7 +87,7 @@ export default function BattleCard({
         ${sizeClasses[size]}
         ${selected ? 'ring-4 ring-yellow-400 scale-105' : ''}
         ${disabled ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:scale-105'}
-        ${isLegendary ? 'legendary-card' : ''}
+        ${isUltraRare ? 'legendary-card' : ''}
       `}
       style={{
         border: `3px solid ${rarityConfig.color}`,
@@ -99,7 +95,7 @@ export default function BattleCard({
       }}
     >
       {/* レジェンダリー虹色ボーダー */}
-      {isLegendary && (
+      {isUltraRare && (
         <div className="absolute inset-0 rounded-xl pointer-events-none legendary-border" />
       )}
 
@@ -125,28 +121,11 @@ export default function BattleCard({
 
         {/* レアリティバッジ */}
         <div
-          className={`absolute top-1 right-1 px-1.5 py-0.5 rounded ${fontSizes[size]} font-bold text-white`}
-          style={{ backgroundColor: rarityConfig.color }}
+          className={`absolute top-1 right-1 px-1.5 py-0.5 rounded ${fontSizes[size]} font-bold text-white ${isUltraRare ? 'uc-badge' : ''}`}
+          style={{ backgroundColor: isUltraRare ? undefined : rarityConfig.color }}
         >
           {rarityConfig.label[language === 'ja' ? 'ja' : 'en']}
         </div>
-
-        {/* 成長段階バッジ */}
-        {growthStage !== 'normal' && (
-          <div
-            className={`absolute top-1 left-1 px-1.5 py-0.5 rounded ${fontSizes[size]} font-bold text-white`}
-            style={{
-              backgroundColor:
-                growthStage === 'weak' ? '#9CA3AF' :
-                growthStage === 'strong' ? '#22C55E' :
-                '#EF4444',
-            }}
-          >
-            {growthStage === 'weak' && (language === 'ja' ? '育成中' : 'Growing')}
-            {growthStage === 'strong' && (language === 'ja' ? '強化済' : 'Maxed')}
-            {growthStage === 'graduated' && (language === 'ja' ? '卒業' : 'Graduated')}
-          </div>
-        )}
 
         {/* カード情報 */}
         <div className="absolute bottom-0 left-0 right-0 p-2">
