@@ -180,24 +180,26 @@ export default function DeckBuilder({
   }, [frontLine, backLine]);
 
   // カードを配置
-  const placeCard = useCallback((card: BattleCardType) => {
+  const placeCard = (card: BattleCardType) => {
     if (!selectedSlot) return;
 
-    if (selectedSlot.line === 'front') {
+    const { line, index } = selectedSlot;
+
+    if (line === 'front') {
       setFrontLine(prev => {
         const newLine = [...prev];
-        newLine[selectedSlot.index] = card;
+        newLine[index] = card;
         return newLine;
       });
     } else {
       setBackLine(prev => {
         const newLine = [...prev];
-        newLine[selectedSlot.index] = card;
+        newLine[index] = card;
         return newLine;
       });
     }
     setSelectedSlot(null);
-  }, [selectedSlot]);
+  };
 
   // カードを削除
   const removeCard = useCallback((line: 'front' | 'back', index: number) => {
