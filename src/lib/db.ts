@@ -102,7 +102,9 @@ export async function getWinCount(steamId: string): Promise<number> {
   return parseInt(result[0]?.count || '0', 10);
 }
 
-// ユーザーのスコア計算（卒業数 × 勝利数）
+// ユーザーのスコア計算（卒業数ベース + 勝利ボーナス）
+// スコア = 卒業数 + (勝利数 × 0.1)
+// 卒業がメイン、勝利は小さなボーナス
 export async function getUserScore(steamId: string): Promise<{
   graduations: number;
   wins: number;
@@ -110,14 +112,17 @@ export async function getUserScore(steamId: string): Promise<{
 }> {
   const graduations = await getGraduationCount(steamId);
   const wins = await getWinCount(steamId);
+  // スコアは小数点以下2桁まで（表示用に100倍して整数化することも可能）
+  const score = graduations + (wins * 0.1);
   return {
     graduations,
     wins,
-    score: graduations * wins,
+    score: Math.round(score * 100) / 100, // 小数点2桁
   };
 }
 
-// ランキング取得
+// ランキング取得（1勝以上のユーザーのみ）
+// スコア = 卒業数 + (勝利数 × 0.1)
 export async function getRanking(limit: number = 100): Promise<Array<{
   rank: number;
   steamId: string;
@@ -136,7 +141,7 @@ export async function getRanking(limit: number = 100): Promise<Array<{
         u.created_at,
         COALESCE(g.graduation_count, 0) as graduations,
         COALESCE(b.win_count, 0) as wins,
-        COALESCE(g.graduation_count, 0) * COALESCE(b.win_count, 0) as score
+        COALESCE(g.graduation_count, 0) + (COALESCE(b.win_count, 0) * 0.1) as score
       FROM users u
       LEFT JOIN (
         SELECT steam_id, COUNT(*) as graduation_count
@@ -151,7 +156,7 @@ export async function getRanking(limit: number = 100): Promise<Array<{
       ) b ON u.steam_id = b.steam_id
     )
     SELECT
-      ROW_NUMBER() OVER (ORDER BY score DESC, wins DESC, graduations DESC, created_at ASC) as rank,
+      ROW_NUMBER() OVER (ORDER BY score DESC, graduations DESC, wins DESC, created_at ASC) as rank,
       steam_id,
       persona_name,
       avatar_url,
@@ -159,7 +164,8 @@ export async function getRanking(limit: number = 100): Promise<Array<{
       wins,
       score
     FROM user_stats
-    ORDER BY score DESC, wins DESC, graduations DESC, created_at ASC
+    WHERE wins >= 1
+    ORDER BY score DESC, graduations DESC, wins DESC, created_at ASC
     LIMIT ${limit}
   `;
 
@@ -170,17 +176,29 @@ export async function getRanking(limit: number = 100): Promise<Array<{
     avatarUrl: row.avatar_url as string || '',
     graduations: parseInt(row.graduations as string, 10),
     wins: parseInt(row.wins as string, 10),
-    score: parseInt(row.score as string, 10),
+    score: parseFloat(row.score as string),
   }));
 }
 
-// ユーザーのランキング順位を取得（全ユーザー対象、スコア0でも順位あり）
+// ユーザーのランキング順位を取得（1勝以上のみランキング参加）
+// 0勝の場合はnullを返す（ランク外）
 export async function getUserRank(steamId: string): Promise<number | null> {
+  // まず勝利数を確認
+  const winCheck = await sql`
+    SELECT COUNT(*) as win_count FROM battles WHERE steam_id = ${steamId} AND result = 'win'
+  `;
+  const wins = parseInt(winCheck[0]?.win_count || '0', 10);
+
+  // 0勝ならランク外
+  if (wins < 1) {
+    return null;
+  }
+
   const result = await sql`
     WITH user_stats AS (
       SELECT
         u.steam_id,
-        COALESCE(g.graduation_count, 0) * COALESCE(b.win_count, 0) as score,
+        COALESCE(g.graduation_count, 0) + (COALESCE(b.win_count, 0) * 0.1) as score,
         COALESCE(b.win_count, 0) as wins,
         COALESCE(g.graduation_count, 0) as graduations,
         u.created_at
@@ -196,11 +214,12 @@ export async function getUserRank(steamId: string): Promise<number | null> {
         WHERE result = 'win'
         GROUP BY steam_id
       ) b ON u.steam_id = b.steam_id
+      WHERE COALESCE(b.win_count, 0) >= 1
     ),
     ranked AS (
       SELECT
         steam_id,
-        ROW_NUMBER() OVER (ORDER BY score DESC, wins DESC, graduations DESC, created_at ASC) as rank
+        ROW_NUMBER() OVER (ORDER BY score DESC, graduations DESC, wins DESC, created_at ASC) as rank
       FROM user_stats
     )
     SELECT rank FROM ranked WHERE steam_id = ${steamId}
