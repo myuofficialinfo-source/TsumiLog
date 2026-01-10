@@ -400,6 +400,9 @@ function BattleContent() {
             gameDetails={gameDetails}
             onDeckComplete={handleDeckComplete}
             onCancel={handleCancel}
+            steamId={steamId || undefined}
+            personaName={steamData?.profile?.personaName}
+            avatarUrl={steamData?.profile?.avatarUrl}
           />
         )}
 

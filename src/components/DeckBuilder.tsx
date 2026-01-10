@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import BattleCard, { CardSlot } from './BattleCard';
 import {
   BattleCard as BattleCardType,
@@ -14,7 +14,7 @@ import {
   GenreSkill,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy } from 'lucide-react';
+import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Star } from 'lucide-react';
 import Link from 'next/link';
 
 interface Game {
@@ -37,6 +37,9 @@ interface DeckBuilderProps {
   gameDetails: Map<number, GameDetail>;
   onDeckComplete: (deck: Deck) => void;
   onCancel: () => void;
+  steamId?: string;
+  personaName?: string;
+  avatarUrl?: string;
 }
 
 // ゲームからバトルカードを生成
@@ -140,8 +143,43 @@ export default function DeckBuilder({
   gameDetails,
   onDeckComplete,
   onCancel,
+  steamId,
+  personaName,
+  avatarUrl,
 }: DeckBuilderProps) {
   const { language } = useLanguage();
+
+  // ユーザーのランキング情報
+  const [userStats, setUserStats] = useState<{
+    graduations: number;
+    wins: number;
+    score: number;
+    rank: number | null;
+  } | null>(null);
+
+  // ランキング情報を取得
+  useEffect(() => {
+    if (!steamId) return;
+
+    const fetchUserStats = async () => {
+      try {
+        const response = await fetch(`/api/battle?steamId=${steamId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserStats({
+            graduations: data.graduations || 0,
+            wins: data.wins || 0,
+            score: data.score || 0,
+            rank: data.rank,
+          });
+        }
+      } catch (error) {
+        console.error('Failed to fetch user stats:', error);
+      }
+    };
+
+    fetchUserStats();
+  }, [steamId]);
 
   // 積みゲー（5時間以下）のみをフィルター
   const availableGames = useMemo(() => {
@@ -287,6 +325,64 @@ export default function DeckBuilder({
 
   return (
     <div className="space-y-6">
+      {/* ユーザー情報カード */}
+      {steamId && (
+        <div className="pop-card p-4 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            {avatarUrl ? (
+              <img
+                src={avatarUrl}
+                alt={personaName || 'User'}
+                className="w-14 h-14 rounded-full border-3 border-[#3D3D3D]"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-full bg-gray-200 flex items-center justify-center border-3 border-[#3D3D3D]">
+                <Users className="w-7 h-7 text-gray-400" />
+              </div>
+            )}
+            <div>
+              <h3 className="font-bold text-lg">{personaName || 'Unknown'}</h3>
+              {userStats && (
+                <div className="flex items-center gap-3 text-sm">
+                  <span className="flex items-center gap-1">
+                    <Star className="w-4 h-4 text-yellow-500" />
+                    <span className="font-bold">{userStats.score}</span>
+                    <span className="text-gray-500 text-xs">{language === 'ja' ? 'スコア' : 'Score'}</span>
+                  </span>
+                  {userStats.rank && (
+                    <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ backgroundColor: 'var(--pop-yellow)' }}>
+                      #{userStats.rank} {language === 'ja' ? '位' : ''}
+                    </span>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-4">
+            {userStats && (
+              <div className="flex gap-4 text-center">
+                <div>
+                  <p className="text-xl font-black" style={{ color: 'var(--pop-green)' }}>{userStats.wins}</p>
+                  <p className="text-xs text-gray-500">{language === 'ja' ? '勝利' : 'Wins'}</p>
+                </div>
+                <div>
+                  <p className="text-xl font-black" style={{ color: 'var(--pop-blue)' }}>{userStats.graduations}</p>
+                  <p className="text-xs text-gray-500">{language === 'ja' ? '卒業' : 'Grads'}</p>
+                </div>
+              </div>
+            )}
+            <Link
+              href="/battle/ranking"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:opacity-90 text-white font-bold"
+              style={{ backgroundColor: 'var(--pop-yellow)' }}
+            >
+              <Trophy className="w-4 h-4" />
+              {language === 'ja' ? 'ランキング' : 'Ranking'}
+            </Link>
+          </div>
+        </div>
+      )}
+
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <div>
@@ -300,14 +396,6 @@ export default function DeckBuilder({
           </p>
         </div>
         <div className="flex gap-2">
-          <Link
-            href="/battle/ranking"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:opacity-90 text-white font-bold"
-            style={{ backgroundColor: 'var(--pop-yellow)' }}
-          >
-            <Trophy className="w-4 h-4" />
-            {language === 'ja' ? 'ランキング' : 'Ranking'}
-          </Link>
           <button
             onClick={shuffle}
             className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
