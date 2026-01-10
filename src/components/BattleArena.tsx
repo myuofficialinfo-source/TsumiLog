@@ -20,15 +20,11 @@ interface BattleArenaProps {
   onBackToLobby: () => void;
 }
 
-// カードの攻撃インターバルを計算（攻撃力が高いほど遅い、HPが高いほど速い）
+// カードの攻撃インターバルを計算
 function calculateInterval(card: BattleCardType): number {
-  // 基本インターバル: 2000ms
-  // 攻撃力補正: 攻撃力10ごとに+100ms（最大+500ms）
-  // HP補正: HP100ごとに-50ms（最大-300ms）
   const baseInterval = 2000;
   const attackPenalty = Math.min(500, Math.floor(card.attack / 10) * 100);
   const hpBonus = Math.min(300, Math.floor(card.hp / 100) * 50);
-  // 先制攻撃持ちは最初のインターバルが半分
   const firstStrikeBonus = card.skills.includes('firstStrike') ? -500 : 0;
   return Math.max(800, baseInterval + attackPenalty - hpBonus + firstStrikeBonus);
 }
@@ -51,7 +47,6 @@ function applySkillEffect(
   let isCritical = false;
   let skillUsed: GenreSkill | undefined;
 
-  // 攻撃者のスキル
   attacker.skills.forEach(skill => {
     switch (skill) {
       case 'absorb':
@@ -68,7 +63,6 @@ function applySkillEffect(
     }
   });
 
-  // 防御者のスキル
   defender.skills.forEach(skill => {
     switch (skill) {
       case 'defense':
@@ -89,9 +83,8 @@ function applySkillEffect(
   return { damage, healAmount, isReflected, isCritical, skillUsed };
 }
 
-// リアルタイムバトル用カード型
+// リアルタイムバトル用カード型（チーム共有HP、個別HPなし）
 interface BattleCardState extends BattleCardType {
-  currentHp: number;
   currentTimer: number;
   maxTimer: number;
   isPlayer: boolean;
@@ -136,9 +129,14 @@ export default function BattleArena({
     isCritical: boolean;
   } | null>(null);
   const [shakeTarget, setShakeTarget] = useState<'player' | 'opponent' | null>(null);
+  const [attackingCard, setAttackingCard] = useState<string | null>(null);
 
   // バトルログ
   const [battleLog, setBattleLog] = useState<string[]>([]);
+
+  // HP用ref（リアルタイム更新用）
+  const playerHpRef = useRef(0);
+  const opponentHpRef = useRef(0);
 
   // アニメーションフレーム用ref
   const animationRef = useRef<number | null>(null);
@@ -156,14 +154,26 @@ export default function BattleArena({
     if (battleState !== 'preparing' || showBattleStart) return;
 
     const cards: BattleCardState[] = [];
+    let totalPlayerHp = 0;
+    let totalOpponentHp = 0;
 
     // プレイヤーカード初期化
     playerDeck.frontLine.forEach((card, index) => {
       if (card) {
         const interval = calculateInterval(card);
+        const boostedCard = { ...card };
+        // シナジーボーナス適用
+        playerDeck.synergies.forEach(synergy => {
+          if (synergy.effect.attackBonus) {
+            boostedCard.attack = Math.floor(boostedCard.attack * (1 + synergy.effect.attackBonus / 100));
+          }
+          if (synergy.effect.hpBonus) {
+            boostedCard.hp = Math.floor(boostedCard.hp * (1 + synergy.effect.hpBonus / 100));
+          }
+        });
+        totalPlayerHp += boostedCard.hp;
         cards.push({
-          ...card,
-          currentHp: card.hp,
+          ...boostedCard,
           currentTimer: 0,
           maxTimer: interval,
           isPlayer: true,
@@ -175,9 +185,18 @@ export default function BattleArena({
     playerDeck.backLine.forEach((card, index) => {
       if (card) {
         const interval = calculateInterval(card);
+        const boostedCard = { ...card };
+        playerDeck.synergies.forEach(synergy => {
+          if (synergy.effect.attackBonus) {
+            boostedCard.attack = Math.floor(boostedCard.attack * (1 + synergy.effect.attackBonus / 100));
+          }
+          if (synergy.effect.hpBonus) {
+            boostedCard.hp = Math.floor(boostedCard.hp * (1 + synergy.effect.hpBonus / 100));
+          }
+        });
+        totalPlayerHp += boostedCard.hp;
         cards.push({
-          ...card,
-          currentHp: card.hp,
+          ...boostedCard,
           currentTimer: 0,
           maxTimer: interval,
           isPlayer: true,
@@ -191,9 +210,18 @@ export default function BattleArena({
     opponentDeck.frontLine.forEach((card, index) => {
       if (card) {
         const interval = calculateInterval(card);
+        const boostedCard = { ...card };
+        opponentDeck.synergies.forEach(synergy => {
+          if (synergy.effect.attackBonus) {
+            boostedCard.attack = Math.floor(boostedCard.attack * (1 + synergy.effect.attackBonus / 100));
+          }
+          if (synergy.effect.hpBonus) {
+            boostedCard.hp = Math.floor(boostedCard.hp * (1 + synergy.effect.hpBonus / 100));
+          }
+        });
+        totalOpponentHp += boostedCard.hp;
         cards.push({
-          ...card,
-          currentHp: card.hp,
+          ...boostedCard,
           currentTimer: 0,
           maxTimer: interval,
           isPlayer: false,
@@ -205,9 +233,18 @@ export default function BattleArena({
     opponentDeck.backLine.forEach((card, index) => {
       if (card) {
         const interval = calculateInterval(card);
+        const boostedCard = { ...card };
+        opponentDeck.synergies.forEach(synergy => {
+          if (synergy.effect.attackBonus) {
+            boostedCard.attack = Math.floor(boostedCard.attack * (1 + synergy.effect.attackBonus / 100));
+          }
+          if (synergy.effect.hpBonus) {
+            boostedCard.hp = Math.floor(boostedCard.hp * (1 + synergy.effect.hpBonus / 100));
+          }
+        });
+        totalOpponentHp += boostedCard.hp;
         cards.push({
-          ...card,
-          currentHp: card.hp,
+          ...boostedCard,
           currentTimer: 0,
           maxTimer: interval,
           isPlayer: false,
@@ -217,35 +254,13 @@ export default function BattleArena({
       }
     });
 
-    // シナジーボーナス適用
-    const applyBonus = (isPlayer: boolean, synergies: typeof playerDeck.synergies) => {
-      synergies.forEach(synergy => {
-        cards.forEach(card => {
-          if (card.isPlayer === isPlayer) {
-            if (synergy.effect.attackBonus) {
-              card.attack = Math.floor(card.attack * (1 + synergy.effect.attackBonus / 100));
-            }
-            if (synergy.effect.hpBonus) {
-              card.hp = Math.floor(card.hp * (1 + synergy.effect.hpBonus / 100));
-              card.currentHp = card.hp;
-              card.maxHp = card.hp;
-            }
-          }
-        });
-      });
-    };
-    applyBonus(true, playerDeck.synergies);
-    applyBonus(false, opponentDeck.synergies);
-
     setBattleCards(cards);
-
-    // HP計算
-    const playerHp = cards.filter(c => c.isPlayer).reduce((sum, c) => sum + c.hp, 0);
-    const opponentHp = cards.filter(c => !c.isPlayer).reduce((sum, c) => sum + c.hp, 0);
-    setPlayerTotalHp(playerHp);
-    setPlayerMaxHp(playerHp);
-    setOpponentTotalHp(opponentHp);
-    setOpponentMaxHp(opponentHp);
+    setPlayerTotalHp(totalPlayerHp);
+    setPlayerMaxHp(totalPlayerHp);
+    setOpponentTotalHp(totalOpponentHp);
+    setOpponentMaxHp(totalOpponentHp);
+    playerHpRef.current = totalPlayerHp;
+    opponentHpRef.current = totalOpponentHp;
 
     setBattleState('fighting');
   }, [battleState, playerDeck, opponentDeck, showBattleStart]);
@@ -260,6 +275,8 @@ export default function BattleArena({
     isCritical: boolean;
     isPlayerAttacking: boolean;
     skill?: GenreSkill;
+    healAmount: number;
+    reflectDamage: number;
   } | null>(null);
 
   // リアルタイムバトルループ
@@ -271,31 +288,29 @@ export default function BattleArena({
       const deltaTime = (timestamp - lastTimeRef.current) * speed;
       lastTimeRef.current = timestamp;
 
+      // 勝敗判定
+      if (playerHpRef.current <= 0 || opponentHpRef.current <= 0) {
+        if (playerHpRef.current <= 0 && opponentHpRef.current <= 0) {
+          setWinner('draw');
+        } else if (playerHpRef.current <= 0) {
+          setWinner('opponent');
+        } else {
+          setWinner('player');
+        }
+        setBattleState('finished');
+        setTimeout(() => setShowResultPopup(true), 1000);
+        return;
+      }
+
       setBattleCards(prevCards => {
-        const newCards = [...prevCards];
+        const newCards = prevCards.map(c => ({ ...c }));
         let actionOccurred = false;
 
-        // 生存カードのみ処理
-        const aliveCards = newCards.filter(c => c.currentHp > 0);
-        const playerAlive = aliveCards.filter(c => c.isPlayer);
-        const opponentAlive = aliveCards.filter(c => !c.isPlayer);
+        // 全カード処理（チーム共有HPなので全カードが常にアクティブ）
+        const playerCards = newCards.filter(c => c.isPlayer);
+        const opponentCards = newCards.filter(c => !c.isPlayer);
 
-        // 勝敗判定
-        if (playerAlive.length === 0 || opponentAlive.length === 0) {
-          if (playerAlive.length === 0 && opponentAlive.length === 0) {
-            setWinner('draw');
-          } else if (playerAlive.length === 0) {
-            setWinner('opponent');
-          } else {
-            setWinner('player');
-          }
-          setBattleState('finished');
-          setTimeout(() => setShowResultPopup(true), 1000);
-          return newCards;
-        }
-
-        // 各カードのタイマー更新
-        aliveCards.forEach(card => {
+        newCards.forEach(card => {
           if (actionOccurred) return;
 
           card.currentTimer += deltaTime;
@@ -304,26 +319,35 @@ export default function BattleArena({
           if (card.currentTimer >= card.maxTimer) {
             card.currentTimer = 0;
 
-            // ターゲット選択（前衛優先）
-            const enemies = card.isPlayer ? opponentAlive : playerAlive;
-            const frontEnemies = enemies.filter(e => e.position === 'front' && e.currentHp > 0);
-            const target = frontEnemies.length > 0
-              ? frontEnemies[Math.floor(Math.random() * frontEnemies.length)]
-              : enemies.filter(e => e.currentHp > 0)[0];
+            // ターゲット選択（敵チームからランダム）
+            const enemies = card.isPlayer ? opponentCards : playerCards;
+            const target = enemies[Math.floor(Math.random() * enemies.length)];
 
             if (target) {
               const result = applySkillEffect(card, target, card.attack);
-              target.currentHp = Math.max(0, target.currentHp - result.damage);
 
-              // HP回復
-              if (result.healAmount > 0) {
-                card.currentHp = Math.min(card.maxHp, card.currentHp + result.healAmount);
-              }
-
-              // 反射ダメージ
-              if (result.isReflected) {
-                const reflectDamage = Math.floor(result.damage * 0.2);
-                card.currentHp = Math.max(0, card.currentHp - reflectDamage);
+              // チーム共有HPにダメージ
+              let reflectDamage = 0;
+              if (card.isPlayer) {
+                opponentHpRef.current = Math.max(0, opponentHpRef.current - result.damage);
+                // 吸収で自チーム回復
+                if (result.healAmount > 0) {
+                  playerHpRef.current = Math.min(playerHpRef.current + result.healAmount, playerHpRef.current);
+                }
+                // 反射ダメージ
+                if (result.isReflected) {
+                  reflectDamage = Math.floor(result.damage * 0.2);
+                  playerHpRef.current = Math.max(0, playerHpRef.current - reflectDamage);
+                }
+              } else {
+                playerHpRef.current = Math.max(0, playerHpRef.current - result.damage);
+                if (result.healAmount > 0) {
+                  opponentHpRef.current = Math.min(opponentHpRef.current + result.healAmount, opponentHpRef.current);
+                }
+                if (result.isReflected) {
+                  reflectDamage = Math.floor(result.damage * 0.2);
+                  opponentHpRef.current = Math.max(0, opponentHpRef.current - reflectDamage);
+                }
               }
 
               pendingActionRef.current = {
@@ -335,26 +359,27 @@ export default function BattleArena({
                 isCritical: result.isCritical,
                 isPlayerAttacking: card.isPlayer,
                 skill: result.skillUsed,
+                healAmount: result.healAmount,
+                reflectDamage,
               };
               actionOccurred = true;
             }
           }
         });
 
-        // HP合計更新
-        const newPlayerHp = newCards.filter(c => c.isPlayer).reduce((sum, c) => sum + Math.max(0, c.currentHp), 0);
-        const newOpponentHp = newCards.filter(c => !c.isPlayer).reduce((sum, c) => sum + Math.max(0, c.currentHp), 0);
-        setPlayerTotalHp(newPlayerHp);
-        setOpponentTotalHp(newOpponentHp);
+        // HP更新
+        setPlayerTotalHp(playerHpRef.current);
+        setOpponentTotalHp(opponentHpRef.current);
 
         return newCards;
       });
 
-      // エフェクト表示（コールバック外で処理）
+      // エフェクト表示
       const action = pendingActionRef.current;
       if (action) {
         pendingActionRef.current = null;
         setCurrentAction(action);
+        setAttackingCard(action.attacker);
         setDamageDisplay({
           target: action.isPlayerAttacking ? 'opponent' : 'player',
           damage: action.damage,
@@ -368,12 +393,16 @@ export default function BattleArena({
           ...prev.slice(0, 9),
         ]);
 
-        // エフェクトクリア
+        // エフェクトクリア（ダメージ表示は1秒、その他は400ms）
         setTimeout(() => {
           setCurrentAction(null);
-          setDamageDisplay(null);
+          setAttackingCard(null);
           setShakeTarget(null);
         }, 400 / speed);
+
+        setTimeout(() => {
+          setDamageDisplay(null);
+        }, 1000 / speed);
       }
 
       animationRef.current = requestAnimationFrame(tick);
@@ -395,40 +424,36 @@ export default function BattleArena({
       cancelAnimationFrame(animationRef.current);
     }
 
-    // 即座にバトル終了
-    let playerHp = playerMaxHp;
-    let opponentHp = opponentMaxHp;
-
     // 簡易シミュレーション
     const playerCards = battleCards.filter(c => c.isPlayer);
     const opponentCards = battleCards.filter(c => !c.isPlayer);
     const playerDps = playerCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
     const opponentDps = opponentCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
 
-    // DPS比較で勝敗決定
-    const playerTime = opponentHp / playerDps;
-    const opponentTime = playerHp / opponentDps;
+    const playerTime = opponentHpRef.current / playerDps;
+    const opponentTime = playerHpRef.current / opponentDps;
 
     if (playerTime < opponentTime) {
-      opponentHp = 0;
+      opponentHpRef.current = 0;
       setWinner('player');
     } else if (opponentTime < playerTime) {
-      playerHp = 0;
+      playerHpRef.current = 0;
       setWinner('opponent');
     } else {
       setWinner('draw');
     }
 
-    setPlayerTotalHp(playerHp);
-    setOpponentTotalHp(opponentHp);
+    setPlayerTotalHp(playerHpRef.current);
+    setOpponentTotalHp(opponentHpRef.current);
     setCurrentAction(null);
     setDamageDisplay(null);
     setShakeTarget(null);
+    setAttackingCard(null);
     setBattleState('finished');
     setTimeout(() => setShowResultPopup(true), 1000);
-  }, [battleCards, playerMaxHp, opponentMaxHp]);
+  }, [battleCards]);
 
-  // カードのタイマーバー表示用
+  // カードのタイマー表示用
   const getCardTimerPercent = (card: BattleCardState) => {
     return Math.min(100, (card.currentTimer / card.maxTimer) * 100);
   };
@@ -438,6 +463,10 @@ export default function BattleArena({
   const playerBackCards = battleCards.filter(c => c.isPlayer && c.position === 'back');
   const opponentFrontCards = battleCards.filter(c => !c.isPlayer && c.position === 'front');
   const opponentBackCards = battleCards.filter(c => !c.isPlayer && c.position === 'back');
+
+  // チームのHP残りがあるかどうか
+  const isPlayerTeamAlive = playerTotalHp > 0;
+  const isOpponentTeamAlive = opponentTotalHp > 0;
 
   return (
     <div className="space-y-4">
@@ -498,15 +527,16 @@ export default function BattleArena({
                 {opponentTotalHp} / {opponentMaxHp}
               </span>
             </div>
-            {/* ダメージ表示（HPバーの上に浮かぶ） */}
+            {/* ダメージ表示 */}
             {damageDisplay && damageDisplay.target === 'opponent' && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 -top-2"
-                style={{ animation: 'damage-pop 0.5s ease-out forwards' }}
+                className="absolute left-1/2 -translate-x-1/2 -top-4 z-10"
+                style={{ animation: 'damage-pop 1s ease-out forwards' }}
               >
-                <span className={`text-2xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}>
+                <span className={`text-3xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
+                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
                   -{damageDisplay.damage}
-                  {damageDisplay.isCritical && <span className="text-sm ml-1">!</span>}
+                  {damageDisplay.isCritical && <span className="text-xl ml-1">CRIT!</span>}
                 </span>
               </div>
             )}
@@ -523,10 +553,10 @@ export default function BattleArena({
                   card={card}
                   size="small"
                   showStats={false}
-                  disabled={card.currentHp <= 0}
+                  disabled={!isOpponentTeamAlive}
                 />
-                {/* ゲージオーバーレイ（下から上に上がる） */}
-                {card.currentHp > 0 && (
+                {/* ゲージオーバーレイ */}
+                {isOpponentTeamAlive && (
                   <div
                     className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
                     style={{ border: '3px solid transparent' }}
@@ -537,9 +567,12 @@ export default function BattleArena({
                     />
                   </div>
                 )}
-                {/* 攻撃中エフェクト */}
-                {currentAction?.attacker === card.name && currentAction.attackerIsPlayer === false && (
-                  <div className="absolute inset-0 border-4 border-yellow-400 rounded-xl animate-pulse" />
+                {/* 攻撃エフェクト */}
+                {attackingCard === card.name && !card.isPlayer && (
+                  <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden">
+                    <div className="absolute inset-0 bg-orange-500/60 animate-pulse" />
+                    <div className="absolute inset-0 border-4 border-orange-400 rounded-xl" />
+                  </div>
                 )}
               </div>
             ))}
@@ -557,10 +590,10 @@ export default function BattleArena({
                   card={card}
                   size="small"
                   showStats={false}
-                  disabled={card.currentHp <= 0}
+                  disabled={!isOpponentTeamAlive}
                 />
-                {/* ゲージオーバーレイ（下から上に上がる） */}
-                {card.currentHp > 0 && (
+                {/* ゲージオーバーレイ */}
+                {isOpponentTeamAlive && (
                   <div
                     className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
                     style={{ border: '3px solid transparent' }}
@@ -571,9 +604,12 @@ export default function BattleArena({
                     />
                   </div>
                 )}
-                {/* 攻撃中エフェクト */}
-                {currentAction?.attacker === card.name && currentAction.attackerIsPlayer === false && (
-                  <div className="absolute inset-0 border-4 border-yellow-400 rounded-xl animate-pulse" />
+                {/* 攻撃エフェクト */}
+                {attackingCard === card.name && !card.isPlayer && (
+                  <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden">
+                    <div className="absolute inset-0 bg-orange-500/60 animate-pulse" />
+                    <div className="absolute inset-0 border-4 border-orange-400 rounded-xl" />
+                  </div>
                 )}
               </div>
             ))}
@@ -612,10 +648,10 @@ export default function BattleArena({
                   card={card}
                   size="small"
                   showStats={false}
-                  disabled={card.currentHp <= 0}
+                  disabled={!isPlayerTeamAlive}
                 />
-                {/* ゲージオーバーレイ（下から上に上がる） */}
-                {card.currentHp > 0 && (
+                {/* ゲージオーバーレイ */}
+                {isPlayerTeamAlive && (
                   <div
                     className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
                     style={{ border: '3px solid transparent' }}
@@ -626,9 +662,12 @@ export default function BattleArena({
                     />
                   </div>
                 )}
-                {/* 攻撃中エフェクト */}
-                {currentAction?.attacker === card.name && currentAction.attackerIsPlayer && (
-                  <div className="absolute inset-0 border-4 border-yellow-400 rounded-xl animate-pulse" />
+                {/* 攻撃エフェクト */}
+                {attackingCard === card.name && card.isPlayer && (
+                  <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden">
+                    <div className="absolute inset-0 bg-green-500/60 animate-pulse" />
+                    <div className="absolute inset-0 border-4 border-green-400 rounded-xl" />
+                  </div>
                 )}
               </div>
             ))}
@@ -646,10 +685,10 @@ export default function BattleArena({
                   card={card}
                   size="small"
                   showStats={false}
-                  disabled={card.currentHp <= 0}
+                  disabled={!isPlayerTeamAlive}
                 />
-                {/* ゲージオーバーレイ（下から上に上がる） */}
-                {card.currentHp > 0 && (
+                {/* ゲージオーバーレイ */}
+                {isPlayerTeamAlive && (
                   <div
                     className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
                     style={{ border: '3px solid transparent' }}
@@ -660,9 +699,12 @@ export default function BattleArena({
                     />
                   </div>
                 )}
-                {/* 攻撃中エフェクト */}
-                {currentAction?.attacker === card.name && currentAction.attackerIsPlayer && (
-                  <div className="absolute inset-0 border-4 border-yellow-400 rounded-xl animate-pulse" />
+                {/* 攻撃エフェクト */}
+                {attackingCard === card.name && card.isPlayer && (
+                  <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden">
+                    <div className="absolute inset-0 bg-green-500/60 animate-pulse" />
+                    <div className="absolute inset-0 border-4 border-green-400 rounded-xl" />
+                  </div>
                 )}
               </div>
             ))}
@@ -687,15 +729,16 @@ export default function BattleArena({
                 {playerTotalHp} / {playerMaxHp}
               </span>
             </div>
-            {/* ダメージ表示（HPバーの上に浮かぶ） */}
+            {/* ダメージ表示 */}
             {damageDisplay && damageDisplay.target === 'player' && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 -top-2"
-                style={{ animation: 'damage-pop 0.5s ease-out forwards' }}
+                className="absolute left-1/2 -translate-x-1/2 -top-4 z-10"
+                style={{ animation: 'damage-pop 1s ease-out forwards' }}
               >
-                <span className={`text-2xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}>
+                <span className={`text-3xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
+                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
                   -{damageDisplay.damage}
-                  {damageDisplay.isCritical && <span className="text-sm ml-1">!</span>}
+                  {damageDisplay.isCritical && <span className="text-xl ml-1">CRIT!</span>}
                 </span>
               </div>
             )}
