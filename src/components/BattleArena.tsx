@@ -129,7 +129,10 @@ export default function BattleArena({
     isCritical: boolean;
   } | null>(null);
   const [shakeTarget, setShakeTarget] = useState<'player' | 'opponent' | null>(null);
-  const [attackingCard, setAttackingCard] = useState<string | null>(null);
+  const [hitEffect, setHitEffect] = useState<{
+    target: 'player' | 'opponent';
+    key: number;
+  } | null>(null);
 
   // バトルログ
   const [battleLog, setBattleLog] = useState<string[]>([]);
@@ -379,13 +382,18 @@ export default function BattleArena({
       if (action) {
         pendingActionRef.current = null;
         setCurrentAction(action);
-        setAttackingCard(action.attacker);
+        const targetSide = action.isPlayerAttacking ? 'opponent' : 'player';
         setDamageDisplay({
-          target: action.isPlayerAttacking ? 'opponent' : 'player',
+          target: targetSide,
           damage: action.damage,
           isCritical: action.isCritical,
         });
-        setShakeTarget(action.isPlayerAttacking ? 'opponent' : 'player');
+        setShakeTarget(targetSide);
+        // 火花エフェクト
+        setHitEffect({
+          target: targetSide,
+          key: Date.now(),
+        });
 
         // ログ追加
         setBattleLog(prev => [
@@ -396,12 +404,12 @@ export default function BattleArena({
         // エフェクトクリア（ダメージ表示は1秒、その他は400ms）
         setTimeout(() => {
           setCurrentAction(null);
-          setAttackingCard(null);
           setShakeTarget(null);
         }, 400 / speed);
 
         setTimeout(() => {
           setDamageDisplay(null);
+          setHitEffect(null);
         }, 1000 / speed);
       }
 
@@ -448,7 +456,7 @@ export default function BattleArena({
     setCurrentAction(null);
     setDamageDisplay(null);
     setShakeTarget(null);
-    setAttackingCard(null);
+    setHitEffect(null);
     setBattleState('finished');
     setTimeout(() => setShowResultPopup(true), 1000);
   }, [battleCards]);
@@ -567,20 +575,13 @@ export default function BattleArena({
                     />
                   </div>
                 )}
-                {/* 攻撃エフェクト */}
-                {attackingCard === card.name && !card.isPlayer && (
-                  <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden">
-                    <div className="absolute inset-0 bg-orange-500/60 animate-pulse" />
-                    <div className="absolute inset-0 border-4 border-orange-400 rounded-xl" />
-                  </div>
-                )}
               </div>
             ))}
           </div>
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '後衛' : 'Back Line'}</p>
 
           {/* 相手前衛 */}
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center relative">
             {opponentFrontCards.map((card, index) => (
               <div
                 key={`opponent-front-${index}`}
@@ -604,15 +605,34 @@ export default function BattleArena({
                     />
                   </div>
                 )}
-                {/* 攻撃エフェクト */}
-                {attackingCard === card.name && !card.isPlayer && (
-                  <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden">
-                    <div className="absolute inset-0 bg-orange-500/60 animate-pulse" />
-                    <div className="absolute inset-0 border-4 border-orange-400 rounded-xl" />
-                  </div>
-                )}
               </div>
             ))}
+            {/* 火花ヒットエフェクト（相手デッキ中央） */}
+            {hitEffect && hitEffect.target === 'opponent' && (
+              <div key={hitEffect.key} className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                {/* 中央バースト */}
+                <div className="spark-burst bg-orange-400/80" />
+                {/* 火花パーティクル */}
+                {[...Array(12)].map((_, i) => {
+                  const angle = (i * 30) * (Math.PI / 180);
+                  const distance = 40 + Math.random() * 30;
+                  const x = Math.cos(angle) * distance;
+                  const y = Math.sin(angle) * distance;
+                  return (
+                    <div
+                      key={i}
+                      className="spark-particle"
+                      style={{
+                        '--spark-x': `${x}px`,
+                        '--spark-y': `${y}px`,
+                        backgroundColor: i % 2 === 0 ? '#F97316' : '#FBBF24',
+                        animationDelay: `${i * 0.02}s`,
+                      } as React.CSSProperties}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
         </div>
@@ -638,7 +658,7 @@ export default function BattleArena({
         <div className="space-y-2">
           {/* プレイヤー前衛 */}
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
-          <div className="flex gap-2 justify-center">
+          <div className="flex gap-2 justify-center relative">
             {playerFrontCards.map((card, index) => (
               <div
                 key={`player-front-${index}`}
@@ -662,15 +682,34 @@ export default function BattleArena({
                     />
                   </div>
                 )}
-                {/* 攻撃エフェクト */}
-                {attackingCard === card.name && card.isPlayer && (
-                  <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden">
-                    <div className="absolute inset-0 bg-green-500/60 animate-pulse" />
-                    <div className="absolute inset-0 border-4 border-green-400 rounded-xl" />
-                  </div>
-                )}
               </div>
             ))}
+            {/* 火花ヒットエフェクト（プレイヤーデッキ中央） */}
+            {hitEffect && hitEffect.target === 'player' && (
+              <div key={hitEffect.key} className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
+                {/* 中央バースト */}
+                <div className="spark-burst bg-red-500/80" />
+                {/* 火花パーティクル */}
+                {[...Array(12)].map((_, i) => {
+                  const angle = (i * 30) * (Math.PI / 180);
+                  const distance = 40 + Math.random() * 30;
+                  const x = Math.cos(angle) * distance;
+                  const y = Math.sin(angle) * distance;
+                  return (
+                    <div
+                      key={i}
+                      className="spark-particle"
+                      style={{
+                        '--spark-x': `${x}px`,
+                        '--spark-y': `${y}px`,
+                        backgroundColor: i % 2 === 0 ? '#EF4444' : '#F97316',
+                        animationDelay: `${i * 0.02}s`,
+                      } as React.CSSProperties}
+                    />
+                  );
+                })}
+              </div>
+            )}
           </div>
 
           {/* プレイヤー後衛 */}
@@ -697,13 +736,6 @@ export default function BattleArena({
                       className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
                       style={{ height: `${getCardTimerPercent(card)}%` }}
                     />
-                  </div>
-                )}
-                {/* 攻撃エフェクト */}
-                {attackingCard === card.name && card.isPlayer && (
-                  <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden">
-                    <div className="absolute inset-0 bg-green-500/60 animate-pulse" />
-                    <div className="absolute inset-0 border-4 border-green-400 rounded-xl" />
                   </div>
                 )}
               </div>

@@ -316,6 +316,7 @@ function HomeContent() {
                 <div>
                   <h3 className="text-lg font-black text-[#3D3D3D]">
                     {language === 'ja' ? '積みゲーバトル' : 'Backlog Battle'}
+                    <span className="text-xs font-normal text-gray-400 ml-2">(Ver.0.0.1)</span>
                   </h3>
                   <p className="text-sm text-gray-500">
                     {language === 'ja' ? '積みゲーでカードバトル！' : 'Battle with your backlog games!'}
