@@ -111,6 +111,7 @@ export default function BattleCard({
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 200px"
+          unoptimized
           onError={() => {
             // 次のフォールバック画像に切り替え
             if (imageIndex < imageUrls.length - 1) {

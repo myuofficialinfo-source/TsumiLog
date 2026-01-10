@@ -478,14 +478,14 @@ export default function BattleArena({
       {/* バトルフィールド */}
       <div className="pop-card p-6 space-y-4 relative overflow-hidden">
         {/* 相手側 */}
-        <div className={`space-y-2 transition-transform duration-100 ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}>
+        <div className="space-y-2">
           {/* 相手HPバー */}
           <div className="relative">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-gray-500 w-16">
-                {language === 'ja' ? '相手' : 'Opponent'}
+              <span className="text-xs font-bold text-gray-500 w-12">
+                {language === 'ja' ? '相手' : 'Enemy'}
               </span>
-              <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D] relative">
+              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
                 <div
                   className="h-full rounded-full transition-all duration-200"
                   style={{
@@ -493,29 +493,32 @@ export default function BattleArena({
                     backgroundColor: 'var(--pop-red)',
                   }}
                 />
-                {/* ダメージ表示（HPバー中央） */}
-                {damageDisplay && damageDisplay.target === 'opponent' && (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center"
-                    style={{ animation: 'damage-pop 0.4s ease-out forwards' }}
-                  >
-                    <span className={`text-3xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-white'}`}>
-                      -{damageDisplay.damage}
-                      {damageDisplay.isCritical && <span className="text-lg ml-1">!</span>}
-                    </span>
-                  </div>
-                )}
               </div>
-              <span className="text-sm font-bold w-24 text-right" style={{ color: 'var(--pop-red)' }}>
+              <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-red)' }}>
                 {opponentTotalHp} / {opponentMaxHp}
               </span>
             </div>
+            {/* ダメージ表示（HPバーの上に浮かぶ） */}
+            {damageDisplay && damageDisplay.target === 'opponent' && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 -top-2"
+                style={{ animation: 'damage-pop 0.5s ease-out forwards' }}
+              >
+                <span className={`text-2xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}>
+                  -{damageDisplay.damage}
+                  {damageDisplay.isCritical && <span className="text-sm ml-1">!</span>}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* 相手後衛 */}
           <div className="flex gap-2 justify-center">
             {opponentBackCards.map((card, index) => (
-              <div key={`opponent-back-${index}`} className="relative">
+              <div
+                key={`opponent-back-${index}`}
+                className={`relative ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}
+              >
                 <BattleCard
                   card={card}
                   size="small"
@@ -546,7 +549,10 @@ export default function BattleArena({
           {/* 相手前衛 */}
           <div className="flex gap-2 justify-center">
             {opponentFrontCards.map((card, index) => (
-              <div key={`opponent-front-${index}`} className="relative">
+              <div
+                key={`opponent-front-${index}`}
+                className={`relative ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}
+              >
                 <BattleCard
                   card={card}
                   size="small"
@@ -593,12 +599,15 @@ export default function BattleArena({
         </div>
 
         {/* プレイヤー側 */}
-        <div className={`space-y-2 transition-transform duration-100 ${shakeTarget === 'player' ? 'animate-shake' : ''}`}>
+        <div className="space-y-2">
           {/* プレイヤー前衛 */}
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
           <div className="flex gap-2 justify-center">
             {playerFrontCards.map((card, index) => (
-              <div key={`player-front-${index}`} className="relative">
+              <div
+                key={`player-front-${index}`}
+                className={`relative ${shakeTarget === 'player' ? 'animate-shake' : ''}`}
+              >
                 <BattleCard
                   card={card}
                   size="small"
@@ -629,7 +638,10 @@ export default function BattleArena({
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '後衛' : 'Back Line'}</p>
           <div className="flex gap-2 justify-center">
             {playerBackCards.map((card, index) => (
-              <div key={`player-back-${index}`} className="relative">
+              <div
+                key={`player-back-${index}`}
+                className={`relative ${shakeTarget === 'player' ? 'animate-shake' : ''}`}
+              >
                 <BattleCard
                   card={card}
                   size="small"
@@ -659,10 +671,10 @@ export default function BattleArena({
           {/* プレイヤーHPバー */}
           <div className="relative pt-2">
             <div className="flex items-center gap-3">
-              <span className="text-sm font-bold text-gray-500 w-16">
+              <span className="text-xs font-bold text-gray-500 w-12">
                 {language === 'ja' ? 'あなた' : 'You'}
               </span>
-              <div className="flex-1 h-8 bg-gray-200 rounded-full overflow-hidden border-2 border-[#3D3D3D] relative">
+              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
                 <div
                   className="h-full rounded-full transition-all duration-200"
                   style={{
@@ -670,23 +682,23 @@ export default function BattleArena({
                     backgroundColor: 'var(--pop-green)',
                   }}
                 />
-                {/* ダメージ表示（HPバー中央） */}
-                {damageDisplay && damageDisplay.target === 'player' && (
-                  <div
-                    className="absolute inset-0 flex items-center justify-center"
-                    style={{ animation: 'damage-pop 0.4s ease-out forwards' }}
-                  >
-                    <span className={`text-3xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-white'}`}>
-                      -{damageDisplay.damage}
-                      {damageDisplay.isCritical && <span className="text-lg ml-1">!</span>}
-                    </span>
-                  </div>
-                )}
               </div>
-              <span className="text-sm font-bold w-24 text-right" style={{ color: 'var(--pop-green)' }}>
+              <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-green)' }}>
                 {playerTotalHp} / {playerMaxHp}
               </span>
             </div>
+            {/* ダメージ表示（HPバーの上に浮かぶ） */}
+            {damageDisplay && damageDisplay.target === 'player' && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 -top-2"
+                style={{ animation: 'damage-pop 0.5s ease-out forwards' }}
+              >
+                <span className={`text-2xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}>
+                  -{damageDisplay.damage}
+                  {damageDisplay.isCritical && <span className="text-sm ml-1">!</span>}
+                </span>
+              </div>
+            )}
           </div>
         </div>
 
