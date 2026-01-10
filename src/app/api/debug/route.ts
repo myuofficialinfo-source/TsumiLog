@@ -1,6 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sql, { initDatabase, upsertUser, getUserRank } from '@/lib/db';
 
+// テーブルをリセット（POSTでアクセス）
+export async function POST() {
+  try {
+    // 既存テーブルを削除
+    await sql`DROP TABLE IF EXISTS game_usage`;
+    await sql`DROP TABLE IF EXISTS battles`;
+    await sql`DROP TABLE IF EXISTS graduations`;
+    await sql`DROP TABLE IF EXISTS users`;
+
+    // 新しいテーブルを作成
+    await initDatabase();
+
+    return NextResponse.json({ success: true, message: 'Tables reset successfully' });
+  } catch (e) {
+    return NextResponse.json({ error: String(e) }, { status: 500 });
+  }
+}
+
 // デバッグ用：DBの状態を確認
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
