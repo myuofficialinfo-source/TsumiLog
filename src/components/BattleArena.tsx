@@ -522,12 +522,15 @@ export default function BattleArena({
                   showStats={false}
                   disabled={card.currentHp <= 0}
                 />
-                {/* タイマーバー */}
+                {/* ゲージオーバーレイ（下から上に上がる） */}
                 {card.currentHp > 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b">
+                  <div
+                    className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
+                    style={{ border: '3px solid transparent' }}
+                  >
                     <div
-                      className="h-full bg-yellow-400 rounded-b transition-all"
-                      style={{ width: `${getCardTimerPercent(card)}%` }}
+                      className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
+                      style={{ height: `${getCardTimerPercent(card)}%` }}
                     />
                   </div>
                 )}
@@ -550,12 +553,15 @@ export default function BattleArena({
                   showStats={false}
                   disabled={card.currentHp <= 0}
                 />
-                {/* タイマーバー */}
+                {/* ゲージオーバーレイ（下から上に上がる） */}
                 {card.currentHp > 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b">
+                  <div
+                    className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
+                    style={{ border: '3px solid transparent' }}
+                  >
                     <div
-                      className="h-full bg-yellow-400 rounded-b transition-all"
-                      style={{ width: `${getCardTimerPercent(card)}%` }}
+                      className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
+                      style={{ height: `${getCardTimerPercent(card)}%` }}
                     />
                   </div>
                 )}
@@ -599,12 +605,15 @@ export default function BattleArena({
                   showStats={false}
                   disabled={card.currentHp <= 0}
                 />
-                {/* タイマーバー */}
+                {/* ゲージオーバーレイ（下から上に上がる） */}
                 {card.currentHp > 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b">
+                  <div
+                    className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
+                    style={{ border: '3px solid transparent' }}
+                  >
                     <div
-                      className="h-full bg-yellow-400 rounded-b transition-all"
-                      style={{ width: `${getCardTimerPercent(card)}%` }}
+                      className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
+                      style={{ height: `${getCardTimerPercent(card)}%` }}
                     />
                   </div>
                 )}
@@ -627,12 +636,15 @@ export default function BattleArena({
                   showStats={false}
                   disabled={card.currentHp <= 0}
                 />
-                {/* タイマーバー */}
+                {/* ゲージオーバーレイ（下から上に上がる） */}
                 {card.currentHp > 0 && (
-                  <div className="absolute bottom-0 left-0 right-0 h-1 bg-gray-600 rounded-b">
+                  <div
+                    className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
+                    style={{ border: '3px solid transparent' }}
+                  >
                     <div
-                      className="h-full bg-yellow-400 rounded-b transition-all"
-                      style={{ width: `${getCardTimerPercent(card)}%` }}
+                      className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
+                      style={{ height: `${getCardTimerPercent(card)}%` }}
                     />
                   </div>
                 )}

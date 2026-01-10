@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Image from 'next/image';
 import {
   BattleCard as BattleCardType,
@@ -10,6 +10,20 @@ import {
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Swords, Shield, Heart, Sparkles } from 'lucide-react';
+
+// Steam画像URL生成（フォールバック順序付き）
+function getSteamImageUrls(appid: number, headerImage?: string): string[] {
+  return [
+    // 縦長カプセル画像（新形式）
+    `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/library_600x900.jpg`,
+    // ヘッダー画像（ほぼすべてのゲームに存在）
+    `https://cdn.cloudflare.steamstatic.com/steam/apps/${appid}/header.jpg`,
+    // カードに保存されているヘッダー画像
+    headerImage || '',
+    // 代替ドメイン
+    `https://steamcdn-a.akamaihd.net/steam/apps/${appid}/header.jpg`,
+  ].filter(Boolean);
+}
 
 interface BattleCardProps {
   card: BattleCardType;
@@ -29,6 +43,8 @@ export default function BattleCard({
   showStats = true,
 }: BattleCardProps) {
   const { language } = useLanguage();
+  const [imageIndex, setImageIndex] = useState(0);
+  const imageUrls = useMemo(() => getSteamImageUrls(card.appid, card.headerImage), [card.appid, card.headerImage]);
 
   const rarityConfig = RARITY_CONFIG[card.rarity];
   const growthStage = getGrowthStage(card.playtimeMinutes);
@@ -90,16 +106,15 @@ export default function BattleCard({
       {/* カード画像 */}
       <div className="relative w-full h-full">
         <Image
-          src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/library_600x900.jpg`}
+          src={imageUrls[imageIndex] || imageUrls[0]}
           alt={card.name}
           fill
           className="object-cover"
           sizes="(max-width: 768px) 100vw, 200px"
-          onError={(e) => {
-            // カプセル画像がない場合はヘッダー画像にフォールバック
-            const target = e.target as HTMLImageElement;
-            if (!target.src.includes('header.jpg')) {
-              target.src = card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`;
+          onError={() => {
+            // 次のフォールバック画像に切り替え
+            if (imageIndex < imageUrls.length - 1) {
+              setImageIndex(prev => prev + 1);
             }
           }}
         />
