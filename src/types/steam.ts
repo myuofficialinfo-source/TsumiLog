@@ -22,6 +22,17 @@ export interface SteamGameDetails {
     final: number;
     discount_percent: number;
   };
+  // レビュー情報（レアリティ判定用）
+  recommendations?: {
+    total: number;  // 総レビュー数
+  };
+  metacritic?: {
+    score: number;
+  };
+  // 高評価率（HP計算用）
+  positiveRate?: number;  // 0-100のパーセンテージ
+  // ユーザータグ（SteamSpyから取得）
+  userTags?: string[];
 }
 
 export interface BacklogGame extends SteamGame {

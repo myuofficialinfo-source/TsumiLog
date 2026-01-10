@@ -42,6 +42,34 @@ export async function getOwnedGames(steamId: string): Promise<SteamGame[]> {
   return data.response.games || [];
 }
 
+// SteamSpyからゲーム情報を取得（ユーザータグ、高評価率）
+export async function getSteamSpyData(appId: number): Promise<{
+  tags: string[];
+  positiveRate: number;
+} | null> {
+  try {
+    const response = await fetch(
+      `https://steamspy.com/api.php?request=appdetails&appid=${appId}`
+    );
+    if (!response.ok) return null;
+
+    const data = await response.json();
+
+    // タグはオブジェクト形式 { "Roguelike": 1234, "Action": 567 } で、数値は投票数
+    const tags = data.tags ? Object.keys(data.tags).slice(0, 10) : [];
+
+    // 高評価率を計算
+    const positive = data.positive || 0;
+    const negative = data.negative || 0;
+    const total = positive + negative;
+    const positiveRate = total > 0 ? Math.round((positive / total) * 100) : 75;
+
+    return { tags, positiveRate };
+  } catch {
+    return null;
+  }
+}
+
 export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'): Promise<SteamGameDetails | null> {
   try {
     const steamLang = language === 'ja' ? 'japanese' : 'english';
@@ -53,15 +81,24 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
     if (!data[appId]?.success) return null;
 
     const gameData = data[appId].data;
+
+    // SteamSpyからタグと高評価率を取得
+    const steamSpyData = await getSteamSpyData(appId);
+
     return {
       appid: gameData.steam_appid,
       name: gameData.name,
       description: gameData.short_description,
       genres: gameData.genres || [],
       categories: gameData.categories || [],
+      tags: steamSpyData?.tags,  // SteamSpyからのユーザータグ
       header_image: gameData.header_image,
       release_date: gameData.release_date,
       price_overview: gameData.price_overview,
+      recommendations: gameData.recommendations,  // レビュー数
+      metacritic: gameData.metacritic,
+      positiveRate: steamSpyData?.positiveRate,  // 高評価率
+      userTags: steamSpyData?.tags,  // ユーザータグ（別名保存）
     };
   } catch {
     return null;

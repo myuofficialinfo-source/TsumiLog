@@ -199,8 +199,9 @@ export function calculateAttack(
   return Math.floor(baseAttack * growthMultiplier * rarityCap);
 }
 
-// HP計算（レビュースコアから）
-export function calculateHP(reviewScore: number): number {
-  // レビュースコア（0-100）× 10 = HP（0-1000）
-  return Math.floor(reviewScore * 10);
+// HP計算（高評価率から）
+export function calculateHP(positiveRate: number): number {
+  // 高評価率（0-100）× 10 = HP（0-1000）
+  // 例: 95%好評 → HP950, 70%好評 → HP700
+  return Math.floor(positiveRate * 10);
 }

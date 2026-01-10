@@ -7,13 +7,13 @@ import {
   Deck,
   SynergyBonus,
   GENRE_SKILL_MAP,
-  calculateRarity,
   calculateAttack,
   calculateHP,
   getGrowthStage,
   GenreSkill,
   RARITY_CONFIG,
   SKILL_DESCRIPTIONS,
+  Rarity,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award } from 'lucide-react';
@@ -50,9 +50,14 @@ interface Game {
 
 interface GameDetail {
   genres: { description: string }[];
+  categories?: { id: number; description: string }[];  // Steamカテゴリー
   developers?: string[];
   publishers?: string[];
-  tags?: string[];
+  tags?: string[];           // SteamSpyユーザータグ
+  userTags?: string[];       // SteamSpyユーザータグ（別名）
+  recommendations?: { total: number };  // レビュー数
+  metacritic?: { score: number };
+  positiveRate?: number;     // 高評価率（0-100）
 }
 
 interface DeckBuilderProps {
@@ -65,27 +70,44 @@ interface DeckBuilderProps {
   avatarUrl?: string;
 }
 
+// レビュー数からレアリティを計算
+// レビュー数が多い（有名）= コモン、少ない（マイナー）= レア
+function calculateRarityFromReviews(reviewCount: number): Rarity {
+  if (reviewCount >= 50000) return 'common';      // 5万件以上 → C
+  if (reviewCount >= 10000) return 'rare';        // 1万件以上 → R
+  if (reviewCount >= 500) return 'superRare';     // 500件以上 → SR
+  return 'ultraRare';                              // 500件未満 → UC
+}
+
 // ゲームからバトルカードを生成
 function createBattleCard(
   game: Game,
-  details: GameDetail | undefined,
-  ownershipRate: number = 50 // デフォルト50%
+  details: GameDetail | undefined
 ): BattleCardType {
-  const rarity = calculateRarity(ownershipRate);
+  // レビュー数からレアリティを決定（取得できない場合は中間値）
+  const reviewCount = details?.recommendations?.total ?? 10000;
+  const rarity = calculateRarityFromReviews(reviewCount);
+
   const genres = details?.genres?.map(g => g.description) || [];
   const skills: GenreSkill[] = genres
     .map(genre => GENRE_SKILL_MAP[genre])
     .filter((skill): skill is GenreSkill => skill !== undefined);
 
   const baseAttack = 50; // 基礎攻撃力
-  const reviewScore = 75; // TODO: 実際のレビュースコアを取得
+
+  // 高評価率でHP決定（取得できない場合はデフォルト75%）
+  const positiveRate = details?.positiveRate ?? 75;
+
+  // ユーザータグ（SteamSpyから）とカテゴリー（Steam APIから）を統合
+  const userTags = details?.userTags || details?.tags || [];
+  const categories = details?.categories?.map(c => c.description) || [];
 
   return {
     appid: game.appid,
     name: game.name,
     headerImage: game.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
-    hp: calculateHP(reviewScore),
-    maxHp: calculateHP(reviewScore),
+    hp: calculateHP(positiveRate),
+    maxHp: calculateHP(positiveRate),
     attack: calculateAttack(baseAttack, game.playtime_forever, rarity),
     baseAttack,
     rarity,
@@ -93,10 +115,10 @@ function createBattleCard(
     skills: [...new Set(skills)], // 重複除去
     developer: details?.developers?.[0],
     publisher: details?.publishers?.[0],
-    tags: details?.tags,
+    tags: [...userTags, ...categories],  // ユーザータグ + カテゴリーを結合
     playtimeMinutes: game.playtime_forever,
     isGraduated: getGrowthStage(game.playtime_forever) === 'graduated',
-    ownershipRate,
+    ownershipRate: reviewCount, // レビュー数を保存（参考用）
   };
 }
 
@@ -212,14 +234,20 @@ export default function DeckBuilder({
     });
   }, [games]);
 
-  // バトルカードに変換
+  // バトルカードに変換（重複除去）
   const availableCards = useMemo(() => {
-    return availableGames.map(game => {
-      const details = gameDetails.get(game.appid);
-      // 仮の所有率（実際はSteam APIから取得）
-      const ownershipRate = Math.random() * 100;
-      return createBattleCard(game, details, ownershipRate);
-    });
+    const seenAppIds = new Set<number>();
+    return availableGames
+      .filter(game => {
+        // 重複チェック
+        if (seenAppIds.has(game.appid)) return false;
+        seenAppIds.add(game.appid);
+        return true;
+      })
+      .map(game => {
+        const details = gameDetails.get(game.appid);
+        return createBattleCard(game, details);
+      });
   }, [availableGames, gameDetails]);
 
   // デッキ状態
