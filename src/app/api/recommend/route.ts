@@ -1,8 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { generateRecommendations, analyzeGamingPreferences, recommendNewReleases, FavoriteGame } from '@/lib/gemini';
 import { getNewReleases } from '@/lib/steam';
-import { checkRateLimit, incrementRateLimit } from '@/lib/rate-limit';
+import { checkIpRateLimitAsync, checkGlobalRateLimitAsync } from '@/lib/rate-limit';
 import { GenreStats, BacklogGame } from '@/types/steam';
+
+// クライアントIPを取得
+function getClientIp(request: NextRequest): string {
+  // Vercelの場合は x-forwarded-for ヘッダーを使用
+  const forwardedFor = request.headers.get('x-forwarded-for');
+  if (forwardedFor) {
+    // 複数IPがある場合は最初のものを使用
+    return forwardedFor.split(',')[0].trim();
+  }
+  // フォールバック
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) {
+    return realIp;
+  }
+  return 'unknown';
+}
 
 // キャッシュ（30分間有効）
 interface CacheEntry {
@@ -53,14 +69,24 @@ function cleanupCache() {
 
 export async function POST(request: NextRequest) {
   try {
-    // レート制限チェック
-    const rateLimit = checkRateLimit('gemini-api');
-    if (!rateLimit.allowed) {
+    // IPベースのレート制限チェック（Upstash Redis対応）
+    const clientIp = getClientIp(request);
+    const ipRateLimit = await checkIpRateLimitAsync(clientIp);
+    if (!ipRateLimit.allowed) {
+      const message = ipRateLimit.reason === 'hourly'
+        ? '短時間にリクエストが多すぎます。1時間後に再度お試しください。'
+        : '本日の利用上限に達しました。明日またお試しください。';
       return NextResponse.json(
-        {
-          error: '本日のAPI利用上限に達しました。明日またお試しください。',
-          resetAt: rateLimit.resetAt.toISOString()
-        },
+        { error: message },
+        { status: 429 }
+      );
+    }
+
+    // グローバルレート制限チェック（Upstash Redis対応）
+    const globalRateLimit = await checkGlobalRateLimitAsync();
+    if (!globalRateLimit.allowed) {
+      return NextResponse.json(
+        { error: 'サーバーが混雑しています。しばらく待ってから再度お試しください。' },
         { status: 429 }
       );
     }
@@ -97,8 +123,6 @@ export async function POST(request: NextRequest) {
         // キャッシュに保存
         analysisCache.set(cacheKey, { data: analysis, timestamp: Date.now() });
 
-        // 成功した場合のみカウントを増やす
-        incrementRateLimit('gemini-api');
         return NextResponse.json({ analysis });
       } catch (geminiError) {
         console.error('Gemini API error for analyze:', geminiError);
@@ -171,8 +195,6 @@ export async function POST(request: NextRequest) {
         // キャッシュに保存
         newReleasesCache.set(nrCacheKey, { data: newReleases, timestamp: Date.now() });
 
-        // 成功した場合のみカウントを増やす
-        incrementRateLimit('gemini-api');
         return NextResponse.json({ newReleases });
       } catch (geminiError) {
         console.error('Gemini API error for new-releases:', geminiError);
@@ -203,8 +225,6 @@ export async function POST(request: NextRequest) {
         lang
       );
 
-      // 成功した場合のみカウントを増やす
-      incrementRateLimit('gemini-api');
       return NextResponse.json({ recommendations });
     } catch (geminiError) {
       console.error('Gemini API error for recommend:', geminiError);
