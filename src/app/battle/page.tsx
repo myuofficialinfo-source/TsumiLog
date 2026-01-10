@@ -422,11 +422,26 @@ function BattleContent() {
       </main>
 
       {/* フッター */}
-      <footer className="border-t-3 border-[#3D3D3D] py-4 mt-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
+      <footer className="border-t-3 border-[#3D3D3D] py-8 mt-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 text-center">
-          <p className="text-sm text-gray-500">
-            {language === 'ja' ? '積みゲーバトル - TsumiNavi' : 'Backlog Battle - TsumiNavi'}
+          <div className="flex justify-center mb-4">
+            <Image src="/icons/icom.png" alt="TsumiNavi" width={40} height={40} />
+          </div>
+          <p className="font-bold text-gray-600">
+            {language === 'ja' ? 'TsumiNavi - 積みゲーを見える化' : 'TsumiNavi - Visualize your backlog'}
           </p>
+          <p className="text-sm text-gray-500 mt-2">
+            A personal project | Powered by Steam
+          </p>
+          <div className="flex justify-center gap-4 mt-3 text-xs text-gray-400">
+            <Link href="/privacy" className="hover:text-gray-300 transition-colors">
+              {language === 'ja' ? 'プライバシーポリシー' : 'Privacy Policy'}
+            </Link>
+            <span>|</span>
+            <Link href="/terms" className="hover:text-gray-300 transition-colors">
+              {language === 'ja' ? '利用規約' : 'Terms of Service'}
+            </Link>
+          </div>
         </div>
       </footer>
     </div>

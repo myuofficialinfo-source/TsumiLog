@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback, useEffect, DragEvent } from 'react';
 import BattleCard, { CardSlot } from './BattleCard';
 import {
   BattleCard as BattleCardType,
@@ -16,8 +16,29 @@ import {
   SKILL_DESCRIPTIONS,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Star, Swords, Heart, Calendar } from 'lucide-react';
+import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award } from 'lucide-react';
 import Link from 'next/link';
+
+// ランクティア定義
+const RANK_TIERS = [
+  { name: { ja: 'ルーキー', en: 'Rookie' }, minScore: 0, color: '#9CA3AF', icon: '🌱' },
+  { name: { ja: 'ブロンズ', en: 'Bronze' }, minScore: 10, color: '#CD7F32', icon: '🥉' },
+  { name: { ja: 'シルバー', en: 'Silver' }, minScore: 50, color: '#C0C0C0', icon: '🥈' },
+  { name: { ja: 'ゴールド', en: 'Gold' }, minScore: 150, color: '#FFD700', icon: '🥇' },
+  { name: { ja: 'プラチナ', en: 'Platinum' }, minScore: 400, color: '#E5E4E2', icon: '💎' },
+  { name: { ja: 'ダイヤモンド', en: 'Diamond' }, minScore: 1000, color: '#B9F2FF', icon: '💠' },
+  { name: { ja: 'マスター', en: 'Master' }, minScore: 2500, color: '#9B59B6', icon: '👑' },
+  { name: { ja: 'レジェンド', en: 'Legend' }, minScore: 5000, color: '#FF6B6B', icon: '🔥' },
+];
+
+function getRankTier(score: number) {
+  for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
+    if (score >= RANK_TIERS[i].minScore) {
+      return RANK_TIERS[i];
+    }
+  }
+  return RANK_TIERS[0];
+}
 
 interface Game {
   appid: number;
@@ -206,6 +227,8 @@ export default function DeckBuilder({
   const [backLine, setBackLine] = useState<(BattleCardType | null)[]>([null, null, null, null, null]);
   const [selectedSlot, setSelectedSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
   const [previewCard, setPreviewCard] = useState<BattleCardType | null>(null);
+  const [draggedCard, setDraggedCard] = useState<BattleCardType | null>(null);
+  const [dragOverSlot, setDragOverSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
 
   // 選択済みカードのappid
   const selectedAppIds = useMemo(() => {
@@ -222,10 +245,11 @@ export default function DeckBuilder({
   }, [frontLine, backLine]);
 
   // カードを配置
-  const placeCard = (card: BattleCardType) => {
-    if (!selectedSlot) return;
+  const placeCard = (card: BattleCardType, slot?: { line: 'front' | 'back'; index: number }) => {
+    const targetSlot = slot || selectedSlot;
+    if (!targetSlot) return;
 
-    const { line, index } = selectedSlot;
+    const { line, index } = targetSlot;
 
     if (line === 'front') {
       setFrontLine(prev => {
@@ -242,6 +266,33 @@ export default function DeckBuilder({
     }
     setSelectedSlot(null);
     setPreviewCard(null);
+  };
+
+  // ドラッグ開始
+  const handleDragStart = (card: BattleCardType) => {
+    setDraggedCard(card);
+  };
+
+  // ドラッグ終了
+  const handleDragEnd = () => {
+    setDraggedCard(null);
+    setDragOverSlot(null);
+  };
+
+  // スロットへのドラッグオーバー
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, line: 'front' | 'back', index: number) => {
+    e.preventDefault();
+    setDragOverSlot({ line, index });
+  };
+
+  // スロットへのドロップ
+  const handleDrop = (e: DragEvent<HTMLDivElement>, line: 'front' | 'back', index: number) => {
+    e.preventDefault();
+    if (draggedCard) {
+      placeCard(draggedCard, { line, index });
+    }
+    setDraggedCard(null);
+    setDragOverSlot(null);
   };
 
   // カードをプレビュー（詳細ポップアップ表示）
@@ -343,7 +394,7 @@ export default function DeckBuilder({
     <div className="space-y-6">
       {/* ユーザー情報カード */}
       {steamId && (
-        <div className="pop-card p-4 flex items-center justify-between">
+        <div className="pop-card p-4 flex items-center justify-between flex-wrap gap-4">
           <div className="flex items-center gap-4">
             {avatarUrl ? (
               <img
@@ -358,31 +409,43 @@ export default function DeckBuilder({
             )}
             <div>
               <h3 className="font-bold text-lg">{personaName || 'Unknown'}</h3>
-              {userStats && (
-                <div className="flex items-center gap-3 text-sm">
-                  <span className="flex items-center gap-1">
-                    <Star className="w-4 h-4 text-yellow-500" />
-                    <span className="font-bold">{userStats.score}</span>
-                    <span className="text-gray-500 text-xs">{language === 'ja' ? 'スコア' : 'Score'}</span>
-                  </span>
-                  {userStats.rank && (
-                    <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white" style={{ backgroundColor: 'var(--pop-yellow)' }}>
-                      #{userStats.rank} {language === 'ja' ? '位' : ''}
+              {userStats && (() => {
+                const rankTier = getRankTier(userStats.score);
+                return (
+                  <div className="flex items-center gap-2 mt-1">
+                    {/* ランクティア */}
+                    <span
+                      className="px-2 py-0.5 rounded-full text-xs font-bold flex items-center gap-1"
+                      style={{ backgroundColor: rankTier.color, color: rankTier.color === '#E5E4E2' || rankTier.color === '#C0C0C0' || rankTier.color === '#B9F2FF' ? '#3D3D3D' : '#fff' }}
+                    >
+                      <span>{rankTier.icon}</span>
+                      {rankTier.name[language]}
                     </span>
-                  )}
-                </div>
-              )}
+                    {/* 世界ランキング順位 */}
+                    {userStats.rank && (
+                      <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white flex items-center gap-1" style={{ backgroundColor: 'var(--pop-yellow)' }}>
+                        <Trophy className="w-3 h-3" />
+                        #{userStats.rank}
+                      </span>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
             {userStats && (
               <div className="flex gap-4 text-center">
                 <div>
-                  <p className="text-xl font-black" style={{ color: 'var(--pop-green)' }}>{userStats.wins}</p>
+                  <p className="text-lg font-black" style={{ color: 'var(--pop-yellow)' }}>{userStats.score}</p>
+                  <p className="text-xs text-gray-500">{language === 'ja' ? 'スコア' : 'Score'}</p>
+                </div>
+                <div>
+                  <p className="text-lg font-black" style={{ color: 'var(--pop-green)' }}>{userStats.wins}</p>
                   <p className="text-xs text-gray-500">{language === 'ja' ? '勝利' : 'Wins'}</p>
                 </div>
                 <div>
-                  <p className="text-xl font-black" style={{ color: 'var(--pop-blue)' }}>{userStats.graduations}</p>
+                  <p className="text-lg font-black" style={{ color: 'var(--pop-blue)' }}>{userStats.graduations}</p>
                   <p className="text-xs text-gray-500">{language === 'ja' ? '卒業' : 'Grads'}</p>
                 </div>
               </div>
@@ -392,7 +455,7 @@ export default function DeckBuilder({
               className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:opacity-90 text-white font-bold"
               style={{ backgroundColor: 'var(--pop-yellow)' }}
             >
-              <Trophy className="w-4 h-4" />
+              <Award className="w-4 h-4" />
               {language === 'ja' ? 'ランキング' : 'Ranking'}
             </Link>
           </div>
@@ -445,7 +508,13 @@ export default function DeckBuilder({
           </h3>
           <div className="flex gap-3 justify-center flex-wrap">
             {backLine.map((card, index) => (
-              <div key={`back-${index}`} className="relative">
+              <div
+                key={`back-${index}`}
+                className={`relative transition-transform ${dragOverSlot?.line === 'back' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-blue-400' : ''}`}
+                onDragOver={(e) => handleDragOver(e, 'back', index)}
+                onDragLeave={() => setDragOverSlot(null)}
+                onDrop={(e) => handleDrop(e, 'back', index)}
+              >
                 {card ? (
                   <>
                     <BattleCard
@@ -485,7 +554,13 @@ export default function DeckBuilder({
           </h3>
           <div className="flex gap-3 justify-center flex-wrap">
             {frontLine.map((card, index) => (
-              <div key={`front-${index}`} className="relative">
+              <div
+                key={`front-${index}`}
+                className={`relative transition-transform ${dragOverSlot?.line === 'front' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-red-400' : ''}`}
+                onDragOver={(e) => handleDragOver(e, 'front', index)}
+                onDragLeave={() => setDragOverSlot(null)}
+                onDrop={(e) => handleDrop(e, 'front', index)}
+              >
                 {card ? (
                   <>
                     <BattleCard
@@ -549,7 +624,7 @@ export default function DeckBuilder({
       <div className="pop-card p-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold text-gray-600">
-            {language === 'ja' ? 'カードを選択' : 'Select Cards'}
+            {language === 'ja' ? 'カードを選択（ドラッグ＆ドロップ可）' : 'Select Cards (Drag & Drop)'}
           </h3>
           {selectedSlot && (
             <span className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: selectedSlot.line === 'front' ? 'var(--pop-red)' : 'var(--pop-blue)' }}>
@@ -559,23 +634,34 @@ export default function DeckBuilder({
             </span>
           )}
         </div>
-        {!selectedSlot && (
+        {!selectedSlot && !draggedCard && (
           <p className="text-sm text-gray-500 mb-3">
-            {language === 'ja' ? '上のスロットをクリックして配置先を選択してください' : 'Click a slot above to select placement'}
+            {language === 'ja' ? 'カードをドラッグしてスロットにドロップ、またはスロットをクリックして選択' : 'Drag cards to slots, or click a slot to select'}
+          </p>
+        )}
+        {draggedCard && (
+          <p className="text-sm text-blue-500 mb-3 font-bold">
+            {language === 'ja' ? 'スロットにドロップしてください' : 'Drop on a slot'}
           </p>
         )}
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-80 overflow-y-auto">
           {availableCards
             .filter(card => !selectedAppIds.has(card.appid) && !card.isGraduated)
             .map(card => (
-              <BattleCard
+              <div
                 key={card.appid}
-                card={card}
-                size="small"
-                onClick={() => handleCardClick(card)}
-                showStats={false}
-                disabled={!selectedSlot}
-              />
+                draggable
+                onDragStart={() => handleDragStart(card)}
+                onDragEnd={handleDragEnd}
+                className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
+              >
+                <BattleCard
+                  card={card}
+                  size="small"
+                  onClick={() => handleCardClick(card)}
+                  showStats={false}
+                />
+              </div>
             ))}
         </div>
       </div>
@@ -588,16 +674,28 @@ export default function DeckBuilder({
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex gap-6">
-              {/* 左側: ゲーム画像 */}
+              {/* 左側: ゲーム画像（クリックでSteamストアへ） */}
               <div className="flex-shrink-0">
-                <img
-                  src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${previewCard.appid}/library_600x900.jpg`}
-                  alt={previewCard.name}
-                  className="w-48 h-72 object-cover rounded-xl border-3 border-[#3D3D3D]"
-                  onError={(e) => {
-                    (e.target as HTMLImageElement).src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${previewCard.appid}/header.jpg`;
-                  }}
-                />
+                <a
+                  href={`https://store.steampowered.com/app/${previewCard.appid}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block hover:opacity-90 transition-opacity relative group"
+                >
+                  <img
+                    src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${previewCard.appid}/library_600x900.jpg`}
+                    alt={previewCard.name}
+                    className="w-48 h-72 object-cover rounded-xl border-3 border-[#3D3D3D]"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${previewCard.appid}/header.jpg`;
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity rounded-xl flex items-center justify-center">
+                    <span className="text-white text-sm font-bold">
+                      {language === 'ja' ? 'Steamで見る' : 'View on Steam'}
+                    </span>
+                  </div>
+                </a>
               </div>
 
               {/* 右側: 詳細情報 */}
