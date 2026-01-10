@@ -3,8 +3,11 @@ import { GenreStats, BacklogGame } from '@/types/steam';
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
 
-if (!apiKey) {
-  console.error('GOOGLE_AI_API_KEY is not set');
+// APIキーが未設定または無効な場合のフラグ
+const isApiKeyValid = !!apiKey && apiKey.length > 10;
+
+if (!isApiKeyValid) {
+  console.error('GOOGLE_AI_API_KEY is not set or invalid - AI features disabled');
 }
 
 const genAI = new GoogleGenerativeAI(apiKey || '');
@@ -15,6 +18,11 @@ async function generateWithRetry(
   prompt: string,
   maxRetries: number = 5
 ): Promise<string> {
+  // APIキーが無効な場合は即座にエラー
+  if (!isApiKeyValid) {
+    throw new Error('AI機能は現在メンテナンス中です');
+  }
+
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -24,8 +32,15 @@ async function generateWithRetry(
     } catch (error) {
       lastError = error instanceof Error ? error : new Error('Unknown error');
 
-      // 429エラー（レート制限）の場合はリトライ
       const errorMessage = lastError.message.toLowerCase();
+
+      // APIキーが漏洩報告された場合
+      if (errorMessage.includes('leaked') || errorMessage.includes('403')) {
+        console.error('API key is invalid or leaked');
+        throw new Error('AI機能は現在メンテナンス中です');
+      }
+
+      // 429エラー（レート制限）の場合はリトライ
       if (errorMessage.includes('429') || errorMessage.includes('rate') || errorMessage.includes('quota')) {
         // 指数バックオフ: 1秒、2秒、4秒...
         const waitTime = Math.pow(2, attempt) * 1000;
