@@ -237,11 +237,11 @@ export async function initGameUsageTable() {
       appid INTEGER NOT NULL,
       game_name VARCHAR(200),
       steam_id VARCHAR(20) NOT NULL,
-      used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      UNIQUE(steam_id, appid, used_at::date)
+      used_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `;
   await sql`CREATE INDEX IF NOT EXISTS idx_game_usage_appid ON game_usage(appid)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_game_usage_steam_id ON game_usage(steam_id)`;
 }
 
 // デッキで使用されたゲームを記録
@@ -251,10 +251,9 @@ export async function recordGameUsage(steamId: string, games: Array<{ appid: num
       await sql`
         INSERT INTO game_usage (appid, game_name, steam_id)
         VALUES (${game.appid}, ${game.name}, ${steamId})
-        ON CONFLICT (steam_id, appid, (used_at::date)) DO NOTHING
       `;
     } catch {
-      // 重複エラーは無視
+      // エラーは無視
     }
   }
 }
