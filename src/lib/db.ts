@@ -174,7 +174,7 @@ export async function getRanking(limit: number = 100): Promise<Array<{
   }));
 }
 
-// ユーザーのランキング順位を取得
+// ユーザーのランキング順位を取得（全ユーザー対象、スコア0でも順位あり）
 export async function getUserRank(steamId: string): Promise<number | null> {
   const result = await sql`
     WITH user_stats AS (
@@ -182,7 +182,8 @@ export async function getUserRank(steamId: string): Promise<number | null> {
         u.steam_id,
         COALESCE(g.graduation_count, 0) * COALESCE(b.win_count, 0) as score,
         COALESCE(b.win_count, 0) as wins,
-        COALESCE(g.graduation_count, 0) as graduations
+        COALESCE(g.graduation_count, 0) as graduations,
+        u.created_at
       FROM users u
       LEFT JOIN (
         SELECT steam_id, COUNT(*) as graduation_count
@@ -199,9 +200,8 @@ export async function getUserRank(steamId: string): Promise<number | null> {
     ranked AS (
       SELECT
         steam_id,
-        ROW_NUMBER() OVER (ORDER BY score DESC, wins DESC, graduations DESC) as rank
+        ROW_NUMBER() OVER (ORDER BY score DESC, wins DESC, graduations DESC, created_at ASC) as rank
       FROM user_stats
-      WHERE score > 0
     )
     SELECT rank FROM ranked WHERE steam_id = ${steamId}
   `;
