@@ -478,7 +478,7 @@ export default function DeckBuilder({
                       </span>
                       <span className="px-2 py-0.5 rounded-full text-xs font-bold text-white flex items-center gap-1" style={{ backgroundColor: 'var(--pop-yellow)' }}>
                         <Trophy className="w-3 h-3" />
-                        {userStats?.rank ? `#${userStats.rank}` : (language === 'ja' ? 'ランク外' : 'Unranked')}
+                        #{userStats?.rank ?? '-'}
                       </span>
                     </>
                   );

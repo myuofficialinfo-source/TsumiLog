@@ -133,6 +133,7 @@ export async function getRanking(limit: number = 100): Promise<Array<{
         u.steam_id,
         u.persona_name,
         u.avatar_url,
+        u.created_at,
         COALESCE(g.graduation_count, 0) as graduations,
         COALESCE(b.win_count, 0) as wins,
         COALESCE(g.graduation_count, 0) * COALESCE(b.win_count, 0) as score
@@ -150,7 +151,7 @@ export async function getRanking(limit: number = 100): Promise<Array<{
       ) b ON u.steam_id = b.steam_id
     )
     SELECT
-      ROW_NUMBER() OVER (ORDER BY score DESC, wins DESC, graduations DESC) as rank,
+      ROW_NUMBER() OVER (ORDER BY score DESC, wins DESC, graduations DESC, created_at ASC) as rank,
       steam_id,
       persona_name,
       avatar_url,
@@ -158,8 +159,7 @@ export async function getRanking(limit: number = 100): Promise<Array<{
       wins,
       score
     FROM user_stats
-    WHERE score > 0
-    ORDER BY score DESC, wins DESC, graduations DESC
+    ORDER BY score DESC, wins DESC, graduations DESC, created_at ASC
     LIMIT ${limit}
   `;
 
