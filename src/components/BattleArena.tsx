@@ -129,13 +129,13 @@ export default function BattleArena({
     isCritical: boolean;
   } | null>(null);
   const [shakeTarget, setShakeTarget] = useState<'player' | 'opponent' | null>(null);
-  // 複数スロットの火花エフェクト（リセットされずに最後まで再生）
+  // 複数の火花エフェクト（ランダム位置で最後まで再生）
   const [hitEffects, setHitEffects] = useState<Array<{
     target: 'player' | 'opponent';
     key: number;
-    slot: number; // 0-3のスロット位置
+    x: number; // ランダムX位置（%）
+    y: number; // ランダムY位置（%）
   }>>([]);
-  const hitEffectSlotRef = useRef(0);
 
   // バトルログ
   const [battleLog, setBattleLog] = useState<string[]>([]);
@@ -392,14 +392,15 @@ export default function BattleArena({
           isCritical: action.isCritical,
         });
         setShakeTarget(targetSide);
-        // 火花エフェクト（4スロットをローテーション）
-        const currentSlot = hitEffectSlotRef.current;
-        const newEffectKey = Date.now();
-        hitEffectSlotRef.current = (currentSlot + 1) % 4;
+        // 火花エフェクト（デッキ全体にランダム位置）
+        const newEffectKey = Date.now() + Math.random();
+        const randomX = Math.random() * 80 + 10; // 10%〜90%
+        const randomY = Math.random() * 60 + 20; // 20%〜80%
         setHitEffects(prev => [...prev, {
           target: targetSide,
           key: newEffectKey,
-          slot: currentSlot,
+          x: randomX,
+          y: randomY,
         }]);
 
         // ログ追加
@@ -618,50 +619,40 @@ export default function BattleArena({
                 )}
               </div>
             ))}
-            {/* 火花ヒットエフェクト（相手デッキ - 4スロット位置） */}
-            {hitEffects.filter(e => e.target === 'opponent').map(effect => {
-              // スロット位置：左上、右上、左下、右下
-              const slotPositions = [
-                { x: -30, y: -15 },
-                { x: 30, y: -15 },
-                { x: -30, y: 15 },
-                { x: 30, y: 15 },
-              ];
-              const pos = slotPositions[effect.slot];
-              return (
-                <div
-                  key={effect.key}
-                  className="absolute pointer-events-none z-20"
-                  style={{
-                    left: `calc(50% + ${pos.x}px)`,
-                    top: `calc(50% + ${pos.y}px)`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                >
-                  {/* 中央バースト */}
-                  <div className="spark-burst bg-orange-400/80" />
-                  {/* 火花パーティクル */}
-                  {[...Array(8)].map((_, i) => {
-                    const angle = (i * 45 + effect.slot * 11) * (Math.PI / 180);
-                    const distance = 30 + (effect.slot % 2) * 10;
-                    const x = Math.cos(angle) * distance;
-                    const y = Math.sin(angle) * distance;
-                    return (
-                      <div
-                        key={i}
-                        className="spark-particle"
-                        style={{
-                          '--spark-x': `${x}px`,
-                          '--spark-y': `${y}px`,
-                          backgroundColor: i % 2 === 0 ? '#F97316' : '#FBBF24',
-                          animationDelay: `${i * 0.02}s`,
-                        } as React.CSSProperties}
-                      />
-                    );
-                  })}
-                </div>
-              );
-            })}
+            {/* 火花ヒットエフェクト（相手デッキ - ランダム位置） */}
+            {hitEffects.filter(e => e.target === 'opponent').map(effect => (
+              <div
+                key={effect.key}
+                className="absolute pointer-events-none z-20"
+                style={{
+                  left: `${effect.x}%`,
+                  top: `${effect.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                {/* 中央バースト */}
+                <div className="spark-burst bg-orange-400/80" />
+                {/* 火花パーティクル */}
+                {[...Array(12)].map((_, i) => {
+                  const angle = (i * 30) * (Math.PI / 180);
+                  const distance = 50 + Math.random() * 20;
+                  const x = Math.cos(angle) * distance;
+                  const y = Math.sin(angle) * distance;
+                  return (
+                    <div
+                      key={i}
+                      className="spark-particle"
+                      style={{
+                        '--spark-x': `${x}px`,
+                        '--spark-y': `${y}px`,
+                        backgroundColor: i % 2 === 0 ? '#F97316' : '#FBBF24',
+                        animationDelay: `${i * 0.02}s`,
+                      } as React.CSSProperties}
+                    />
+                  );
+                })}
+              </div>
+            ))}
           </div>
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
         </div>
@@ -713,50 +704,40 @@ export default function BattleArena({
                 )}
               </div>
             ))}
-            {/* 火花ヒットエフェクト（プレイヤーデッキ - 4スロット位置） */}
-            {hitEffects.filter(e => e.target === 'player').map(effect => {
-              // スロット位置：左上、右上、左下、右下
-              const slotPositions = [
-                { x: -30, y: -15 },
-                { x: 30, y: -15 },
-                { x: -30, y: 15 },
-                { x: 30, y: 15 },
-              ];
-              const pos = slotPositions[effect.slot];
-              return (
-                <div
-                  key={effect.key}
-                  className="absolute pointer-events-none z-20"
-                  style={{
-                    left: `calc(50% + ${pos.x}px)`,
-                    top: `calc(50% + ${pos.y}px)`,
-                    transform: 'translate(-50%, -50%)',
-                  }}
-                >
-                  {/* 中央バースト */}
-                  <div className="spark-burst bg-red-500/80" />
-                  {/* 火花パーティクル */}
-                  {[...Array(8)].map((_, i) => {
-                    const angle = (i * 45 + effect.slot * 11) * (Math.PI / 180);
-                    const distance = 30 + (effect.slot % 2) * 10;
-                    const x = Math.cos(angle) * distance;
-                    const y = Math.sin(angle) * distance;
-                    return (
-                      <div
-                        key={i}
-                        className="spark-particle"
-                        style={{
-                          '--spark-x': `${x}px`,
-                          '--spark-y': `${y}px`,
-                          backgroundColor: i % 2 === 0 ? '#EF4444' : '#F97316',
-                          animationDelay: `${i * 0.02}s`,
-                        } as React.CSSProperties}
-                      />
-                    );
-                  })}
-                </div>
-              );
-            })}
+            {/* 火花ヒットエフェクト（プレイヤーデッキ - ランダム位置） */}
+            {hitEffects.filter(e => e.target === 'player').map(effect => (
+              <div
+                key={effect.key}
+                className="absolute pointer-events-none z-20"
+                style={{
+                  left: `${effect.x}%`,
+                  top: `${effect.y}%`,
+                  transform: 'translate(-50%, -50%)',
+                }}
+              >
+                {/* 中央バースト */}
+                <div className="spark-burst bg-red-500/80" />
+                {/* 火花パーティクル */}
+                {[...Array(12)].map((_, i) => {
+                  const angle = (i * 30) * (Math.PI / 180);
+                  const distance = 50 + Math.random() * 20;
+                  const x = Math.cos(angle) * distance;
+                  const y = Math.sin(angle) * distance;
+                  return (
+                    <div
+                      key={i}
+                      className="spark-particle"
+                      style={{
+                        '--spark-x': `${x}px`,
+                        '--spark-y': `${y}px`,
+                        backgroundColor: i % 2 === 0 ? '#EF4444' : '#F97316',
+                        animationDelay: `${i * 0.02}s`,
+                      } as React.CSSProperties}
+                    />
+                  );
+                })}
+              </div>
+            ))}
           </div>
 
           {/* プレイヤー後衛 */}

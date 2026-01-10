@@ -270,16 +270,16 @@ body {
 
 .spark-particle {
   position: absolute;
-  width: 8px;
-  height: 8px;
+  width: 14px;
+  height: 14px;
   border-radius: 50%;
   animation: spark 0.6s ease-out forwards;
 }
 
 .spark-burst {
   position: absolute;
-  width: 40px;
-  height: 40px;
+  width: 70px;
+  height: 70px;
   border-radius: 50%;
   animation: spark-burst 0.4s ease-out forwards;
 }
