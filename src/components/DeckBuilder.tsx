@@ -12,9 +12,11 @@ import {
   calculateHP,
   getGrowthStage,
   GenreSkill,
+  RARITY_CONFIG,
+  SKILL_DESCRIPTIONS,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Star } from 'lucide-react';
+import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Star, Swords, Heart, Calendar } from 'lucide-react';
 import Link from 'next/link';
 
 interface Game {
@@ -203,6 +205,7 @@ export default function DeckBuilder({
   const [frontLine, setFrontLine] = useState<(BattleCardType | null)[]>([null, null, null, null, null]);
   const [backLine, setBackLine] = useState<(BattleCardType | null)[]>([null, null, null, null, null]);
   const [selectedSlot, setSelectedSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
+  const [previewCard, setPreviewCard] = useState<BattleCardType | null>(null);
 
   // 選択済みカードのappid
   const selectedAppIds = useMemo(() => {
@@ -238,6 +241,19 @@ export default function DeckBuilder({
       });
     }
     setSelectedSlot(null);
+    setPreviewCard(null);
+  };
+
+  // カードをプレビュー（詳細ポップアップ表示）
+  const handleCardClick = (card: BattleCardType) => {
+    setPreviewCard(card);
+  };
+
+  // プレビューからデッキに追加
+  const confirmCardSelection = () => {
+    if (previewCard && selectedSlot) {
+      placeCard(previewCard);
+    }
   };
 
   // カードを削除
@@ -529,26 +545,164 @@ export default function DeckBuilder({
         </div>
       )}
 
-      {/* カード選択エリア */}
-      {selectedSlot && (
-        <div className="pop-card p-4">
-          <h3 className="text-sm font-bold text-gray-600 mb-3">
-            {language === 'ja'
-              ? `${selectedSlot.line === 'front' ? '前衛' : '後衛'}${selectedSlot.index + 1}番に配置するカードを選択`
-              : `Select a card for ${selectedSlot.line === 'front' ? 'Front' : 'Back'} Line #${selectedSlot.index + 1}`}
+      {/* カード選択エリア（常に表示） */}
+      <div className="pop-card p-4">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-bold text-gray-600">
+            {language === 'ja' ? 'カードを選択' : 'Select Cards'}
           </h3>
-          <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-96 overflow-y-auto">
-            {availableCards
-              .filter(card => !selectedAppIds.has(card.appid) && !card.isGraduated)
-              .map(card => (
-                <BattleCard
-                  key={card.appid}
-                  card={card}
-                  size="small"
-                  onClick={() => placeCard(card)}
-                  showStats={false}
+          {selectedSlot && (
+            <span className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: selectedSlot.line === 'front' ? 'var(--pop-red)' : 'var(--pop-blue)' }}>
+              {language === 'ja'
+                ? `${selectedSlot.line === 'front' ? '前衛' : '後衛'}${selectedSlot.index + 1}番`
+                : `${selectedSlot.line === 'front' ? 'Front' : 'Back'} #${selectedSlot.index + 1}`}
+            </span>
+          )}
+        </div>
+        {!selectedSlot && (
+          <p className="text-sm text-gray-500 mb-3">
+            {language === 'ja' ? '上のスロットをクリックして配置先を選択してください' : 'Click a slot above to select placement'}
+          </p>
+        )}
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-80 overflow-y-auto">
+          {availableCards
+            .filter(card => !selectedAppIds.has(card.appid) && !card.isGraduated)
+            .map(card => (
+              <BattleCard
+                key={card.appid}
+                card={card}
+                size="small"
+                onClick={() => handleCardClick(card)}
+                showStats={false}
+                disabled={!selectedSlot}
+              />
+            ))}
+        </div>
+      </div>
+
+      {/* ゲーム詳細ポップアップ */}
+      {previewCard && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setPreviewCard(null)}>
+          <div
+            className="pop-card p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex gap-6">
+              {/* 左側: ゲーム画像 */}
+              <div className="flex-shrink-0">
+                <img
+                  src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${previewCard.appid}/library_600x900.jpg`}
+                  alt={previewCard.name}
+                  className="w-48 h-72 object-cover rounded-xl border-3 border-[#3D3D3D]"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = `https://cdn.cloudflare.steamstatic.com/steam/apps/${previewCard.appid}/header.jpg`;
+                  }}
                 />
-              ))}
+              </div>
+
+              {/* 右側: 詳細情報 */}
+              <div className="flex-1 min-w-0">
+                {/* 名前 */}
+                <h2 className="text-xl font-black text-[#3D3D3D] mb-2 truncate">{previewCard.name}</h2>
+
+                {/* レアリティと開発元 */}
+                <div className="flex items-center gap-3 mb-3">
+                  <span
+                    className="px-3 py-1 rounded-full text-xs font-bold text-white"
+                    style={{ backgroundColor: RARITY_CONFIG[previewCard.rarity].color }}
+                  >
+                    {RARITY_CONFIG[previewCard.rarity].label[language]}
+                  </span>
+                  {previewCard.developer && (
+                    <span className="flex items-center gap-1 text-xs text-gray-600">
+                      <Building className="w-3 h-3" />
+                      {previewCard.developer}
+                    </span>
+                  )}
+                </div>
+
+                {/* プレイ時間 */}
+                <div className="flex items-center gap-1 text-sm text-gray-600 mb-3">
+                  <Calendar className="w-4 h-4" />
+                  {language === 'ja' ? 'プレイ時間' : 'Playtime'}: {Math.floor(previewCard.playtimeMinutes / 60)}{language === 'ja' ? '時間' : 'h'} {previewCard.playtimeMinutes % 60}{language === 'ja' ? '分' : 'm'}
+                </div>
+
+                {/* タグ */}
+                {previewCard.genres && previewCard.genres.length > 0 && (
+                  <div className="mb-3">
+                    <p className="text-xs font-bold text-gray-500 mb-1">{language === 'ja' ? 'ジャンル' : 'Genres'}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {previewCard.genres.slice(0, 5).map((genre, i) => (
+                        <span key={i} className="px-2 py-0.5 rounded text-xs bg-gray-200 text-gray-700">
+                          {genre}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 能力値 */}
+                <div className="bg-gray-100 rounded-xl p-3 mb-3">
+                  <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? '能力値' : 'Stats'}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="flex items-center gap-2">
+                      <Swords className="w-5 h-5" style={{ color: 'var(--pop-red)' }} />
+                      <div>
+                        <p className="text-lg font-black" style={{ color: 'var(--pop-red)' }}>{previewCard.attack}</p>
+                        <p className="text-xs text-gray-500">{language === 'ja' ? '攻撃力' : 'ATK'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Heart className="w-5 h-5" style={{ color: 'var(--pop-green)' }} />
+                      <div>
+                        <p className="text-lg font-black" style={{ color: 'var(--pop-green)' }}>{previewCard.hp}</p>
+                        <p className="text-xs text-gray-500">{language === 'ja' ? 'HP' : 'HP'}</p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* スキル */}
+                {previewCard.skills && previewCard.skills.length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-bold text-gray-500 mb-1">{language === 'ja' ? 'スキル' : 'Skills'}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {previewCard.skills.map((skill, i) => (
+                        <span key={i} className="px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: 'var(--pop-purple)' }}>
+                          {SKILL_DESCRIPTIONS[skill][language]}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* アクションボタン */}
+                <div className="flex gap-2">
+                  {selectedSlot ? (
+                    <button
+                      onClick={confirmCardSelection}
+                      className="flex-1 pop-button flex items-center justify-center gap-2 px-4 py-2 text-white font-bold"
+                    >
+                      <Check className="w-4 h-4" />
+                      {language === 'ja'
+                        ? `${selectedSlot.line === 'front' ? '前衛' : '後衛'}${selectedSlot.index + 1}番に配置`
+                        : `Place in ${selectedSlot.line === 'front' ? 'Front' : 'Back'} #${selectedSlot.index + 1}`}
+                    </button>
+                  ) : (
+                    <p className="flex-1 text-center text-sm text-gray-500 py-2">
+                      {language === 'ja' ? 'スロットを選択してから配置してください' : 'Select a slot first'}
+                    </p>
+                  )}
+                  <button
+                    onClick={() => setPreviewCard(null)}
+                    className="px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
+                    style={{ backgroundColor: 'var(--card-bg)' }}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
