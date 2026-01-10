@@ -19,6 +19,23 @@ export async function GET(request: NextRequest) {
     });
   }
 
+  // Step 1.5: テーブル構造を確認
+  let tableColumns: unknown[] = [];
+  try {
+    tableColumns = await sql`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_name = 'users'
+      ORDER BY ordinal_position
+    `;
+  } catch (e) {
+    return NextResponse.json({
+      step: 'getColumns',
+      error: String(e),
+      dbConnected,
+    });
+  }
+
   // Step 2: テーブル作成
   let tablesCreated = false;
   try {
@@ -55,6 +72,7 @@ export async function GET(request: NextRequest) {
       step: 'upsertUser',
       error: String(e),
       dbConnected,
+      tableColumns,
       tablesCreated,
       userCount,
     });
@@ -94,6 +112,7 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({
     success: true,
     dbConnected,
+    tableColumns,
     tablesCreated,
     userCount,
     users,
