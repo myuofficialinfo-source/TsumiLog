@@ -11,13 +11,14 @@ import {
   SKILL_DESCRIPTIONS,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Swords, Shield, Heart, Zap, Trophy, RotateCcw } from 'lucide-react';
+import { Swords, Zap, Trophy, RotateCcw, Home, X } from 'lucide-react';
 
 interface BattleArenaProps {
   playerDeck: Deck;
   opponentDeck: Deck;
   onBattleEnd: (result: BattleResult) => void;
   onRematch: () => void;
+  onBackToLobby: () => void;
 }
 
 // スキル効果の適用
@@ -205,11 +206,12 @@ function simulateBattle(
 export default function BattleArena({
   playerDeck,
   opponentDeck,
-  onBattleEnd,
   onRematch,
+  onBackToLobby,
 }: BattleArenaProps) {
   const { language } = useLanguage();
   const [battleState, setBattleState] = useState<'preparing' | 'fighting' | 'finished'>('preparing');
+  const [showResultPopup, setShowResultPopup] = useState(false);
   const [currentLogIndex, setCurrentLogIndex] = useState(0);
   const [battleLog, setBattleLog] = useState<BattleLogEntry[]>([]);
   const [winner, setWinner] = useState<'player' | 'opponent' | 'draw' | null>(null);
@@ -250,6 +252,8 @@ export default function BattleArena({
     if (battleState !== 'fighting' || currentLogIndex >= battleLog.length) {
       if (battleState === 'fighting' && currentLogIndex >= battleLog.length) {
         setBattleState('finished');
+        // バトル終了時にポップアップを表示
+        setTimeout(() => setShowResultPopup(true), 500);
       }
       return;
     }
@@ -293,6 +297,7 @@ export default function BattleArena({
   const skipToEnd = useCallback(() => {
     setCurrentLogIndex(battleLog.length);
     setBattleState('finished');
+    setTimeout(() => setShowResultPopup(true), 500);
   }, [battleLog.length]);
 
   return (
@@ -410,16 +415,82 @@ export default function BattleArena({
             {language === 'ja' ? 'スキップ' : 'Skip'}
           </button>
         )}
-        {battleState === 'finished' && (
-          <button
-            onClick={onRematch}
-            className="pop-button flex items-center gap-2 px-6 py-3 text-white font-bold"
-          >
-            <RotateCcw className="w-5 h-5" />
-            {language === 'ja' ? 'もう一度' : 'Rematch'}
-          </button>
-        )}
       </div>
+
+      {/* 結果ポップアップ */}
+      {showResultPopup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div
+            className="pop-card p-8 max-w-md w-full mx-4 text-center animate-bounce-in"
+            style={{ animation: 'bounce-in 0.5s ease-out' }}
+          >
+            {/* 結果アイコン */}
+            <div className="mb-6">
+              {winner === 'player' && (
+                <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--pop-green)' }}>
+                  <Trophy className="w-12 h-12 text-white" />
+                </div>
+              )}
+              {winner === 'opponent' && (
+                <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--pop-red)' }}>
+                  <X className="w-12 h-12 text-white" />
+                </div>
+              )}
+              {winner === 'draw' && (
+                <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--pop-yellow)' }}>
+                  <Swords className="w-12 h-12 text-white" />
+                </div>
+              )}
+            </div>
+
+            {/* 結果テキスト */}
+            <h2 className="text-3xl font-black mb-2">
+              {winner === 'player' && (
+                <span style={{ color: 'var(--pop-green)' }}>
+                  {language === 'ja' ? '勝利！' : 'Victory!'}
+                </span>
+              )}
+              {winner === 'opponent' && (
+                <span style={{ color: 'var(--pop-red)' }}>
+                  {language === 'ja' ? '敗北...' : 'Defeat...'}
+                </span>
+              )}
+              {winner === 'draw' && (
+                <span style={{ color: 'var(--pop-yellow)' }}>
+                  {language === 'ja' ? '引き分け' : 'Draw'}
+                </span>
+              )}
+            </h2>
+            <p className="text-gray-600 mb-6">
+              {winner === 'player' && (language === 'ja' ? 'おめでとうございます！' : 'Congratulations!')}
+              {winner === 'opponent' && (language === 'ja' ? 'また挑戦しよう！' : 'Try again!')}
+              {winner === 'draw' && (language === 'ja' ? '互角の戦いでした！' : 'It was a close fight!')}
+            </p>
+
+            {/* ボタン */}
+            <div className="flex flex-col gap-3">
+              <button
+                onClick={() => {
+                  setShowResultPopup(false);
+                  onRematch();
+                }}
+                className="pop-button flex items-center justify-center gap-2 px-6 py-3 text-white font-bold w-full"
+              >
+                <RotateCcw className="w-5 h-5" />
+                {language === 'ja' ? 'もう一度バトル' : 'Battle Again'}
+              </button>
+              <button
+                onClick={onBackToLobby}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 font-bold w-full"
+                style={{ backgroundColor: 'var(--card-bg)' }}
+              >
+                <Home className="w-5 h-5" />
+                {language === 'ja' ? 'ロビーに戻る' : 'Back to Lobby'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

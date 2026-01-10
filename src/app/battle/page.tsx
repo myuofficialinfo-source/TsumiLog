@@ -408,6 +408,7 @@ function BattleContent() {
             opponentDeck={opponentDeck}
             onBattleEnd={handleBattleEnd}
             onRematch={handleRematch}
+            onBackToLobby={handleCancel}
           />
         )}
       </main>
