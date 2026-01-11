@@ -608,15 +608,7 @@ export default function BattleArena({
         <h2 className="text-2xl font-black text-[#3D3D3D]">
           {battleState === 'preparing' && (language === 'ja' ? 'バトル準備中...' : 'Preparing Battle...')}
           {battleState === 'fighting' && (language === 'ja' ? 'バトル中!' : 'Battle!')}
-          {battleState === 'finished' && winner === 'player' && (
-            <span className="text-green-600">{language === 'ja' ? '勝利!' : 'Victory!'}</span>
-          )}
-          {battleState === 'finished' && winner === 'opponent' && (
-            <span className="text-red-600">{language === 'ja' ? '敗北...' : 'Defeat...'}</span>
-          )}
-          {battleState === 'finished' && winner === 'draw' && (
-            <span className="text-yellow-600">{language === 'ja' ? '引き分け' : 'Draw'}</span>
-          )}
+          {battleState === 'finished' && (language === 'ja' ? 'バトル終了' : 'Battle End')}
         </h2>
       </div>
 
@@ -1030,9 +1022,30 @@ export default function BattleArena({
 
       {/* 結果ポップアップ */}
       {showResultPopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 overflow-hidden">
+          {/* 紙吹雪エフェクト（勝利時のみ） */}
+          {winner === 'player' && (
+            <div className="absolute inset-0 pointer-events-none">
+              {[...Array(50)].map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute animate-confetti"
+                  style={{
+                    left: `${Math.random() * 100}%`,
+                    top: '-20px',
+                    width: `${8 + Math.random() * 8}px`,
+                    height: `${8 + Math.random() * 8}px`,
+                    backgroundColor: ['#FFD700', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4', '#FFEAA7', '#DDA0DD', '#98D8C8'][Math.floor(Math.random() * 8)],
+                    borderRadius: Math.random() > 0.5 ? '50%' : '0%',
+                    animationDelay: `${Math.random() * 3}s`,
+                    animationDuration: `${3 + Math.random() * 2}s`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
           <div
-            className="pop-card p-8 max-w-md w-full mx-4 text-center"
+            className="pop-card p-8 max-w-md w-full mx-4 text-center relative z-10"
             style={{ animation: 'bounce-in 0.5s ease-out' }}
           >
             {/* 結果ラベル（大きく上に） */}
