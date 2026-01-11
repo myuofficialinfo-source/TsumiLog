@@ -477,10 +477,10 @@ export default function BattleArena({
         setCurrentAction(action);
         const targetSide = action.isPlayerAttacking ? 'opponent' : 'player';
 
-        // ダメージ表示を追加（ランダムオフセット付き）
+        // ダメージ表示を追加（ランダムオフセット付き、上下左右に散らす）
         const damageKey = Date.now() + Math.random();
-        const offsetX = (Math.random() - 0.5) * 80; // -40px〜40px
-        const offsetY = (Math.random() - 0.5) * 40; // -20px〜20px
+        const offsetX = (Math.random() - 0.5) * 150; // -75px〜75px（左右広め）
+        const offsetY = (Math.random() - 0.5) * 80;  // -40px〜40px（上下も広め）
         setDamageDisplays(prev => [...prev, {
           target: targetSide,
           damage: action.damage,
@@ -634,13 +634,13 @@ export default function BattleArena({
           {/* プレイヤー側（PC: 左、スマホ: 下なのでorderで調整） */}
           <div className="flex-1 space-y-2 order-2 lg:order-1 relative">
             {/* ダメージ表示（プレイヤー側・複数スタック） */}
-            {damageDisplays.filter(d => d.target === 'player').map((damageDisplay, index) => (
+            {damageDisplays.filter(d => d.target === 'player').map((damageDisplay) => (
               <div
                 key={damageDisplay.key}
                 className="absolute top-1/2 left-1/2 z-30 pointer-events-none"
                 style={{
                   animation: 'damage-pop 2.5s ease-out forwards',
-                  transform: `translate(calc(-50% + ${damageDisplay.offsetX}px), calc(-50% + ${damageDisplay.offsetY - index * 30}px))`,
+                  transform: `translate(calc(-50% + ${damageDisplay.offsetX}px), calc(-50% + ${damageDisplay.offsetY}px))`,
                 }}
               >
                 <span
@@ -765,13 +765,13 @@ export default function BattleArena({
           {/* 相手側（PC: 右、スマホ: 上） */}
           <div className="flex-1 space-y-2 order-0 lg:order-3 relative">
             {/* ダメージ表示（相手側・複数スタック） */}
-            {damageDisplays.filter(d => d.target === 'opponent').map((damageDisplay, index) => (
+            {damageDisplays.filter(d => d.target === 'opponent').map((damageDisplay) => (
               <div
                 key={damageDisplay.key}
                 className="absolute top-1/2 left-1/2 z-30 pointer-events-none"
                 style={{
                   animation: 'damage-pop 2.5s ease-out forwards',
-                  transform: `translate(calc(-50% + ${damageDisplay.offsetX}px), calc(-50% + ${damageDisplay.offsetY - index * 30}px))`,
+                  transform: `translate(calc(-50% + ${damageDisplay.offsetX}px), calc(-50% + ${damageDisplay.offsetY}px))`,
                 }}
               >
                 <span
