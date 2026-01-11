@@ -139,11 +139,15 @@ export default function BattleArena({
     isPlayerAttacking: boolean;
     skill?: GenreSkill;
   } | null>(null);
-  const [damageDisplay, setDamageDisplay] = useState<{
+  // 複数のダメージ表示（スタッキング対応）
+  const [damageDisplays, setDamageDisplays] = useState<Array<{
     target: 'player' | 'opponent';
     damage: number;
     isCritical: boolean;
-  } | null>(null);
+    key: number;
+    offsetX: number; // ランダムX位置オフセット（px）
+    offsetY: number; // ランダムY位置オフセット（px）
+  }>>([]);
   const [shakeTarget, setShakeTarget] = useState<'player' | 'opponent' | null>(null);
   // 複数の火花エフェクト（ランダム位置で最後まで再生）
   const [hitEffects, setHitEffects] = useState<Array<{
@@ -472,11 +476,20 @@ export default function BattleArena({
         pendingActionRef.current = null;
         setCurrentAction(action);
         const targetSide = action.isPlayerAttacking ? 'opponent' : 'player';
-        setDamageDisplay({
+
+        // ダメージ表示を追加（ランダムオフセット付き）
+        const damageKey = Date.now() + Math.random();
+        const offsetX = (Math.random() - 0.5) * 80; // -40px〜40px
+        const offsetY = (Math.random() - 0.5) * 40; // -20px〜20px
+        setDamageDisplays(prev => [...prev, {
           target: targetSide,
           damage: action.damage,
           isCritical: action.isCritical,
-        });
+          key: damageKey,
+          offsetX,
+          offsetY,
+        }]);
+
         setShakeTarget(targetSide);
         // 火花エフェクト（デッキ全体にランダム位置）
         const newEffectKey = Date.now() + Math.random();
@@ -495,15 +508,16 @@ export default function BattleArena({
           ...prev.slice(0, 9),
         ]);
 
-        // エフェクトクリア（ダメージ表示は1秒、その他は400ms）
+        // エフェクトクリア（その他は400ms）
         setTimeout(() => {
           setCurrentAction(null);
           setShakeTarget(null);
         }, 400 / speed);
 
+        // ダメージ表示は2.5秒後にフェードアウト（長めに表示）
         setTimeout(() => {
-          setDamageDisplay(null);
-        }, 1000 / speed);
+          setDamageDisplays(prev => prev.filter(d => d.key !== damageKey));
+        }, 2500 / speed);
 
         // 火花エフェクトは個別に削除（アニメーション完了後）
         setTimeout(() => {
@@ -552,7 +566,7 @@ export default function BattleArena({
     setPlayerTotalHp(playerHpRef.current);
     setOpponentTotalHp(opponentHpRef.current);
     setCurrentAction(null);
-    setDamageDisplay(null);
+    setDamageDisplays([]);
     setShakeTarget(null);
     setHitEffects([]);
     setBattleState('finished');
@@ -619,11 +633,15 @@ export default function BattleArena({
 
           {/* プレイヤー側（PC: 左、スマホ: 下なのでorderで調整） */}
           <div className="flex-1 space-y-2 order-2 lg:order-1 relative">
-            {/* ダメージ表示（プレイヤー側） */}
-            {damageDisplay && damageDisplay.target === 'player' && (
+            {/* ダメージ表示（プレイヤー側・複数スタック） */}
+            {damageDisplays.filter(d => d.target === 'player').map((damageDisplay, index) => (
               <div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
-                style={{ animation: 'damage-pop 1s ease-out forwards' }}
+                key={damageDisplay.key}
+                className="absolute top-1/2 left-1/2 z-30 pointer-events-none"
+                style={{
+                  animation: 'damage-pop 2.5s ease-out forwards',
+                  transform: `translate(calc(-50% + ${damageDisplay.offsetX}px), calc(-50% + ${damageDisplay.offsetY - index * 30}px))`,
+                }}
               >
                 <span
                   className={`text-4xl lg:text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
@@ -633,7 +651,7 @@ export default function BattleArena({
                   {damageDisplay.isCritical && <span className="text-2xl lg:text-3xl ml-2">CRIT!</span>}
                 </span>
               </div>
-            )}
+            ))}
 
             {/* プレイヤーHPバー */}
             <div className="flex items-center gap-2">
@@ -746,11 +764,15 @@ export default function BattleArena({
 
           {/* 相手側（PC: 右、スマホ: 上） */}
           <div className="flex-1 space-y-2 order-0 lg:order-3 relative">
-            {/* ダメージ表示（相手側） */}
-            {damageDisplay && damageDisplay.target === 'opponent' && (
+            {/* ダメージ表示（相手側・複数スタック） */}
+            {damageDisplays.filter(d => d.target === 'opponent').map((damageDisplay, index) => (
               <div
-                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
-                style={{ animation: 'damage-pop 1s ease-out forwards' }}
+                key={damageDisplay.key}
+                className="absolute top-1/2 left-1/2 z-30 pointer-events-none"
+                style={{
+                  animation: 'damage-pop 2.5s ease-out forwards',
+                  transform: `translate(calc(-50% + ${damageDisplay.offsetX}px), calc(-50% + ${damageDisplay.offsetY - index * 30}px))`,
+                }}
               >
                 <span
                   className={`text-4xl lg:text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
@@ -760,7 +782,7 @@ export default function BattleArena({
                   {damageDisplay.isCritical && <span className="text-2xl lg:text-3xl ml-2">CRIT!</span>}
                 </span>
               </div>
-            )}
+            ))}
 
             {/* 相手HPバー */}
             <div className="flex items-center gap-2">
