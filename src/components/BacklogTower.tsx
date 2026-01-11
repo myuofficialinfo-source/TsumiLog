@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Download, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useSearchParams } from 'next/navigation';
 
 interface Game {
   appid: number;
@@ -16,7 +17,34 @@ interface BacklogTowerProps {
   backlogCount: number;
 }
 
+// テスト用ダミーデータを生成
+function generateDummyGames(count: number): Game[] {
+  const dummyGames: Game[] = [];
+  // 実際に存在するSteamゲームのappidを使用（画像が表示される）
+  const sampleAppIds = [
+    730, 570, 440, 304930, 292030, 271590, 620, 227300, 49520,
+    8930, 105600, 289070, 252490, 311210, 374320, 377160, 435150,
+    582010, 632360, 892970, 1174180, 1245620, 1091500, 367520,
+    550, 413150, 219740, 286160, 322330, 242760, 261640, 274170,
+    285900, 294100, 289130, 230410, 236390, 245620, 250900, 255220,
+    257350, 262060, 264710, 267360, 268500, 269950, 271640, 273110,
+    274940, 275850
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const appid = sampleAppIds[i % sampleAppIds.length] + Math.floor(i / sampleAppIds.length) * 10000;
+    dummyGames.push({
+      appid,
+      name: `Dummy Game ${i + 1}`,
+      headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${sampleAppIds[i % sampleAppIds.length]}/header.jpg`,
+      isBacklog: true,
+    });
+  }
+  return dummyGames;
+}
+
 export default function BacklogTower({ games, backlogCount }: BacklogTowerProps) {
+  const searchParams = useSearchParams();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isComplete, setIsComplete] = useState(false);
@@ -25,10 +53,16 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const [containerHeight, setContainerHeight] = useState(400);
   const { language } = useLanguage();
 
+  // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用
+  const dummyCount = searchParams.get('dummyBacklog');
+  const testGames = dummyCount ? generateDummyGames(parseInt(dummyCount, 10)) : null;
+  const displayGames = testGames || games;
+  const displayBacklogCount = testGames ? testGames.length : backlogCount;
+
   useEffect(() => {
     if (!containerRef.current || !canvasRef.current) return;
 
-    const backlogGames = games.filter(g => g.isBacklog);
+    const backlogGames = displayGames.filter(g => g.isBacklog);
     if (backlogGames.length === 0) return;
 
     let cleanup: (() => void) | undefined;
@@ -286,10 +320,10 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     return () => {
       if (cleanup) cleanup();
     };
-  }, [games]);
+  }, [displayGames]);
 
-  const backlogGames = games.filter(g => g.isBacklog);
-  if (backlogGames.length === 0) return null;
+  const backlogGamesForRender = displayGames.filter(g => g.isBacklog);
+  if (backlogGamesForRender.length === 0) return null;
 
   // エクスポート用キャンバスを生成
   const createExportCanvas = () => {
@@ -322,7 +356,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     exportCtx.font = 'bold 24px sans-serif';
     exportCtx.textAlign = 'center';
     exportCtx.fillText(
-      language === 'ja' ? `積みゲータワー【${backlogCount}本】` : `Backlog Tower【${backlogCount} games】`,
+      language === 'ja' ? `積みゲータワー【${displayBacklogCount}本】` : `Backlog Tower【${displayBacklogCount} games】`,
       exportCanvas.width / 2,
       40
     );
@@ -351,7 +385,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         });
 
         if (blob) {
-          const file = new File([blob], `backlog-tower-${backlogCount}.png`, { type: 'image/png' });
+          const file = new File([blob], `backlog-tower-${displayBacklogCount}.png`, { type: 'image/png' });
 
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
@@ -378,7 +412,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
 
     // その他のブラウザは従来のダウンロード
     const link = document.createElement('a');
-    link.download = `backlog-tower-${backlogCount}.png`;
+    link.download = `backlog-tower-${displayBacklogCount}.png`;
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
   };
@@ -386,8 +420,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   // Xでシェア
   const shareToX = () => {
     const text = language === 'ja'
-      ? `私の積みゲータワー【${backlogCount}本】\n\n#ツミナビ #Steam #積みゲー\nhttps://tsumi-navi.vercel.app`
-      : `My Backlog Tower【${backlogCount} games】\n\n#TsumiNavi #Steam #Backlog\nhttps://tsumi-navi.vercel.app`;
+      ? `私の積みゲータワー【${displayBacklogCount}本】\n\n#ツミナビ #Steam #積みゲー\nhttps://tsumi-navi.vercel.app`
+      : `My Backlog Tower【${displayBacklogCount} games】\n\n#TsumiNavi #Steam #Backlog\nhttps://tsumi-navi.vercel.app`;
 
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
@@ -418,7 +452,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
               }}
             >
               <p className="text-4xl font-black gradient-text">
-                {backlogCount} {language === 'ja' ? '本' : 'games'}
+                {displayBacklogCount} {language === 'ja' ? '本' : 'games'}
               </p>
               <p className="text-lg font-bold text-gray-600 mt-1">
                 {language === 'ja' ? '積みゲーが眠っています...' : 'waiting to be played...'}
