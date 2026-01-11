@@ -1007,35 +1007,6 @@ export default function BattleArena({
             className="pop-card p-8 max-w-md w-full mx-4 text-center"
             style={{ animation: 'bounce-in 0.5s ease-out' }}
           >
-            <div className="mb-6">
-              {winner === 'player' && (
-                <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--pop-green)' }}>
-                  <Trophy className="w-12 h-12 text-white" />
-                </div>
-              )}
-              {winner === 'opponent' && (
-                <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--pop-red)' }}>
-                  <X className="w-12 h-12 text-white" />
-                </div>
-              )}
-              {winner === 'draw' && (
-                <div className="w-24 h-24 mx-auto rounded-full flex items-center justify-center" style={{ backgroundColor: 'var(--pop-yellow)' }}>
-                  <Swords className="w-12 h-12 text-white" />
-                </div>
-              )}
-            </div>
-
-            <h2 className="text-3xl font-black mb-2">
-              {winner === 'player' && <span style={{ color: 'var(--pop-green)' }}>{language === 'ja' ? '勝利！' : 'Victory!'}</span>}
-              {winner === 'opponent' && <span style={{ color: 'var(--pop-red)' }}>{language === 'ja' ? '敗北...' : 'Defeat...'}</span>}
-              {winner === 'draw' && <span style={{ color: 'var(--pop-yellow)' }}>{language === 'ja' ? '引き分け' : 'Draw'}</span>}
-            </h2>
-            <p className="text-gray-600 mb-4">
-              {winner === 'player' && (language === 'ja' ? 'おめでとうございます！' : 'Congratulations!')}
-              {winner === 'opponent' && (language === 'ja' ? 'また挑戦しよう！' : 'Try again!')}
-              {winner === 'draw' && (language === 'ja' ? '互角の戦いでした！' : 'It was a close fight!')}
-            </p>
-
             {/* ランキング情報 */}
             {battleStats && steamId && (
               <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left">
