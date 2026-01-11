@@ -179,9 +179,109 @@ export function calculateAttack(
   return Math.floor(baseAttack * rarityCap);
 }
 
-// HP計算（高評価率から）
-export function calculateHP(positiveRate: number): number {
-  // 高評価率（0-100）× 10 = HP（0-1000）
-  // 例: 95%好評 → HP950, 70%好評 → HP700
-  return Math.floor(positiveRate * 10);
+// Steam評価ラベルに基づくHP設定
+// 高評価率 → HP値のマッピング
+export function calculateHP(positiveRate: number | null | undefined): number {
+  // レビューなし or 取得できない場合
+  if (positiveRate === null || positiveRate === undefined) {
+    return 200;
+  }
+
+  // 評価ラベルに基づくHP
+  if (positiveRate >= 95) return 950;      // 圧倒的に好評
+  if (positiveRate >= 80) return 800;      // 非常に好評
+  if (positiveRate >= 70) return 700;      // 好評
+  if (positiveRate >= 40) return 550;      // やや好評
+  if (positiveRate >= 35) return 400;      // 賛否両論
+  if (positiveRate >= 20) return 300;      // やや不評
+  return 200;                               // 不評
+}
+
+// 昇華ボーナス設定（30分以上プレイしたゲームがデッキ全体にバフ）
+export const SUBLIMATION_BONUS: Record<Rarity, number> = {
+  common: 1,      // +1%
+  rare: 2,        // +2%
+  superRare: 3,   // +3%
+  ultraRare: 5,   // +5%
+};
+
+// トロコンボーナス設定（実績100%達成でさらにバフ）
+export const TROPHY_BONUS: Record<Rarity, number> = {
+  common: 2,      // +2%
+  rare: 4,        // +4%
+  superRare: 6,   // +6%
+  ultraRare: 10,  // +10%
+};
+
+// 昇華済みゲームの情報
+export interface SublimatedGame {
+  appid: number;
+  name: string;
+  rarity: Rarity;
+  playtimeMinutes: number;
+  isCompleted: boolean;  // トロコン済みかどうか
+}
+
+// 昇華バフの計算結果
+export interface SublimationBuffResult {
+  totalBonus: number;           // 合計バフ％
+  sublimationBonus: number;     // 昇華ボーナス％
+  trophyBonus: number;          // トロコンボーナス％
+  sublimatedCount: number;      // 昇華済みゲーム数
+  completedCount: number;       // トロコン済みゲーム数
+  breakdown: {
+    rarity: Rarity;
+    sublimationCount: number;
+    trophyCount: number;
+    bonus: number;
+  }[];
+}
+
+// 昇華バフを計算
+export function calculateSublimationBuff(
+  sublimatedGames: SublimatedGame[]
+): SublimationBuffResult {
+  let sublimationBonus = 0;
+  let trophyBonus = 0;
+  let completedCount = 0;
+
+  const breakdownMap: Record<Rarity, { sublimationCount: number; trophyCount: number; bonus: number }> = {
+    common: { sublimationCount: 0, trophyCount: 0, bonus: 0 },
+    rare: { sublimationCount: 0, trophyCount: 0, bonus: 0 },
+    superRare: { sublimationCount: 0, trophyCount: 0, bonus: 0 },
+    ultraRare: { sublimationCount: 0, trophyCount: 0, bonus: 0 },
+  };
+
+  for (const game of sublimatedGames) {
+    // 昇華ボーナス
+    const subBonus = SUBLIMATION_BONUS[game.rarity];
+    sublimationBonus += subBonus;
+    breakdownMap[game.rarity].sublimationCount++;
+    breakdownMap[game.rarity].bonus += subBonus;
+
+    // トロコンボーナス
+    if (game.isCompleted) {
+      const tropBonus = TROPHY_BONUS[game.rarity];
+      trophyBonus += tropBonus;
+      completedCount++;
+      breakdownMap[game.rarity].trophyCount++;
+      breakdownMap[game.rarity].bonus += tropBonus;
+    }
+  }
+
+  const breakdown = (['common', 'rare', 'superRare', 'ultraRare'] as Rarity[]).map(rarity => ({
+    rarity,
+    sublimationCount: breakdownMap[rarity].sublimationCount,
+    trophyCount: breakdownMap[rarity].trophyCount,
+    bonus: breakdownMap[rarity].bonus,
+  }));
+
+  return {
+    totalBonus: sublimationBonus + trophyBonus,
+    sublimationBonus,
+    trophyBonus,
+    sublimatedCount: sublimatedGames.length,
+    completedCount,
+    breakdown,
+  };
 }

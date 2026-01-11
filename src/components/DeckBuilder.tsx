@@ -14,9 +14,12 @@ import {
   RARITY_CONFIG,
   SKILL_DESCRIPTIONS,
   Rarity,
+  SublimatedGame,
+  calculateSublimationBuff,
+  BACKLOG_THRESHOLD_MINUTES,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award } from 'lucide-react';
+import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame } from 'lucide-react';
 import Link from 'next/link';
 
 // ランクティア定義
@@ -93,8 +96,8 @@ function createBattleCard(
     .map(genre => GENRE_SKILL_MAP[genre])
     .filter((skill): skill is GenreSkill => skill !== undefined);
 
-  // 高評価率でHP決定（取得できない場合はデフォルト75%）
-  const positiveRate = details?.positiveRate ?? 75;
+  // 高評価率でHP決定（取得できない場合はnullを渡してデフォルトHP200）
+  const positiveRate = details?.positiveRate ?? null;
 
   // ユーザータグ（SteamSpyから）とカテゴリー（Steam APIから）を統合
   const userTags = details?.userTags || details?.tags || [];
@@ -302,6 +305,27 @@ export default function DeckBuilder({
     const allCards = [...frontLine, ...backLine].filter((c): c is BattleCardType => c !== null);
     return calculateSynergies(allCards);
   }, [frontLine, backLine]);
+
+  // 昇華済みゲーム（30分以上プレイ）を計算
+  const sublimationBuff = useMemo(() => {
+    // 30分以上プレイしたゲーム = 昇華済み
+    const sublimatedGames: SublimatedGame[] = games
+      .filter(game => game.playtime_forever >= BACKLOG_THRESHOLD_MINUTES)
+      .map(game => {
+        const details = gameDetails.get(game.appid);
+        const reviewCount = details?.recommendations?.total ?? 10000;
+        const rarity = calculateRarityFromReviews(reviewCount);
+        return {
+          appid: game.appid,
+          name: game.name,
+          rarity,
+          playtimeMinutes: game.playtime_forever,
+          isCompleted: false, // TODO: 実績100%達成のチェックは将来実装
+        };
+      });
+
+    return calculateSublimationBuff(sublimatedGames);
+  }, [games, gameDetails]);
 
   // カードを配置
   const placeCard = (card: BattleCardType, slot?: { line: 'front' | 'back'; index: number }) => {
@@ -671,6 +695,71 @@ export default function DeckBuilder({
                 )}
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* 昇華バフ表示 */}
+      {sublimationBuff.sublimatedCount > 0 && (
+        <div className="pop-card p-4">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2">
+              <Flame className="w-4 h-4" style={{ color: 'var(--pop-orange)' }} />
+              {language === 'ja' ? '昇華バフ' : 'Sublimation Buff'}
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="text-lg font-black" style={{ color: 'var(--pop-orange)' }}>
+                +{sublimationBuff.totalBonus}%
+              </span>
+              <span className="text-xs text-gray-500">
+                {language === 'ja' ? 'デッキ攻撃力' : 'Deck ATK'}
+              </span>
+            </div>
+          </div>
+
+          <p className="text-xs text-gray-500 mb-3">
+            {language === 'ja'
+              ? '30分以上プレイしたゲームがデッキ全体の攻撃力をバフします'
+              : 'Games played 30+ minutes buff your entire deck\'s attack'}
+          </p>
+
+          {/* レアリティ別内訳 */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+            {sublimationBuff.breakdown
+              .filter(b => b.sublimationCount > 0)
+              .map(b => (
+                <div
+                  key={b.rarity}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border-2"
+                  style={{ borderColor: RARITY_CONFIG[b.rarity].color }}
+                >
+                  <span
+                    className="px-2 py-0.5 rounded text-xs font-bold text-white"
+                    style={{ backgroundColor: RARITY_CONFIG[b.rarity].color }}
+                  >
+                    {RARITY_CONFIG[b.rarity].label[language]}
+                  </span>
+                  <span className="text-sm font-medium">x{b.sublimationCount}</span>
+                  <span className="text-xs font-bold" style={{ color: 'var(--pop-orange)' }}>
+                    +{b.bonus}%
+                  </span>
+                </div>
+              ))}
+          </div>
+
+          {/* 昇華済みゲーム数 */}
+          <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
+            <span>
+              {language === 'ja' ? '昇華済み' : 'Sublimated'}: {sublimationBuff.sublimatedCount}
+              {language === 'ja' ? '本' : ' games'}
+            </span>
+            {sublimationBuff.completedCount > 0 && (
+              <span className="flex items-center gap-1">
+                <Trophy className="w-3 h-3" style={{ color: 'var(--pop-yellow)' }} />
+                {language === 'ja' ? 'トロコン' : 'Completed'}: {sublimationBuff.completedCount}
+                {language === 'ja' ? '本' : ' games'}
+              </span>
+            )}
           </div>
         </div>
       )}

@@ -32,6 +32,7 @@ interface GameDetail {
   developers?: string[];
   publishers?: string[];
   recommendations?: { total: number };
+  positiveRate?: number;
 }
 
 interface SteamData {
@@ -93,14 +94,15 @@ function createBattleCard(
     .map(genre => GENRE_SKILL_MAP[genre])
     .filter((skill): skill is GenreSkill => skill !== undefined);
 
-  const reviewScore = 75;
+  // 高評価率でHP決定（取得できない場合はnullを渡してデフォルトHP200）
+  const positiveRate = details?.positiveRate ?? null;
 
   return {
     appid: game.appid,
     name: game.name,
     headerImage: game.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
-    hp: calculateHP(reviewScore),
-    maxHp: calculateHP(reviewScore),
+    hp: calculateHP(positiveRate),
+    maxHp: calculateHP(positiveRate),
     attack: calculateAttack(game.playtime_forever, rarity),
     rarity,
     genres,
