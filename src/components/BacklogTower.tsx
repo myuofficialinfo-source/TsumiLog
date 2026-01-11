@@ -142,8 +142,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const rows = Math.ceil(gameCount / boxesPerRow);
       // 物理エンジンで積み上がると圧縮されるので、0.6倍程度で計算
       const estimatedHeight = rows * boxHeight * 0.6;
-      // 最低400px、1000本以上は2500pxで固定
-      const height = gameCount >= 1000 ? 2500 : Math.max(400, estimatedHeight + 50);
+      // 最低400px、1000本以上は1800pxで固定
+      const height = gameCount >= 1000 ? 1800 : Math.max(400, estimatedHeight + 50);
 
       // コンテナの高さを更新
       setContainerHeight(height);
