@@ -32,11 +32,37 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     if (backlogGames.length === 0) return;
 
     let cleanup: (() => void) | undefined;
+    let isCancelled = false;
 
-    // 画像を事前にロード
+    // 画像マップ（事前読み込み or 遅延読み込みで使用）
+    const imageMap = new Map<number, HTMLImageElement>();
+    const loadingImages = new Set<number>(); // 遅延読み込み用：読み込み中の画像を追跡
+
+    // ゲームIDからゲーム情報を取得するマップ（遅延読み込み用）
+    const gameById = new Map<number, Game>();
+    backlogGames.forEach((game: Game) => gameById.set(game.appid, game));
+
+    // 画像を遅延読み込み（1000本以上のとき描画時に呼び出される）
+    const loadImageLazy = (appid: number) => {
+      if (imageMap.has(appid) || loadingImages.has(appid)) return;
+      const game = gameById.get(appid);
+      if (!game) return;
+
+      loadingImages.add(appid);
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        imageMap.set(appid, img);
+        loadingImages.delete(appid);
+      };
+      img.onerror = () => {
+        loadingImages.delete(appid);
+      };
+      img.src = game.headerImage;
+    };
+
+    // 画像を事前にロード（1000本未満のとき使用）
     const loadImages = async () => {
-      const imageMap = new Map<number, HTMLImageElement>();
-
       await Promise.all(
         backlogGames.map((game) => {
           return new Promise<void>((resolve) => {
@@ -53,15 +79,18 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
           });
         })
       );
-
-      return imageMap;
     };
 
-    // 動的インポートと画像ロードを並行実行
-    Promise.all([
-      import('matter-js'),
-      loadImages()
-    ]).then(([MatterModule, imageMap]) => {
+    // 1000本以上は遅延読み込み、それ未満は事前読み込み
+    const useLazyLoading = backlogGames.length >= 1000;
+
+    // 動的インポート（と事前読み込み）
+    const initPromise = useLazyLoading
+      ? import('matter-js')
+      : Promise.all([import('matter-js'), loadImages()]).then(([m]) => m);
+
+    initPromise.then((MatterModule) => {
+      if (isCancelled) return;
       if (!containerRef.current || !canvasRef.current) return;
 
       const Matter = MatterModule.default || MatterModule;
@@ -188,6 +217,10 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
           if (body.label === 'ground' || body.label === 'wall') continue;
 
           const gameId = bodyGameMap.get(body.id);
+          // 遅延読み込みモードのとき、画像がなければ読み込み開始
+          if (gameId && useLazyLoading && !imageMap.has(gameId)) {
+            loadImageLazy(gameId);
+          }
           const img = gameId ? imageMap.get(gameId) : null;
 
           context.save();
