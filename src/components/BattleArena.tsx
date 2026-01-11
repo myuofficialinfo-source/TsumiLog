@@ -108,6 +108,7 @@ export default function BattleArena({
   const [battleState, setBattleState] = useState<'preparing' | 'fighting' | 'finished'>('preparing');
   const [showBattleStart, setShowBattleStart] = useState(true);
   const [showResultPopup, setShowResultPopup] = useState(false);
+  const [showLoadingOverlay, setShowLoadingOverlay] = useState(false);
   const [winner, setWinner] = useState<'player' | 'opponent' | 'draw' | null>(null);
   const [battleStats, setBattleStats] = useState<{
     graduations: number;
@@ -170,12 +171,23 @@ export default function BattleArena({
     return () => clearTimeout(timer);
   }, [showBattleStart]);
 
-  // バトル結果をAPIに送信
+  // バトル終了時にローディングオーバーレイを表示し、APIコール
   useEffect(() => {
     if (battleState !== 'finished' || !winner || battleReportedRef.current) return;
-    if (!steamId) return;
 
     battleReportedRef.current = true;
+
+    // すぐにローディングオーバーレイを表示
+    setShowLoadingOverlay(true);
+
+    // ダミーモードの場合はAPIコールせずにすぐポップアップ表示
+    if (!steamId) {
+      setTimeout(() => {
+        setShowLoadingOverlay(false);
+        setShowResultPopup(true);
+      }, 500);
+      return;
+    }
 
     const reportBattle = async () => {
       try {
@@ -218,23 +230,14 @@ export default function BattleArena({
       } catch (error) {
         console.error('Failed to report battle:', error);
       } finally {
-        // APIレスポンス後にポップアップ表示
+        // ローディング終了、ポップアップ表示
+        setShowLoadingOverlay(false);
         setShowResultPopup(true);
       }
     };
 
     reportBattle();
   }, [battleState, winner, steamId, personaName, avatarUrl, playerDeck]);
-
-  // steamIdがない場合（ダミーモード）はすぐにポップアップ表示
-  useEffect(() => {
-    if (battleState !== 'finished' || !winner) return;
-    if (steamId) return; // steamIdがある場合はAPIレスポンス後に表示
-
-    // ダミーモード：1秒後にポップアップ表示
-    const timer = setTimeout(() => setShowResultPopup(true), 1000);
-    return () => clearTimeout(timer);
-  }, [battleState, winner, steamId]);
 
   // バトル初期化
   useEffect(() => {
@@ -1009,6 +1012,18 @@ export default function BattleArena({
               <Zap className="w-12 h-12 text-yellow-400 animate-bounce" style={{ animationDelay: '0.1s' }} />
               <Swords className="w-12 h-12 text-white animate-bounce" style={{ animationDelay: '0.2s' }} />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ローディングオーバーレイ（バトル終了後、結果取得中） */}
+      {showLoadingOverlay && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-16 w-16 border-4 border-white border-t-transparent mx-auto mb-4" />
+            <p className="text-white text-lg font-bold">
+              {language === 'ja' ? '結果を読み込み中...' : 'Loading results...'}
+            </p>
           </div>
         </div>
       )}
