@@ -110,47 +110,33 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       // ボックスサイズの計算（本数に応じて小さくする）
       let boxWidth = 92;
       let boxHeight = 43;
-      let baseHeight = 400;
-      let maxHeight = 800;
 
       if (gameCount >= 1000) {
-        // 1000本以上：極小サイズ
         boxWidth = 23;
         boxHeight = 11;
-        baseHeight = 800;
-        maxHeight = 1200;
       } else if (gameCount >= 500) {
-        // 500〜999本：とても小さく
         boxWidth = 32;
         boxHeight = 15;
-        baseHeight = 700;
-        maxHeight = 1000;
       } else if (gameCount >= 300) {
-        // 300〜499本：かなり小さく
         boxWidth = 40;
         boxHeight = 19;
-        baseHeight = 650;
-        maxHeight = 900;
       } else if (gameCount >= 200) {
-        // 200〜299本：小さく
         boxWidth = 46;
         boxHeight = 21;
-        baseHeight = 600;
       } else if (gameCount >= 100) {
-        // 100〜199本：少し小さく
         boxWidth = 69;
         boxHeight = 32;
-        baseHeight = 500;
       }
 
-      // 必要な高さを推定（ボックスが積み上がる高さ）
-      // 横に並ぶボックス数 × 縦に積む段数 で推定
-      const boxesPerRow = Math.floor(width / (boxWidth + 5));
+      // 必要な高さを計算（タワーが画面を埋めるように）
+      // 横に並ぶボックス数と縦に積む段数から推定
+      const boxesPerRow = Math.max(1, Math.floor(width / (boxWidth + 5)));
       const estimatedRows = Math.ceil(gameCount / boxesPerRow);
-      const estimatedTowerHeight = estimatedRows * (boxHeight * 0.8); // 重なりを考慮
+      // 重なりを考慮（物理エンジンで積み上がると約60%程度の高さになる）
+      const estimatedTowerHeight = estimatedRows * (boxHeight * 0.6);
 
-      // 最低高さとタワーの推定高さの大きい方を採用
-      const height = Math.min(Math.max(baseHeight, estimatedTowerHeight + 150), maxHeight);
+      // 余白を追加（上部100px + 下部50px）
+      const height = Math.max(300, Math.min(estimatedTowerHeight + 150, 1200));
 
       // コンテナの高さを更新
       setContainerHeight(height);
@@ -377,8 +363,12 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     const exportCanvas = createExportCanvas();
     if (!exportCanvas) return;
 
-    // Web Share API対応チェック（主にモバイル）
-    if (navigator.share && navigator.canShare) {
+    // モバイル判定（タッチデバイスかつ画面幅が小さい）
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    // モバイルのみWeb Share APIを使用
+    if (isMobile && navigator.share && navigator.canShare) {
       try {
         const blob = await new Promise<Blob | null>((resolve) => {
           exportCanvas.toBlob(resolve, 'image/png');
@@ -398,19 +388,18 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       } catch (err) {
         // ユーザーがキャンセルした場合は何もしない
         if (err instanceof Error && err.name === 'AbortError') return;
+        // その他のエラーは従来のダウンロードにフォールバック
       }
     }
 
-    // PCの場合、または共有APIが使えない場合は従来のダウンロード
-    // iOS Safariの場合はモーダルで画像を表示
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // iOS Safariの場合はモーダルで画像を表示（Share API失敗時のフォールバック）
     if (isIOS) {
       setModalImageUrl(exportCanvas.toDataURL('image/png'));
       setShowImageModal(true);
       return;
     }
 
-    // その他のブラウザは従来のダウンロード
+    // PCおよびその他のブラウザは直接ダウンロード
     const link = document.createElement('a');
     link.download = `backlog-tower-${displayBacklogCount}.png`;
     link.href = exportCanvas.toDataURL('image/png');
