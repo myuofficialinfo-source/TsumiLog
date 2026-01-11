@@ -13,14 +13,13 @@ import {
   GenreSkill,
   RARITY_CONFIG,
   SKILL_DESCRIPTIONS,
-  Rarity,
   SublimatedGame,
   calculateSublimationBuff,
   BACKLOG_THRESHOLD_MINUTES,
   calculateRarityFromReviews,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame, ArrowUp, ArrowDown, Shield } from 'lucide-react';
+import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame, ArrowUp, ArrowDown } from 'lucide-react';
 import Link from 'next/link';
 
 // ランクティア定義
@@ -254,7 +253,6 @@ export default function DeckBuilder({
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingDecks, setIsLoadingDecks] = useState(true);
   const [isSavingDefenseDeck, setIsSavingDefenseDeck] = useState(false);
-  const [hasDefenseDeck, setHasDefenseDeck] = useState(false);
 
   // デッキ状態
   const [frontLine, setFrontLine] = useState<(BattleCardType | null)[]>([null, null, null, null, null]);
@@ -404,15 +402,65 @@ export default function DeckBuilder({
     setCurrentDeckNumber(deckNum);
   }, [currentDeckNumber, frontLine, backLine, deckStates]);
 
-  // デッキをアクティブに設定
+  // デッキをアクティブに設定（防衛デッキも同時に登録）
   const setDeckActive = useCallback(async (deckNum: number) => {
-    if (!steamId) return;
+    const deckCardCount = frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length;
+    if (!steamId || deckCardCount < 10) return;
 
+    setIsSavingDefenseDeck(true);
     try {
+      // アクティブデッキとして設定
       await fetch('/api/deck', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ steamId, deckNumber: deckNum }),
+      });
+
+      // 同時に防衛デッキとしても登録
+      const frontLineCards = frontLine.filter((c): c is BattleCardType => c !== null).map(card => ({
+        appid: card.appid,
+        name: card.name,
+        headerImage: card.headerImage,
+        hp: card.hp,
+        maxHp: card.maxHp,
+        attack: card.attack,
+        rarity: card.rarity,
+        genres: card.genres,
+        skills: card.skills,
+        developer: card.developer,
+        publisher: card.publisher,
+        tags: card.tags,
+        playtimeMinutes: card.playtimeMinutes,
+        reviewCount: card.reviewCount,
+      }));
+
+      const backLineCards = backLine.filter((c): c is BattleCardType => c !== null).map(card => ({
+        appid: card.appid,
+        name: card.name,
+        headerImage: card.headerImage,
+        hp: card.hp,
+        maxHp: card.maxHp,
+        attack: card.attack,
+        rarity: card.rarity,
+        genres: card.genres,
+        skills: card.skills,
+        developer: card.developer,
+        publisher: card.publisher,
+        tags: card.tags,
+        playtimeMinutes: card.playtimeMinutes,
+        reviewCount: card.reviewCount,
+      }));
+
+      await fetch('/api/defense-deck', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steamId,
+          frontLine: frontLineCards,
+          backLine: backLineCards,
+          personaName,
+          avatarUrl,
+        }),
       });
 
       // ローカル状態を更新
@@ -434,30 +482,13 @@ export default function DeckBuilder({
       });
     } catch (error) {
       console.error('Failed to set active deck:', error);
+    } finally {
+      setIsSavingDefenseDeck(false);
     }
-  }, [steamId, currentDeckNumber, frontLine, backLine]);
+  }, [steamId, currentDeckNumber, frontLine, backLine, personaName, avatarUrl]);
 
   // 現在のデッキがアクティブかどうか
   const isCurrentDeckActive = deckStates[currentDeckNumber]?.isActive || false;
-
-  // 防衛デッキの存在確認
-  useEffect(() => {
-    if (!steamId) return;
-
-    const checkDefenseDeck = async () => {
-      try {
-        const response = await fetch(`/api/defense-deck?steamId=${steamId}`);
-        if (response.ok) {
-          const data = await response.json();
-          setHasDefenseDeck(data.exists);
-        }
-      } catch (error) {
-        console.error('Failed to check defense deck:', error);
-      }
-    };
-
-    checkDefenseDeck();
-  }, [steamId]);
 
   // 選択済みカードのappid
   const selectedAppIds = useMemo(() => {
@@ -743,67 +774,6 @@ export default function DeckBuilder({
   const deckCardCount = frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length;
   const isDeckComplete = deckCardCount >= 10;
 
-  // 防衛デッキを保存
-  const saveDefenseDeck = useCallback(async () => {
-    if (!steamId || !isDeckComplete) return;
-
-    setIsSavingDefenseDeck(true);
-    try {
-      // カード情報を完全に保存（相手がこのデッキと対戦するため）
-      const frontLineCards = frontLine.filter((c): c is BattleCardType => c !== null).map(card => ({
-        appid: card.appid,
-        name: card.name,
-        headerImage: card.headerImage,
-        hp: card.hp,
-        maxHp: card.maxHp,
-        attack: card.attack,
-        rarity: card.rarity,
-        genres: card.genres,
-        skills: card.skills,
-        developer: card.developer,
-        publisher: card.publisher,
-        tags: card.tags,
-        playtimeMinutes: card.playtimeMinutes,
-        reviewCount: card.reviewCount,
-      }));
-
-      const backLineCards = backLine.filter((c): c is BattleCardType => c !== null).map(card => ({
-        appid: card.appid,
-        name: card.name,
-        headerImage: card.headerImage,
-        hp: card.hp,
-        maxHp: card.maxHp,
-        attack: card.attack,
-        rarity: card.rarity,
-        genres: card.genres,
-        skills: card.skills,
-        developer: card.developer,
-        publisher: card.publisher,
-        tags: card.tags,
-        playtimeMinutes: card.playtimeMinutes,
-        reviewCount: card.reviewCount,
-      }));
-
-      await fetch('/api/defense-deck', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          steamId,
-          frontLine: frontLineCards,
-          backLine: backLineCards,
-          personaName,
-          avatarUrl,
-        }),
-      });
-
-      setHasDefenseDeck(true);
-    } catch (error) {
-      console.error('Failed to save defense deck:', error);
-    } finally {
-      setIsSavingDefenseDeck(false);
-    }
-  }, [steamId, frontLine, backLine, isDeckComplete, personaName, avatarUrl]);
-
   // デッキ確定
   const confirmDeck = useCallback(() => {
     if (!isDeckComplete) return;
@@ -969,45 +939,25 @@ export default function DeckBuilder({
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* バトル使用設定ボタン */}
-              <button
-                onClick={() => setDeckActive(currentDeckNumber)}
-                disabled={isCurrentDeckActive}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                  isCurrentDeckActive
-                    ? 'border-green-500 bg-green-50 text-green-700'
-                    : 'border-[#3D3D3D] hover:bg-gray-100'
-                }`}
-                style={!isCurrentDeckActive ? { backgroundColor: 'var(--card-bg)' } : {}}
-              >
-                <Check className={`w-4 h-4 ${isCurrentDeckActive ? 'text-green-600' : ''}`} />
-                {isCurrentDeckActive
+            {/* バトル使用設定ボタン（防衛デッキも同時に登録） */}
+            <button
+              onClick={() => setDeckActive(currentDeckNumber)}
+              disabled={isCurrentDeckActive || !isDeckComplete || isSavingDefenseDeck}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                isCurrentDeckActive
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-[#3D3D3D] hover:bg-gray-100'
+              } ${!isDeckComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={!isCurrentDeckActive && isDeckComplete ? { backgroundColor: 'var(--card-bg)' } : {}}
+            >
+              <Check className={`w-4 h-4 ${isCurrentDeckActive ? 'text-green-600' : ''}`} />
+              {isSavingDefenseDeck
+                ? (language === 'ja' ? '保存中...' : 'Saving...')
+                : isCurrentDeckActive
                   ? (language === 'ja' ? 'バトル使用中' : 'Active for Battle')
                   : (language === 'ja' ? 'バトルで使う' : 'Use for Battle')
-                }
-              </button>
-
-              {/* 防衛デッキ登録ボタン */}
-              <button
-                onClick={saveDefenseDeck}
-                disabled={!isDeckComplete || isSavingDefenseDeck}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
-                  hasDefenseDeck
-                    ? 'border-blue-500 bg-blue-50 text-blue-700'
-                    : 'border-[#3D3D3D] hover:bg-gray-100'
-                } ${!isDeckComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
-                style={!hasDefenseDeck && isDeckComplete ? { backgroundColor: 'var(--card-bg)' } : {}}
-              >
-                <Shield className={`w-4 h-4 ${hasDefenseDeck ? 'text-blue-600' : ''}`} />
-                {isSavingDefenseDeck
-                  ? (language === 'ja' ? '保存中...' : 'Saving...')
-                  : hasDefenseDeck
-                    ? (language === 'ja' ? '防衛デッキ更新' : 'Update Defense')
-                    : (language === 'ja' ? '防衛デッキ登録' : 'Set Defense')
-                }
-              </button>
-            </div>
+              }
+            </button>
           </div>
           <p className="text-xs text-gray-500 mt-2">
             {language === 'ja'
@@ -1506,8 +1456,8 @@ export default function DeckBuilder({
             backgroundColor: isDeckComplete ? undefined : '#9CA3AF',
           }}
         >
-          <Check className="w-5 h-5" />
-          {language === 'ja' ? 'デッキ確定' : 'Confirm Deck'}
+          <Swords className="w-5 h-5" />
+          {language === 'ja' ? 'バトル開始' : 'Start Battle'}
         </button>
       </div>
     </div>
