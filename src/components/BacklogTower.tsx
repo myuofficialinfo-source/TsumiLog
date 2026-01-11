@@ -270,8 +270,12 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     const exportCanvas = createExportCanvas();
     if (!exportCanvas) return;
 
-    // Web Share API対応チェック（主にモバイル）
-    if (navigator.share && navigator.canShare) {
+    // モバイル判定
+    const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+
+    // モバイルのみWeb Share APIを使用
+    if (isMobile && navigator.share && navigator.canShare) {
       try {
         const blob = await new Promise<Blob | null>((resolve) => {
           exportCanvas.toBlob(resolve, 'image/png');
@@ -291,19 +295,18 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       } catch (err) {
         // ユーザーがキャンセルした場合は何もしない
         if (err instanceof Error && err.name === 'AbortError') return;
+        // その他のエラーは従来のダウンロードにフォールバック
       }
     }
 
-    // PCの場合、または共有APIが使えない場合は従来のダウンロード
-    // iOS Safariの場合はモーダルで画像を表示
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // iOS Safariの場合はモーダルで画像を表示（Share API失敗時のフォールバック）
     if (isIOS) {
       setModalImageUrl(exportCanvas.toDataURL('image/png'));
       setShowImageModal(true);
       return;
     }
 
-    // その他のブラウザは従来のダウンロード
+    // PCおよびその他のブラウザは直接ダウンロード
     const link = document.createElement('a');
     link.download = `backlog-tower-${backlogCount}.png`;
     link.href = exportCanvas.toDataURL('image/png');
