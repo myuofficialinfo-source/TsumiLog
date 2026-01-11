@@ -287,7 +287,7 @@ function HomeContent() {
                 {language === 'ja' ? 'リリースノート' : 'Release Notes'}
               </h3>
               <ul className="text-xs text-gray-600 space-y-1">
-                <li><span className="font-bold">v0.2.0</span> - {language === 'ja' ? '積みゲータワーの高さ調整、積みゲーバトル（β）追加' : 'Tower height adjustment, Backlog Battle (beta) added'}</li>
+                <li><span className="font-bold">v0.2.0</span> - {language === 'ja' ? '積みゲータワーの高さ調整、リリースノート追加' : 'Tower height adjustment, Release notes added'}</li>
                 <li><span className="font-bold">v0.1.1</span> - {language === 'ja' ? 'Steam API安定性向上、キャッシュ改善' : 'Steam API stability, cache improvements'}</li>
                 <li><span className="font-bold">v0.1.0</span> - {language === 'ja' ? '初回リリース' : 'Initial release'}</li>
               </ul>
