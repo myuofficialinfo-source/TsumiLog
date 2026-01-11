@@ -135,32 +135,32 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       let boxWidth = 92;
       let boxHeight = 43;
 
+      // 積みゲー数に応じて固定の高さを設定（画面を埋めるため）
+      let height = 400; // デフォルト（〜49本）
+
       if (gameCount >= 1000) {
         boxWidth = 23;
         boxHeight = 11;
+        height = 1200;
       } else if (gameCount >= 500) {
         boxWidth = 32;
         boxHeight = 15;
+        height = 900;
       } else if (gameCount >= 300) {
         boxWidth = 40;
         boxHeight = 19;
+        height = 700;
       } else if (gameCount >= 200) {
         boxWidth = 46;
         boxHeight = 21;
+        height = 550;
       } else if (gameCount >= 100) {
         boxWidth = 69;
         boxHeight = 32;
+        height = 500;
+      } else if (gameCount >= 50) {
+        height = 450;
       }
-
-      // 必要な高さを計算（タワーが画面を埋めるように）
-      // 横に並ぶボックス数と縦に積む段数から推定
-      const boxesPerRow = Math.max(1, Math.floor(width / (boxWidth + 5)));
-      const estimatedRows = Math.ceil(gameCount / boxesPerRow);
-      // 物理エンジンで積み上がると約50%程度に圧縮される + 上部余白
-      const estimatedTowerHeight = estimatedRows * (boxHeight * 0.5);
-
-      // タワーが画面を埋めるように高さを設定（上部余白80px）
-      const height = Math.max(350, Math.min(estimatedTowerHeight + 80, 1500));
 
       // コンテナの高さを更新
       setContainerHeight(height);
