@@ -290,7 +290,9 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
 
       render();
 
-      // クリックで跳ねる機能
+      // クリックで跳ねる機能（ボックスサイズに応じて力を調整）
+      // 基準サイズ(92x43)に対する比率で力をスケーリング
+      const forceScale = (boxWidth * boxHeight) / (92 * 43);
       const handleClick = (e: MouseEvent) => {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -306,11 +308,12 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
           const dy = body.position.y - mouseY;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          // ボディの近くをクリックしたら跳ねさせる
-          if (distance < 60) {
+          // ボディの近くをクリックしたら跳ねさせる（当たり判定もサイズに応じて調整）
+          const hitRadius = Math.max(30, boxWidth);
+          if (distance < hitRadius) {
             Body.applyForce(body, body.position, {
-              x: (Math.random() - 0.5) * 0.3,
-              y: -0.15 - Math.random() * 0.1,
+              x: (Math.random() - 0.5) * 0.3 * forceScale,
+              y: (-0.15 - Math.random() * 0.1) * forceScale,
             });
           }
         }
