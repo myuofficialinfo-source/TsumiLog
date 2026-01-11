@@ -531,9 +531,11 @@ export default function BattleArena({
           }, 3000 / speed);
         }
 
-        // ログ追加（自分/敵のゲーム名 → 敵/自分 形式）
-        const ownerLabel = action.isPlayerAttacking ? 'あなた' : '敵';
-        const targetLabel = action.isPlayerAttacking ? '敵' : 'あなた';
+        // ログ追加（ユーザー名のゲーム名 → 相手ユーザー名 形式）
+        const playerLabel = personaName || (language === 'ja' ? 'あなた' : 'You');
+        const opponentLabel = opponentName || 'AI';
+        const ownerLabel = action.isPlayerAttacking ? playerLabel : opponentLabel;
+        const targetLabel = action.isPlayerAttacking ? opponentLabel : playerLabel;
         const skillText = action.skill ? ` [${action.skill}]` : '';
         const critText = action.isCritical ? ' CRIT!' : '';
         setBattleLog(prev => [
