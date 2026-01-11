@@ -39,8 +39,41 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
     }
   };
 
+  // ゲームデータが非公開の可能性があるか判定
+  const isDataPossiblyPrivate = (stats.totalPlaytimeHours === 0 && stats.totalGames > 0) ||
+    (stats.totalGames > 50 && backlogPercentage >= 95 && stats.totalPlaytimeHours === 0);
+
   return (
     <div className="pop-card p-6">
+      {/* ゲームデータが取得できなかった場合の警告（目立つ位置に表示） */}
+      {isDataPossiblyPrivate && (
+        <div className="mb-6 p-3 rounded-lg border-2 border-[#E63946] bg-red-50">
+          <div className="flex items-start gap-2">
+            <AlertTriangle className="w-5 h-5 text-[#E63946] flex-shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-bold text-[#E63946]">
+                {language === 'ja'
+                  ? 'ゲームの詳細データが取得できませんでした'
+                  : 'Game details could not be retrieved'}
+              </p>
+              <p className="text-xs text-gray-600 mt-1">
+                {language === 'ja'
+                  ? 'Steamの「ゲームの詳細」が非公開になっている可能性があります。正しい積みゲー数・プレイ時間を表示するには公開設定にしてください。'
+                  : 'Your Steam "Game details" may be set to private. Please set it to public to display accurate backlog count and playtime.'}
+              </p>
+              <a
+                href="https://steamcommunity.com/my/edit/settings"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block mt-2 text-xs font-bold text-[#457B9D] hover:underline"
+              >
+                {language === 'ja' ? '→ Steamプライバシー設定を開く' : '→ Open Steam Privacy Settings'}
+              </a>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center gap-4 mb-6">
         <Image
           src={profile.avatarUrl}
@@ -108,34 +141,8 @@ export default function ProfileCard({ profile, stats }: ProfileCardProps) {
         </div>
       </div>
 
-      {/* ゲームデータが取得できなかった場合の警告 */}
-      {stats.totalPlaytimeHours === 0 ? (
-        <div className="mt-4 p-3 rounded-lg border-2 border-[#E63946] bg-red-50">
-          <div className="flex items-start gap-2">
-            <AlertTriangle className="w-5 h-5 text-[#E63946] flex-shrink-0 mt-0.5" />
-            <div>
-              <p className="text-sm font-bold text-[#E63946]">
-                {language === 'ja'
-                  ? 'ゲームデータが取得できませんでした'
-                  : 'Game data could not be retrieved'}
-              </p>
-              <p className="text-xs text-gray-600 mt-1">
-                {language === 'ja'
-                  ? 'Steamの「ゲームの詳細」が非公開になっている可能性があります。'
-                  : 'Your Steam "Game details" may be set to private.'}
-              </p>
-              <a
-                href="https://steamcommunity.com/my/edit/settings"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-block mt-2 text-xs font-bold text-[#457B9D] hover:underline"
-              >
-                {language === 'ja' ? '→ Steamプライバシー設定を開く' : '→ Open Steam Privacy Settings'}
-              </a>
-            </div>
-          </div>
-        </div>
-      ) : (
+      {/* 注意書き（データ非公開でない場合のみ表示） */}
+      {!isDataPossiblyPrivate && (
         <p className="mt-4 text-xs text-gray-500 text-center">
           {t('profile.notice')}
         </p>
