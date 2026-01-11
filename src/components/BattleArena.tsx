@@ -613,325 +613,248 @@ export default function BattleArena({
       </div>
 
       {/* バトルフィールド */}
-      <div className="pop-card p-6 space-y-4 relative overflow-hidden" style={{ height: '600px' }}>
-        {/* ダメージ表示（フィールド全体のオーバーレイ - 固定位置） */}
-        {damageDisplay && (
-          <div
-            className="absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none"
-            style={{
-              top: damageDisplay.target === 'opponent' ? '8px' : 'auto',
-              bottom: damageDisplay.target === 'player' ? '8px' : 'auto',
-              animation: 'damage-pop 1s ease-out forwards',
-            }}
-          >
-            <span
-              className={`text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
-              style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.7)' }}
-            >
-              -{damageDisplay.damage}
-              {damageDisplay.isCritical && <span className="text-3xl ml-2">CRIT!</span>}
-            </span>
-          </div>
-        )}
+      <div className="pop-card p-4 lg:p-6 relative overflow-hidden">
+        {/* PC版: 横並び（自分左、相手右）、スマホ: 縦並び（相手上、自分下） */}
+        <div className="flex flex-col lg:flex-row lg:items-stretch gap-4">
 
-        {/* 相手側 */}
-        <div className="space-y-2">
-          {/* 相手HPバー */}
-          <div className="flex items-center gap-3">
-            <span className="text-xs font-bold text-gray-500 w-12">
-              {language === 'ja' ? '相手' : 'Enemy'}
-            </span>
-            <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
+          {/* プレイヤー側（PC: 左、スマホ: 下なのでorderで調整） */}
+          <div className="flex-1 space-y-2 order-2 lg:order-1 relative">
+            {/* ダメージ表示（プレイヤー側） */}
+            {damageDisplay && damageDisplay.target === 'player' && (
               <div
-                className="h-full rounded-full transition-all duration-200"
-                style={{
-                  width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
-                  backgroundColor: 'var(--pop-red)',
-                }}
-              />
-            </div>
-            <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-red)' }}>
-              {opponentTotalHp} / {opponentMaxHp}
-            </span>
-          </div>
-
-          {/* 相手後衛 */}
-          <div className="flex gap-2 justify-center items-end">
-            {opponentBackCards.map((card, index) => {
-              const active = isCardActive(false, 'back', card.index);
-              return (
-                <div
-                  key={`opponent-back-${index}`}
-                  className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${active ? 'scale-110 z-10' : ''}`}
-                >
-                  <BattleCard
-                    card={card}
-                    size="small"
-                    showStats={false}
-                    disabled={!isOpponentTeamAlive}
-                  />
-                  {/* ゲージオーバーレイ */}
-                  {isOpponentTeamAlive && (
-                    <div
-                      className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-                      style={{ border: '3px solid transparent' }}
-                    >
-                      <div
-                        className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
-                        style={{ height: `${getCardTimerPercent(card)}%` }}
-                      />
-                    </div>
-                  )}
-                  {/* アクティブ時のグロー */}
-                  {active && (
-                    <div
-                      className="absolute inset-0 rounded-xl pointer-events-none"
-                      style={{
-                        boxShadow: '0 0 20px 5px rgba(255, 165, 0, 0.7)',
-                        animation: 'pulse 0.3s ease-in-out infinite',
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-          <p className="text-xs text-center text-gray-400">{language === 'ja' ? '後衛' : 'Back Line'}</p>
-
-          {/* 相手前衛 */}
-          <div className="flex gap-2 justify-center relative items-end">
-            {opponentFrontCards.map((card, index) => {
-              const active = isCardActive(false, 'front', card.index);
-              return (
-                <div
-                  key={`opponent-front-${index}`}
-                  className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${active ? 'scale-110 z-10' : ''}`}
-                >
-                  <BattleCard
-                    card={card}
-                    size="small"
-                    showStats={false}
-                    disabled={!isOpponentTeamAlive}
-                  />
-                  {/* ゲージオーバーレイ */}
-                  {isOpponentTeamAlive && (
-                    <div
-                      className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-                      style={{ border: '3px solid transparent' }}
-                    >
-                      <div
-                        className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
-                        style={{ height: `${getCardTimerPercent(card)}%` }}
-                      />
-                    </div>
-                  )}
-                  {/* アクティブ時のグロー */}
-                  {active && (
-                    <div
-                      className="absolute inset-0 rounded-xl pointer-events-none"
-                      style={{
-                        boxShadow: '0 0 20px 5px rgba(255, 165, 0, 0.7)',
-                        animation: 'pulse 0.3s ease-in-out infinite',
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-            {/* 火花ヒットエフェクト（相手デッキ - ランダム位置） */}
-            {hitEffects.filter(e => e.target === 'opponent').map(effect => (
-              <div
-                key={effect.key}
-                className="absolute pointer-events-none z-20"
-                style={{
-                  left: `${effect.x}%`,
-                  top: `${effect.y}%`,
-                  transform: 'translate(-50%, -50%)',
-                }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
+                style={{ animation: 'damage-pop 1s ease-out forwards' }}
               >
-                {/* 中央バースト */}
-                <div className="spark-burst bg-orange-400/80" />
-                {/* 火花パーティクル */}
-                {[...Array(12)].map((_, i) => {
-                  const angle = (i * 30) * (Math.PI / 180);
-                  const distance = 50 + Math.random() * 20;
-                  const x = Math.cos(angle) * distance;
-                  const y = Math.sin(angle) * distance;
+                <span
+                  className={`text-4xl lg:text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
+                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.7)' }}
+                >
+                  -{damageDisplay.damage}
+                  {damageDisplay.isCritical && <span className="text-2xl lg:text-3xl ml-2">CRIT!</span>}
+                </span>
+              </div>
+            )}
+
+            {/* プレイヤーHPバー */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold w-16 lg:w-12" style={{ color: 'var(--pop-green)' }}>
+                {language === 'ja' ? 'あなた' : 'You'}
+              </span>
+              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
+                <div
+                  className="h-full rounded-full transition-all duration-200"
+                  style={{
+                    width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
+                    backgroundColor: 'var(--pop-green)',
+                  }}
+                />
+              </div>
+              <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-green)' }}>
+                {playerTotalHp} / {playerMaxHp}
+              </span>
+            </div>
+
+            {/* プレイヤー前衛 */}
+            <div>
+              <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '前衛' : 'Front'}</p>
+              <div className="flex gap-1 justify-center relative flex-wrap">
+                {playerFrontCards.map((card, index) => {
+                  const active = isCardActive(true, 'front', card.index);
                   return (
                     <div
-                      key={i}
-                      className="spark-particle"
-                      style={{
-                        '--spark-x': `${x}px`,
-                        '--spark-y': `${y}px`,
-                        backgroundColor: i % 2 === 0 ? '#F97316' : '#FBBF24',
-                        animationDelay: `${i * 0.02}s`,
-                      } as React.CSSProperties}
-                    />
+                      key={`player-front-${index}`}
+                      className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${active ? 'scale-105 z-10' : ''}`}
+                    >
+                      <BattleCard
+                        card={card}
+                        size="small"
+                        showStats={false}
+                        disabled={!isPlayerTeamAlive}
+                      />
+                      {isPlayerTeamAlive && (
+                        <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden" style={{ border: '3px solid transparent' }}>
+                          <div className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75" style={{ height: `${getCardTimerPercent(card)}%` }} />
+                        </div>
+                      )}
+                      {active && (
+                        <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 20px 5px rgba(59, 130, 246, 0.7)', animation: 'pulse 0.3s ease-in-out infinite' }} />
+                      )}
+                    </div>
+                  );
+                })}
+                {/* 火花エフェクト */}
+                {hitEffects.filter(e => e.target === 'player').map(effect => (
+                  <div key={effect.key} className="absolute pointer-events-none z-20" style={{ left: `${effect.x}%`, top: `${effect.y}%`, transform: 'translate(-50%, -50%)' }}>
+                    <div className="spark-burst bg-red-500/80" />
+                    {[...Array(12)].map((_, i) => {
+                      const angle = (i * 30) * (Math.PI / 180);
+                      const distance = 50 + Math.random() * 20;
+                      return (
+                        <div key={i} className="spark-particle" style={{ '--spark-x': `${Math.cos(angle) * distance}px`, '--spark-y': `${Math.sin(angle) * distance}px`, backgroundColor: i % 2 === 0 ? '#EF4444' : '#F97316', animationDelay: `${i * 0.02}s` } as React.CSSProperties} />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* プレイヤー後衛 */}
+            <div>
+              <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '後衛' : 'Back'}</p>
+              <div className="flex gap-1 justify-center flex-wrap">
+                {playerBackCards.map((card, index) => {
+                  const active = isCardActive(true, 'back', card.index);
+                  return (
+                    <div
+                      key={`player-back-${index}`}
+                      className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${active ? 'scale-105 z-10' : ''}`}
+                    >
+                      <BattleCard
+                        card={card}
+                        size="small"
+                        showStats={false}
+                        disabled={!isPlayerTeamAlive}
+                      />
+                      {isPlayerTeamAlive && (
+                        <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden" style={{ border: '3px solid transparent' }}>
+                          <div className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75" style={{ height: `${getCardTimerPercent(card)}%` }} />
+                        </div>
+                      )}
+                      {active && (
+                        <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 20px 5px rgba(59, 130, 246, 0.7)', animation: 'pulse 0.3s ease-in-out infinite' }} />
+                      )}
+                    </div>
                   );
                 })}
               </div>
-            ))}
-          </div>
-          <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
-        </div>
-
-        {/* VS + アクション表示 */}
-        <div className="text-center py-2 relative">
-          <span className="text-4xl font-black text-gray-300">VS</span>
-          {currentAction && (
-            <div
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
-              style={{ animation: 'bounce-in 0.2s ease-out' }}
-            >
-              <div className="bg-black/80 px-4 py-2 rounded-xl flex items-center gap-2">
-                <span className="text-white font-bold text-sm truncate max-w-24">{currentAction.attacker}</span>
-                <Swords className="w-5 h-5 text-orange-400 animate-pulse" />
-                <span className="text-white font-bold text-sm truncate max-w-24">{currentAction.defender}</span>
-              </div>
             </div>
-          )}
-        </div>
+          </div>
 
-        {/* プレイヤー側 */}
-        <div className="space-y-2">
-          {/* プレイヤー前衛 */}
-          <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
-          <div className="flex gap-2 justify-center relative items-start">
-            {playerFrontCards.map((card, index) => {
-              const active = isCardActive(true, 'front', card.index);
-              return (
-                <div
-                  key={`player-front-${index}`}
-                  className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${active ? 'scale-110 z-10' : ''}`}
-                >
-                  <BattleCard
-                    card={card}
-                    size="small"
-                    showStats={false}
-                    disabled={!isPlayerTeamAlive}
-                  />
-                  {/* ゲージオーバーレイ */}
-                  {isPlayerTeamAlive && (
-                    <div
-                      className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-                      style={{ border: '3px solid transparent' }}
-                    >
-                      <div
-                        className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
-                        style={{ height: `${getCardTimerPercent(card)}%` }}
-                      />
-                    </div>
-                  )}
-                  {/* アクティブ時のグロー */}
-                  {active && (
-                    <div
-                      className="absolute inset-0 rounded-xl pointer-events-none"
-                      style={{
-                        boxShadow: '0 0 20px 5px rgba(59, 130, 246, 0.7)',
-                        animation: 'pulse 0.3s ease-in-out infinite',
-                      }}
-                    />
-                  )}
+          {/* VS（中央） */}
+          <div className="flex items-center justify-center order-1 lg:order-2 py-2 lg:py-0 lg:px-4 relative">
+            <span className="text-3xl lg:text-4xl font-black text-gray-300">VS</span>
+            {currentAction && (
+              <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ animation: 'bounce-in 0.2s ease-out' }}>
+                <div className="bg-black/80 px-3 py-1 lg:px-4 lg:py-2 rounded-xl flex items-center gap-1 lg:gap-2">
+                  <span className="text-white font-bold text-xs lg:text-sm truncate max-w-16 lg:max-w-24">{currentAction.attacker}</span>
+                  <Swords className="w-4 h-4 lg:w-5 lg:h-5 text-orange-400 animate-pulse" />
+                  <span className="text-white font-bold text-xs lg:text-sm truncate max-w-16 lg:max-w-24">{currentAction.defender}</span>
                 </div>
-              );
-            })}
-            {/* 火花ヒットエフェクト（プレイヤーデッキ - ランダム位置） */}
-            {hitEffects.filter(e => e.target === 'player').map(effect => (
+              </div>
+            )}
+          </div>
+
+          {/* 相手側（PC: 右、スマホ: 上） */}
+          <div className="flex-1 space-y-2 order-0 lg:order-3 relative">
+            {/* ダメージ表示（相手側） */}
+            {damageDisplay && damageDisplay.target === 'opponent' && (
               <div
-                key={effect.key}
-                className="absolute pointer-events-none z-20"
-                style={{
-                  left: `${effect.x}%`,
-                  top: `${effect.y}%`,
-                  transform: 'translate(-50%, -50%)',
-                }}
+                className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-30 pointer-events-none"
+                style={{ animation: 'damage-pop 1s ease-out forwards' }}
               >
-                {/* 中央バースト */}
-                <div className="spark-burst bg-red-500/80" />
-                {/* 火花パーティクル */}
-                {[...Array(12)].map((_, i) => {
-                  const angle = (i * 30) * (Math.PI / 180);
-                  const distance = 50 + Math.random() * 20;
-                  const x = Math.cos(angle) * distance;
-                  const y = Math.sin(angle) * distance;
+                <span
+                  className={`text-4xl lg:text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
+                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.7)' }}
+                >
+                  -{damageDisplay.damage}
+                  {damageDisplay.isCritical && <span className="text-2xl lg:text-3xl ml-2">CRIT!</span>}
+                </span>
+              </div>
+            )}
+
+            {/* 相手HPバー */}
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold w-16 lg:w-12" style={{ color: 'var(--pop-red)' }}>
+                {language === 'ja' ? '相手' : 'Enemy'}
+              </span>
+              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
+                <div
+                  className="h-full rounded-full transition-all duration-200"
+                  style={{
+                    width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
+                    backgroundColor: 'var(--pop-red)',
+                  }}
+                />
+              </div>
+              <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-red)' }}>
+                {opponentTotalHp} / {opponentMaxHp}
+              </span>
+            </div>
+
+            {/* 相手前衛 */}
+            <div>
+              <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '前衛' : 'Front'}</p>
+              <div className="flex gap-1 justify-center relative flex-wrap">
+                {opponentFrontCards.map((card, index) => {
+                  const active = isCardActive(false, 'front', card.index);
                   return (
                     <div
-                      key={i}
-                      className="spark-particle"
-                      style={{
-                        '--spark-x': `${x}px`,
-                        '--spark-y': `${y}px`,
-                        backgroundColor: i % 2 === 0 ? '#EF4444' : '#F97316',
-                        animationDelay: `${i * 0.02}s`,
-                      } as React.CSSProperties}
-                    />
+                      key={`opponent-front-${index}`}
+                      className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${active ? 'scale-105 z-10' : ''}`}
+                    >
+                      <BattleCard
+                        card={card}
+                        size="small"
+                        showStats={false}
+                        disabled={!isOpponentTeamAlive}
+                      />
+                      {isOpponentTeamAlive && (
+                        <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden" style={{ border: '3px solid transparent' }}>
+                          <div className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75" style={{ height: `${getCardTimerPercent(card)}%` }} />
+                        </div>
+                      )}
+                      {active && (
+                        <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 20px 5px rgba(255, 165, 0, 0.7)', animation: 'pulse 0.3s ease-in-out infinite' }} />
+                      )}
+                    </div>
+                  );
+                })}
+                {/* 火花エフェクト */}
+                {hitEffects.filter(e => e.target === 'opponent').map(effect => (
+                  <div key={effect.key} className="absolute pointer-events-none z-20" style={{ left: `${effect.x}%`, top: `${effect.y}%`, transform: 'translate(-50%, -50%)' }}>
+                    <div className="spark-burst bg-orange-400/80" />
+                    {[...Array(12)].map((_, i) => {
+                      const angle = (i * 30) * (Math.PI / 180);
+                      const distance = 50 + Math.random() * 20;
+                      return (
+                        <div key={i} className="spark-particle" style={{ '--spark-x': `${Math.cos(angle) * distance}px`, '--spark-y': `${Math.sin(angle) * distance}px`, backgroundColor: i % 2 === 0 ? '#F97316' : '#FBBF24', animationDelay: `${i * 0.02}s` } as React.CSSProperties} />
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 相手後衛 */}
+            <div>
+              <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '後衛' : 'Back'}</p>
+              <div className="flex gap-1 justify-center flex-wrap">
+                {opponentBackCards.map((card, index) => {
+                  const active = isCardActive(false, 'back', card.index);
+                  return (
+                    <div
+                      key={`opponent-back-${index}`}
+                      className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${active ? 'scale-105 z-10' : ''}`}
+                    >
+                      <BattleCard
+                        card={card}
+                        size="small"
+                        showStats={false}
+                        disabled={!isOpponentTeamAlive}
+                      />
+                      {isOpponentTeamAlive && (
+                        <div className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden" style={{ border: '3px solid transparent' }}>
+                          <div className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75" style={{ height: `${getCardTimerPercent(card)}%` }} />
+                        </div>
+                      )}
+                      {active && (
+                        <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 20px 5px rgba(255, 165, 0, 0.7)', animation: 'pulse 0.3s ease-in-out infinite' }} />
+                      )}
+                    </div>
                   );
                 })}
               </div>
-            ))}
-          </div>
-
-          {/* プレイヤー後衛 */}
-          <p className="text-xs text-center text-gray-400">{language === 'ja' ? '後衛' : 'Back Line'}</p>
-          <div className="flex gap-2 justify-center items-start">
-            {playerBackCards.map((card, index) => {
-              const active = isCardActive(true, 'back', card.index);
-              return (
-                <div
-                  key={`player-back-${index}`}
-                  className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${active ? 'scale-110 z-10' : ''}`}
-                >
-                  <BattleCard
-                    card={card}
-                    size="small"
-                    showStats={false}
-                    disabled={!isPlayerTeamAlive}
-                  />
-                  {/* ゲージオーバーレイ */}
-                  {isPlayerTeamAlive && (
-                    <div
-                      className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-                      style={{ border: '3px solid transparent' }}
-                    >
-                      <div
-                        className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
-                        style={{ height: `${getCardTimerPercent(card)}%` }}
-                      />
-                    </div>
-                  )}
-                  {/* アクティブ時のグロー */}
-                  {active && (
-                    <div
-                      className="absolute inset-0 rounded-xl pointer-events-none"
-                      style={{
-                        boxShadow: '0 0 20px 5px rgba(59, 130, 246, 0.7)',
-                        animation: 'pulse 0.3s ease-in-out infinite',
-                      }}
-                    />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* プレイヤーHPバー */}
-          <div className="flex items-center gap-3 pt-2">
-            <span className="text-xs font-bold text-gray-500 w-12">
-              {language === 'ja' ? 'あなた' : 'You'}
-            </span>
-            <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
-              <div
-                className="h-full rounded-full transition-all duration-200"
-                style={{
-                  width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
-                  backgroundColor: 'var(--pop-green)',
-                }}
-              />
             </div>
-            <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-green)' }}>
-              {playerTotalHp} / {playerMaxHp}
-            </span>
           </div>
         </div>
 
