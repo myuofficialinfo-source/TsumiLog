@@ -256,6 +256,7 @@ export default function DeckBuilder({
   const [selectedSlot, setSelectedSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
   const [previewCard, setPreviewCard] = useState<BattleCardType | null>(null);
   const [draggedCard, setDraggedCard] = useState<BattleCardType | null>(null);
+  const [draggedFromSlot, setDraggedFromSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
   const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'hp'>('rarity');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
@@ -391,14 +392,22 @@ export default function DeckBuilder({
     setPreviewCard(null);
   };
 
-  // ドラッグ開始
+  // ドラッグ開始（カードリストから）
   const handleDragStart = (card: BattleCardType) => {
     setDraggedCard(card);
+    setDraggedFromSlot(null);
+  };
+
+  // ドラッグ開始（デッキスロットから）
+  const handleSlotDragStart = (card: BattleCardType, line: 'front' | 'back', index: number) => {
+    setDraggedCard(card);
+    setDraggedFromSlot({ line, index });
   };
 
   // ドラッグ終了
   const handleDragEnd = () => {
     setDraggedCard(null);
+    setDraggedFromSlot(null);
     setDragOverSlot(null);
   };
 
@@ -412,9 +421,46 @@ export default function DeckBuilder({
   const handleDrop = (e: DragEvent<HTMLDivElement>, line: 'front' | 'back', index: number) => {
     e.preventDefault();
     if (draggedCard) {
-      placeCard(draggedCard, { line, index });
+      if (draggedFromSlot) {
+        // デッキ内のカード移動（スワップ）
+        const targetCard = line === 'front' ? frontLine[index] : backLine[index];
+
+        // 元のスロットに移動先のカードを配置
+        if (draggedFromSlot.line === 'front') {
+          setFrontLine(prev => {
+            const newLine = [...prev];
+            newLine[draggedFromSlot.index] = targetCard;
+            return newLine;
+          });
+        } else {
+          setBackLine(prev => {
+            const newLine = [...prev];
+            newLine[draggedFromSlot.index] = targetCard;
+            return newLine;
+          });
+        }
+
+        // 移動先のスロットにドラッグしたカードを配置
+        if (line === 'front') {
+          setFrontLine(prev => {
+            const newLine = [...prev];
+            newLine[index] = draggedCard;
+            return newLine;
+          });
+        } else {
+          setBackLine(prev => {
+            const newLine = [...prev];
+            newLine[index] = draggedCard;
+            return newLine;
+          });
+        }
+      } else {
+        // カードリストからの配置
+        placeCard(draggedCard, { line, index });
+      }
     }
     setDraggedCard(null);
+    setDraggedFromSlot(null);
     setDragOverSlot(null);
   };
 
@@ -635,7 +681,12 @@ export default function DeckBuilder({
                 onDrop={(e) => handleDrop(e, 'back', index)}
               >
                 {card ? (
-                  <>
+                  <div
+                    draggable
+                    onDragStart={() => handleSlotDragStart(card, 'back', index)}
+                    onDragEnd={handleDragEnd}
+                    className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
+                  >
                     <BattleCard
                       card={card}
                       size="small"
@@ -643,12 +694,12 @@ export default function DeckBuilder({
                       selected={selectedSlot?.line === 'back' && selectedSlot?.index === index}
                     />
                     <button
-                      onClick={() => removeCard('back', index)}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
+                      onClick={(e) => { e.stopPropagation(); removeCard('back', index); }}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10"
                     >
                       <X className="w-4 h-4" />
                     </button>
-                  </>
+                  </div>
                 ) : (
                   <CardSlot
                     position="back"
@@ -681,7 +732,12 @@ export default function DeckBuilder({
                 onDrop={(e) => handleDrop(e, 'front', index)}
               >
                 {card ? (
-                  <>
+                  <div
+                    draggable
+                    onDragStart={() => handleSlotDragStart(card, 'front', index)}
+                    onDragEnd={handleDragEnd}
+                    className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
+                  >
                     <BattleCard
                       card={card}
                       size="small"
@@ -689,12 +745,12 @@ export default function DeckBuilder({
                       selected={selectedSlot?.line === 'front' && selectedSlot?.index === index}
                     />
                     <button
-                      onClick={() => removeCard('front', index)}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center"
+                      onClick={(e) => { e.stopPropagation(); removeCard('front', index); }}
+                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10"
                     >
                       <X className="w-4 h-4" />
                     </button>
-                  </>
+                  </div>
                 ) : (
                   <CardSlot
                     position="front"
@@ -716,7 +772,7 @@ export default function DeckBuilder({
           </h3>
 
           {/* 基本ステータス */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+          <div className="grid grid-cols-2 gap-3 mb-4">
             <div className="bg-gray-100 rounded-lg p-3 text-center">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <Swords className="w-4 h-4" style={{ color: 'var(--pop-red)' }} />
@@ -744,24 +800,6 @@ export default function DeckBuilder({
                   ({deckStats.totalHp} +{deckStats.synergyHpBonus}%)
                 </p>
               )}
-            </div>
-            <div className="bg-gray-100 rounded-lg p-3 text-center">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <Swords className="w-4 h-4" style={{ color: 'var(--pop-blue)' }} />
-                <span className="text-xs text-gray-500">{language === 'ja' ? '平均ATK' : 'Avg ATK'}</span>
-              </div>
-              <p className="text-xl font-black" style={{ color: 'var(--pop-blue)' }}>
-                {deckStats.avgAttack}
-              </p>
-            </div>
-            <div className="bg-gray-100 rounded-lg p-3 text-center">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <Heart className="w-4 h-4" style={{ color: 'var(--pop-purple)' }} />
-                <span className="text-xs text-gray-500">{language === 'ja' ? '平均HP' : 'Avg HP'}</span>
-              </div>
-              <p className="text-xl font-black" style={{ color: 'var(--pop-purple)' }}>
-                {deckStats.avgHp}
-              </p>
             </div>
           </div>
 
@@ -914,7 +952,7 @@ export default function DeckBuilder({
             {language === 'ja' ? 'スロットにドロップしてください' : 'Drop on a slot'}
           </p>
         )}
-        <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto p-2">
+        <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto py-3 px-2">
           {sortedCards.map(card => (
             <div
               key={card.appid}
