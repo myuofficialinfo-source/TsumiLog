@@ -73,18 +73,37 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       // 積みゲー数に応じてサイズとキャンバス高さを調整
       const gameCount = backlogGames.length;
 
-      // ボックスサイズの計算（100本以上で小さくする）
+      // ボックスサイズの計算（本数に応じて小さくする）
       let boxWidth = 92;
       let boxHeight = 43;
       let baseHeight = 400;
+      let maxHeight = 800;
 
-      if (gameCount >= 200) {
-        // 200本以上：かなり小さく、高さも伸ばす
+      if (gameCount >= 1000) {
+        // 1000本以上：極小サイズ
+        boxWidth = 23;
+        boxHeight = 11;
+        baseHeight = 800;
+        maxHeight = 1200;
+      } else if (gameCount >= 500) {
+        // 500〜999本：とても小さく
+        boxWidth = 32;
+        boxHeight = 15;
+        baseHeight = 700;
+        maxHeight = 1000;
+      } else if (gameCount >= 300) {
+        // 300〜499本：かなり小さく
+        boxWidth = 40;
+        boxHeight = 19;
+        baseHeight = 650;
+        maxHeight = 900;
+      } else if (gameCount >= 200) {
+        // 200〜299本：小さく
         boxWidth = 46;
         boxHeight = 21;
         baseHeight = 600;
       } else if (gameCount >= 100) {
-        // 100〜199本：少し小さく、高さを伸ばす
+        // 100〜199本：少し小さく
         boxWidth = 69;
         boxHeight = 32;
         baseHeight = 500;
@@ -96,8 +115,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const estimatedRows = Math.ceil(gameCount / boxesPerRow);
       const estimatedTowerHeight = estimatedRows * (boxHeight * 0.8); // 重なりを考慮
 
-      // 最低高さとタワーの推定高さの大きい方を採用（上限800px）
-      const height = Math.min(Math.max(baseHeight, estimatedTowerHeight + 150), 800);
+      // 最低高さとタワーの推定高さの大きい方を採用
+      const height = Math.min(Math.max(baseHeight, estimatedTowerHeight + 150), maxHeight);
 
       // コンテナの高さを更新
       setContainerHeight(height);
@@ -136,13 +155,25 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const bodyGameMap = new Map<number, number>();
 
       // 積みゲー数に応じて落下間隔を調整（多いほど早く）
+      // また、一度に複数個落とすかどうかも調整
       let dropIntervalMs = 150;
-      if (gameCount >= 200) {
-        dropIntervalMs = 30; // 200本以上：超高速
+      let dropsPerInterval = 1; // 一度に落とす数
+
+      if (gameCount >= 1000) {
+        dropIntervalMs = 10; // 1000本以上：最高速
+        dropsPerInterval = 5; // 5個ずつ落とす
+      } else if (gameCount >= 500) {
+        dropIntervalMs = 15; // 500〜999本：超高速
+        dropsPerInterval = 3; // 3個ずつ落とす
+      } else if (gameCount >= 300) {
+        dropIntervalMs = 20; // 300〜499本：かなり高速
+        dropsPerInterval = 2; // 2個ずつ落とす
+      } else if (gameCount >= 200) {
+        dropIntervalMs = 30; // 200〜299本：高速
       } else if (gameCount >= 100) {
-        dropIntervalMs = 60; // 100〜199本：高速
+        dropIntervalMs = 60; // 100〜199本：やや高速
       } else if (gameCount >= 50) {
-        dropIntervalMs = 100; // 50〜99本：やや高速
+        dropIntervalMs = 100; // 50〜99本：少し早く
       }
 
       let dropIndex = 0;
@@ -153,20 +184,23 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
           return;
         }
 
-        const game = backlogGames[dropIndex];
-        // 真ん中から少しだけランダムにずらす（幅が変わるので調整）
-        const randomOffset = Math.min(width * 0.3, 100);
-        const x = width / 2 + (Math.random() - 0.5) * randomOffset;
+        // 一度に複数個落とす
+        for (let i = 0; i < dropsPerInterval && dropIndex < backlogGames.length; i++) {
+          const game = backlogGames[dropIndex];
+          // 真ん中から少しだけランダムにずらす（幅が変わるので調整）
+          const randomOffset = Math.min(width * 0.3, 100);
+          const x = width / 2 + (Math.random() - 0.5) * randomOffset;
 
-        const box = Bodies.rectangle(x, -50, boxWidth, boxHeight, {
-          restitution: 0.3,
-          friction: 0.8,
-          angle: (Math.random() - 0.5) * 0.5,
-        });
+          const box = Bodies.rectangle(x, -50, boxWidth, boxHeight, {
+            restitution: 0.3,
+            friction: 0.8,
+            angle: (Math.random() - 0.5) * 0.5,
+          });
 
-        bodyGameMap.set(box.id, game.appid);
-        World.add(engine.world, box);
-        dropIndex++;
+          bodyGameMap.set(box.id, game.appid);
+          World.add(engine.world, box);
+          dropIndex++;
+        }
       }, dropIntervalMs);
 
       const runner = Runner.create();
