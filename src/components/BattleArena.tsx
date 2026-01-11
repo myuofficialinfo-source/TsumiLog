@@ -614,42 +614,45 @@ export default function BattleArena({
 
       {/* バトルフィールド */}
       <div className="pop-card p-6 space-y-4 relative overflow-hidden">
+        {/* ダメージ表示（フィールド全体のオーバーレイ - 固定位置） */}
+        {damageDisplay && (
+          <div
+            className="absolute left-1/2 -translate-x-1/2 z-30 pointer-events-none"
+            style={{
+              top: damageDisplay.target === 'opponent' ? '8px' : 'auto',
+              bottom: damageDisplay.target === 'player' ? '8px' : 'auto',
+              animation: 'damage-pop 1s ease-out forwards',
+            }}
+          >
+            <span
+              className={`text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
+              style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.7)' }}
+            >
+              -{damageDisplay.damage}
+              {damageDisplay.isCritical && <span className="text-3xl ml-2">CRIT!</span>}
+            </span>
+          </div>
+        )}
+
         {/* 相手側 */}
         <div className="space-y-2">
           {/* 相手HPバー */}
-          <div className="relative h-8">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-gray-500 w-12">
-                {language === 'ja' ? '相手' : 'Enemy'}
-              </span>
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
-                <div
-                  className="h-full rounded-full transition-all duration-200"
-                  style={{
-                    width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
-                    backgroundColor: 'var(--pop-red)',
-                  }}
-                />
-              </div>
-              <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-red)' }}>
-                {opponentTotalHp} / {opponentMaxHp}
-              </span>
-            </div>
-            {/* ダメージ表示（オーバーレイ） */}
-            {damageDisplay && damageDisplay.target === 'opponent' && (
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-gray-500 w-12">
+              {language === 'ja' ? '相手' : 'Enemy'}
+            </span>
+            <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-0 z-30 pointer-events-none"
-                style={{ animation: 'damage-pop 1s ease-out forwards' }}
-              >
-                <span
-                  className={`text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
-                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.7)' }}
-                >
-                  -{damageDisplay.damage}
-                  {damageDisplay.isCritical && <span className="text-3xl ml-2">CRIT!</span>}
-                </span>
-              </div>
-            )}
+                className="h-full rounded-full transition-all duration-200"
+                style={{
+                  width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
+                  backgroundColor: 'var(--pop-red)',
+                }}
+              />
+            </div>
+            <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-red)' }}>
+              {opponentTotalHp} / {opponentMaxHp}
+            </span>
           </div>
 
           {/* 相手後衛 */}
@@ -913,39 +916,22 @@ export default function BattleArena({
           </div>
 
           {/* プレイヤーHPバー */}
-          <div className="relative h-8 pt-2">
-            <div className="flex items-center gap-3">
-              <span className="text-xs font-bold text-gray-500 w-12">
-                {language === 'ja' ? 'あなた' : 'You'}
-              </span>
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
-                <div
-                  className="h-full rounded-full transition-all duration-200"
-                  style={{
-                    width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
-                    backgroundColor: 'var(--pop-green)',
-                  }}
-                />
-              </div>
-              <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-green)' }}>
-                {playerTotalHp} / {playerMaxHp}
-              </span>
-            </div>
-            {/* ダメージ表示（オーバーレイ） */}
-            {damageDisplay && damageDisplay.target === 'player' && (
+          <div className="flex items-center gap-3 pt-2">
+            <span className="text-xs font-bold text-gray-500 w-12">
+              {language === 'ja' ? 'あなた' : 'You'}
+            </span>
+            <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-0 z-30 pointer-events-none"
-                style={{ animation: 'damage-pop 1s ease-out forwards' }}
-              >
-                <span
-                  className={`text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
-                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.7)' }}
-                >
-                  -{damageDisplay.damage}
-                  {damageDisplay.isCritical && <span className="text-3xl ml-2">CRIT!</span>}
-                </span>
-              </div>
-            )}
+                className="h-full rounded-full transition-all duration-200"
+                style={{
+                  width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
+                  backgroundColor: 'var(--pop-green)',
+                }}
+              />
+            </div>
+            <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-green)' }}>
+              {playerTotalHp} / {playerMaxHp}
+            </span>
           </div>
         </div>
 
