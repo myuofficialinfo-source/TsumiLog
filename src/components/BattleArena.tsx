@@ -617,7 +617,7 @@ export default function BattleArena({
         {/* 相手側 */}
         <div className="space-y-2">
           {/* 相手HPバー */}
-          <div className="relative">
+          <div className="relative h-8">
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-gray-500 w-12">
                 {language === 'ja' ? '相手' : 'Enemy'}
@@ -635,16 +635,18 @@ export default function BattleArena({
                 {opponentTotalHp} / {opponentMaxHp}
               </span>
             </div>
-            {/* ダメージ表示 */}
+            {/* ダメージ表示（オーバーレイ） */}
             {damageDisplay && damageDisplay.target === 'opponent' && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 -top-4 z-10"
+                className="absolute left-1/2 -translate-x-1/2 top-0 z-30 pointer-events-none"
                 style={{ animation: 'damage-pop 1s ease-out forwards' }}
               >
-                <span className={`text-3xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
-                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+                <span
+                  className={`text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
+                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.7)' }}
+                >
                   -{damageDisplay.damage}
-                  {damageDisplay.isCritical && <span className="text-xl ml-1">CRIT!</span>}
+                  {damageDisplay.isCritical && <span className="text-3xl ml-2">CRIT!</span>}
                 </span>
               </div>
             )}
@@ -911,7 +913,7 @@ export default function BattleArena({
           </div>
 
           {/* プレイヤーHPバー */}
-          <div className="relative pt-2">
+          <div className="relative h-8 pt-2">
             <div className="flex items-center gap-3">
               <span className="text-xs font-bold text-gray-500 w-12">
                 {language === 'ja' ? 'あなた' : 'You'}
@@ -929,16 +931,18 @@ export default function BattleArena({
                 {playerTotalHp} / {playerMaxHp}
               </span>
             </div>
-            {/* ダメージ表示 */}
+            {/* ダメージ表示（オーバーレイ） */}
             {damageDisplay && damageDisplay.target === 'player' && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 -top-4 z-10"
+                className="absolute left-1/2 -translate-x-1/2 top-0 z-30 pointer-events-none"
                 style={{ animation: 'damage-pop 1s ease-out forwards' }}
               >
-                <span className={`text-3xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
-                  style={{ textShadow: '2px 2px 4px rgba(0,0,0,0.5)' }}>
+                <span
+                  className={`text-5xl font-black drop-shadow-lg ${damageDisplay.isCritical ? 'text-yellow-400' : 'text-red-500'}`}
+                  style={{ textShadow: '3px 3px 6px rgba(0,0,0,0.7)' }}
+                >
                   -{damageDisplay.damage}
-                  {damageDisplay.isCritical && <span className="text-xl ml-1">CRIT!</span>}
+                  {damageDisplay.isCritical && <span className="text-3xl ml-2">CRIT!</span>}
                 </span>
               </div>
             )}
