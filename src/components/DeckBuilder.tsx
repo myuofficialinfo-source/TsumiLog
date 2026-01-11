@@ -329,6 +329,44 @@ export default function DeckBuilder({
     return calculateSublimationBuff(sublimatedGames);
   }, [games, gameDetails]);
 
+  // デッキステータス計算
+  const deckStats = useMemo(() => {
+    const allCards = [...frontLine, ...backLine].filter((c): c is BattleCardType => c !== null);
+    const totalAttack = allCards.reduce((sum, card) => sum + card.attack, 0);
+    const totalHp = allCards.reduce((sum, card) => sum + card.hp, 0);
+    const avgAttack = allCards.length > 0 ? Math.round(totalAttack / allCards.length) : 0;
+    const avgHp = allCards.length > 0 ? Math.round(totalHp / allCards.length) : 0;
+
+    // スキル集計
+    const skillCount = new Map<GenreSkill, number>();
+    allCards.forEach(card => {
+      card.skills.forEach(skill => {
+        skillCount.set(skill, (skillCount.get(skill) || 0) + 1);
+      });
+    });
+
+    // シナジーボーナス計算
+    const synergyAttackBonus = synergies.reduce((sum, s) => sum + (s.effect.attackBonus || 0), 0);
+    const synergyHpBonus = synergies.reduce((sum, s) => sum + (s.effect.hpBonus || 0), 0);
+
+    // 昇華バフ込みの攻撃力
+    const buffedAttack = Math.round(totalAttack * (1 + (sublimationBuff.totalBonus + synergyAttackBonus) / 100));
+    const buffedHp = Math.round(totalHp * (1 + synergyHpBonus / 100));
+
+    return {
+      cardCount: allCards.length,
+      totalAttack,
+      totalHp,
+      avgAttack,
+      avgHp,
+      buffedAttack,
+      buffedHp,
+      skillCount,
+      synergyAttackBonus,
+      synergyHpBonus,
+    };
+  }, [frontLine, backLine, synergies, sublimationBuff]);
+
   // カードを配置
   const placeCard = (card: BattleCardType, slot?: { line: 'front' | 'back'; index: number }) => {
     const targetSlot = slot || selectedSlot;
@@ -670,99 +708,149 @@ export default function DeckBuilder({
         </div>
       </div>
 
-      {/* シナジー表示 */}
-      {synergies.length > 0 && (
+      {/* デッキステータス */}
+      {deckStats.cardCount > 0 && (
         <div className="pop-card p-4">
-          <h3 className="text-sm font-bold text-gray-600 mb-2">
-            {language === 'ja' ? 'シナジーボーナス' : 'Synergy Bonuses'}
+          <h3 className="text-sm font-bold text-gray-600 mb-3">
+            {language === 'ja' ? 'デッキステータス' : 'Deck Status'}
           </h3>
-          <div className="flex flex-wrap gap-2">
-            {synergies.map((synergy, index) => (
-              <div
-                key={index}
-                className="flex items-center gap-2 px-3 py-1 rounded-full border-2 border-[#3D3D3D]"
-                style={{ backgroundColor: 'var(--background-secondary)' }}
-              >
-                {synergy.type === 'genre' && <Gamepad2 className="w-4 h-4" />}
-                {synergy.type === 'developer' && <Building className="w-4 h-4" />}
-                {synergy.type === 'series' && <Users className="w-4 h-4" />}
-                {synergy.type === 'tag' && <Tag className="w-4 h-4" />}
-                <span className="text-sm font-medium">{synergy.name}</span>
-                <span className="text-xs text-gray-500">x{synergy.count}</span>
-                {synergy.effect.attackBonus && (
-                  <span className="text-xs text-green-600">+{synergy.effect.attackBonus}% ATK</span>
-                )}
-                {synergy.effect.hpBonus && (
-                  <span className="text-xs text-red-600">+{synergy.effect.hpBonus}% HP</span>
-                )}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
 
-      {/* 昇華バフ表示 */}
-      {sublimationBuff.sublimatedCount > 0 && (
-        <div className="pop-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-sm font-bold text-gray-600 flex items-center gap-2">
-              <Flame className="w-4 h-4" style={{ color: 'var(--pop-orange)' }} />
-              {language === 'ja' ? '昇華バフ' : 'Sublimation Buff'}
-            </h3>
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-black" style={{ color: 'var(--pop-orange)' }}>
-                +{sublimationBuff.totalBonus}%
-              </span>
-              <span className="text-xs text-gray-500">
-                {language === 'ja' ? 'デッキ攻撃力' : 'Deck ATK'}
-              </span>
+          {/* 基本ステータス */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div className="bg-gray-100 rounded-lg p-3 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Swords className="w-4 h-4" style={{ color: 'var(--pop-red)' }} />
+                <span className="text-xs text-gray-500">{language === 'ja' ? '総攻撃力' : 'Total ATK'}</span>
+              </div>
+              <p className="text-xl font-black" style={{ color: 'var(--pop-red)' }}>
+                {deckStats.buffedAttack}
+              </p>
+              {(sublimationBuff.totalBonus > 0 || deckStats.synergyAttackBonus > 0) && (
+                <p className="text-xs text-gray-400">
+                  ({deckStats.totalAttack} +{sublimationBuff.totalBonus + deckStats.synergyAttackBonus}%)
+                </p>
+              )}
+            </div>
+            <div className="bg-gray-100 rounded-lg p-3 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Heart className="w-4 h-4" style={{ color: 'var(--pop-green)' }} />
+                <span className="text-xs text-gray-500">{language === 'ja' ? '総HP' : 'Total HP'}</span>
+              </div>
+              <p className="text-xl font-black" style={{ color: 'var(--pop-green)' }}>
+                {deckStats.buffedHp}
+              </p>
+              {deckStats.synergyHpBonus > 0 && (
+                <p className="text-xs text-gray-400">
+                  ({deckStats.totalHp} +{deckStats.synergyHpBonus}%)
+                </p>
+              )}
+            </div>
+            <div className="bg-gray-100 rounded-lg p-3 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Swords className="w-4 h-4" style={{ color: 'var(--pop-blue)' }} />
+                <span className="text-xs text-gray-500">{language === 'ja' ? '平均ATK' : 'Avg ATK'}</span>
+              </div>
+              <p className="text-xl font-black" style={{ color: 'var(--pop-blue)' }}>
+                {deckStats.avgAttack}
+              </p>
+            </div>
+            <div className="bg-gray-100 rounded-lg p-3 text-center">
+              <div className="flex items-center justify-center gap-1 mb-1">
+                <Heart className="w-4 h-4" style={{ color: 'var(--pop-purple)' }} />
+                <span className="text-xs text-gray-500">{language === 'ja' ? '平均HP' : 'Avg HP'}</span>
+              </div>
+              <p className="text-xl font-black" style={{ color: 'var(--pop-purple)' }}>
+                {deckStats.avgHp}
+              </p>
             </div>
           </div>
 
-          <p className="text-xs text-gray-500 mb-3">
-            {language === 'ja'
-              ? '30分以上プレイしたゲームがデッキ全体の攻撃力をバフします'
-              : 'Games played 30+ minutes buff your entire deck\'s attack'}
-          </p>
-
-          {/* レアリティ別内訳 */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-            {sublimationBuff.breakdown
-              .filter(b => b.sublimationCount > 0)
-              .map(b => (
-                <div
-                  key={b.rarity}
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg border-2"
-                  style={{ borderColor: RARITY_CONFIG[b.rarity].color }}
-                >
+          {/* スキル一覧 */}
+          {deckStats.skillCount.size > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'スキル' : 'Skills'}</p>
+              <div className="flex flex-wrap gap-1">
+                {Array.from(deckStats.skillCount.entries()).map(([skill, count]) => (
                   <span
-                    className="px-2 py-0.5 rounded text-xs font-bold text-white"
-                    style={{ backgroundColor: RARITY_CONFIG[b.rarity].color }}
+                    key={skill}
+                    className="px-2 py-1 rounded text-xs font-medium text-white"
+                    style={{ backgroundColor: 'var(--pop-purple)' }}
                   >
-                    {RARITY_CONFIG[b.rarity].label[language]}
+                    {SKILL_DESCRIPTIONS[skill][language]} x{count}
                   </span>
-                  <span className="text-sm font-medium">x{b.sublimationCount}</span>
-                  <span className="text-xs font-bold" style={{ color: 'var(--pop-orange)' }}>
-                    +{b.bonus}%
-                  </span>
-                </div>
-              ))}
-          </div>
+                ))}
+              </div>
+            </div>
+          )}
 
-          {/* 昇華済みゲーム数 */}
-          <div className="mt-3 flex items-center gap-4 text-xs text-gray-500">
-            <span>
-              {language === 'ja' ? '昇華済み' : 'Sublimated'}: {sublimationBuff.sublimatedCount}
-              {language === 'ja' ? '本' : ' games'}
-            </span>
-            {sublimationBuff.completedCount > 0 && (
-              <span className="flex items-center gap-1">
-                <Trophy className="w-3 h-3" style={{ color: 'var(--pop-yellow)' }} />
-                {language === 'ja' ? 'トロコン' : 'Completed'}: {sublimationBuff.completedCount}
-                {language === 'ja' ? '本' : ' games'}
-              </span>
-            )}
-          </div>
+          {/* シナジーボーナス */}
+          {synergies.length > 0 && (
+            <div className="mb-4">
+              <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'シナジー' : 'Synergies'}</p>
+              <div className="flex flex-wrap gap-2">
+                {synergies.map((synergy, index) => (
+                  <div
+                    key={index}
+                    className="flex items-center gap-2 px-3 py-1 rounded-full border-2 border-[#3D3D3D]"
+                    style={{ backgroundColor: 'var(--background-secondary)' }}
+                  >
+                    {synergy.type === 'genre' && <Gamepad2 className="w-4 h-4" />}
+                    {synergy.type === 'developer' && <Building className="w-4 h-4" />}
+                    {synergy.type === 'series' && <Users className="w-4 h-4" />}
+                    {synergy.type === 'tag' && <Tag className="w-4 h-4" />}
+                    <span className="text-sm font-medium">{synergy.name}</span>
+                    <span className="text-xs text-gray-500">x{synergy.count}</span>
+                    {synergy.effect.attackBonus && (
+                      <span className="text-xs text-green-600">+{synergy.effect.attackBonus}%</span>
+                    )}
+                    {synergy.effect.hpBonus && (
+                      <span className="text-xs text-red-600">+{synergy.effect.hpBonus}%</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* 昇華バフ */}
+          {sublimationBuff.sublimatedCount > 0 && (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="w-4 h-4" style={{ color: 'var(--pop-orange)' }} />
+                <p className="text-xs font-bold text-gray-500">{language === 'ja' ? '昇華バフ' : 'Sublimation'}</p>
+                <span className="text-sm font-black" style={{ color: 'var(--pop-orange)' }}>
+                  +{sublimationBuff.totalBonus}% ATK
+                </span>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {sublimationBuff.breakdown
+                  .filter(b => b.sublimationCount > 0)
+                  .map(b => (
+                    <div
+                      key={b.rarity}
+                      className="flex items-center gap-1 px-2 py-1 rounded border"
+                      style={{ borderColor: RARITY_CONFIG[b.rarity].color }}
+                    >
+                      <span
+                        className="px-1.5 py-0.5 rounded text-xs font-bold text-white"
+                        style={{ backgroundColor: RARITY_CONFIG[b.rarity].color }}
+                      >
+                        {RARITY_CONFIG[b.rarity].label[language]}
+                      </span>
+                      <span className="text-xs">x{b.sublimationCount}</span>
+                      <span className="text-xs font-bold" style={{ color: 'var(--pop-orange)' }}>
+                        +{b.bonus}%
+                      </span>
+                    </div>
+                  ))}
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                {language === 'ja'
+                  ? `昇華済み${sublimationBuff.sublimatedCount}本のゲームがデッキを強化`
+                  : `${sublimationBuff.sublimatedCount} sublimated games buffing your deck`}
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -826,7 +914,7 @@ export default function DeckBuilder({
             {language === 'ja' ? 'スロットにドロップしてください' : 'Drop on a slot'}
           </p>
         )}
-        <div className="flex flex-wrap gap-1 max-h-80 overflow-y-auto">
+        <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto p-2">
           {sortedCards.map(card => (
             <div
               key={card.appid}
