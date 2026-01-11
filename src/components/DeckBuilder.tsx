@@ -692,8 +692,7 @@ export default function DeckBuilder({
                       <BattleCard
                         card={card}
                         size="small"
-                        onClick={() => setSelectedSlot({ line: 'back', index })}
-                        selected={selectedSlot?.line === 'back' && selectedSlot?.index === index}
+                        onClick={() => setPreviewCard(card)}
                       />
                       <button
                         onClick={(e) => { e.stopPropagation(); removeCard('back', index); }}
@@ -743,8 +742,7 @@ export default function DeckBuilder({
                       <BattleCard
                         card={card}
                         size="small"
-                        onClick={() => setSelectedSlot({ line: 'front', index })}
-                        selected={selectedSlot?.line === 'front' && selectedSlot?.index === index}
+                        onClick={() => setPreviewCard(card)}
                       />
                       <button
                         onClick={(e) => { e.stopPropagation(); removeCard('front', index); }}
