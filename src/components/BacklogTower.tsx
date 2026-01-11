@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Download, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useSearchParams } from 'next/navigation';
@@ -55,24 +55,47 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
 
   // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用
   const dummyCount = searchParams.get('dummyBacklog');
-  const testGames = dummyCount ? generateDummyGames(parseInt(dummyCount, 10)) : null;
+  const dummyCountNum = dummyCount ? parseInt(dummyCount, 10) : 0;
+
+  // ダミーデータをメモ化して再生成を防ぐ
+  const testGames = useMemo(() => {
+    if (dummyCountNum > 0) {
+      return generateDummyGames(dummyCountNum);
+    }
+    return null;
+  }, [dummyCountNum]);
+
   const displayGames = testGames || games;
   const displayBacklogCount = testGames ? testGames.length : backlogCount;
+
+  // 積みゲーリストのキー（変更検知用）
+  const backlogKey = useMemo(() => {
+    const backlogGames = displayGames.filter((g: Game) => g.isBacklog);
+    return `${backlogGames.length}-${backlogGames[0]?.appid || 0}`;
+  }, [displayGames]);
+
+  // 初期化済みキーを保持（同じデータでの再実行を防ぐ）
+  const initializedKeyRef = useRef<string | null>(null);
 
   useEffect(() => {
     if (!containerRef.current || !canvasRef.current) return;
 
-    const backlogGames = displayGames.filter(g => g.isBacklog);
+    const backlogGames = displayGames.filter((g: Game) => g.isBacklog);
     if (backlogGames.length === 0) return;
 
+    // 同じキーで既に初期化済みならスキップ
+    if (initializedKeyRef.current === backlogKey) return;
+    initializedKeyRef.current = backlogKey;
+
     let cleanup: (() => void) | undefined;
+    let isCancelled = false;
 
     // 画像を事前にロード
     const loadImages = async () => {
       const imageMap = new Map<number, HTMLImageElement>();
 
       await Promise.all(
-        backlogGames.map((game) => {
+        backlogGames.map((game: Game) => {
           return new Promise<void>((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -96,6 +119,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       import('matter-js'),
       loadImages()
     ]).then(([MatterModule, imageMap]) => {
+      if (isCancelled) return;
       if (!containerRef.current || !canvasRef.current) return;
 
       const Matter = MatterModule.default || MatterModule;
@@ -132,11 +156,11 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       // 横に並ぶボックス数と縦に積む段数から推定
       const boxesPerRow = Math.max(1, Math.floor(width / (boxWidth + 5)));
       const estimatedRows = Math.ceil(gameCount / boxesPerRow);
-      // 重なりを考慮（物理エンジンで積み上がると約60%程度の高さになる）
-      const estimatedTowerHeight = estimatedRows * (boxHeight * 0.6);
+      // 物理エンジンで積み上がると約50%程度に圧縮される + 上部余白
+      const estimatedTowerHeight = estimatedRows * (boxHeight * 0.5);
 
-      // 余白を追加（上部100px + 下部50px）
-      const height = Math.max(300, Math.min(estimatedTowerHeight + 150, 1200));
+      // タワーが画面を埋めるように高さを設定（上部余白80px）
+      const height = Math.max(350, Math.min(estimatedTowerHeight + 80, 1500));
 
       // コンテナの高さを更新
       setContainerHeight(height);
@@ -304,11 +328,14 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     });
 
     return () => {
+      isCancelled = true;
       if (cleanup) cleanup();
+      // クリーンアップ時にキーをリセットして、再マウント時に再初期化できるようにする
+      initializedKeyRef.current = null;
     };
-  }, [displayGames]);
+  }, [backlogKey, displayGames]);
 
-  const backlogGamesForRender = displayGames.filter(g => g.isBacklog);
+  const backlogGamesForRender = displayGames.filter((g: Game) => g.isBacklog);
   if (backlogGamesForRender.length === 0) return null;
 
   // エクスポート用キャンバスを生成
