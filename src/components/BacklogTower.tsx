@@ -131,41 +131,19 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       // 積みゲー数に応じてサイズとキャンバス高さを調整
       const gameCount = backlogGames.length;
 
-      // ボックスサイズと高さを計算（画面を埋めるようにバランス調整）
-      // 横幅600pxで約6〜7個並ぶサイズを基準に、タワーが画面を埋めるように設計
-      let boxWidth = 92;
-      let boxHeight = 43;
-      let height = 400;
+      // ボックスサイズは固定（見やすいサイズをキープ）
+      // 縦幅だけをゲーム数に応じて計算して画面を埋める
+      const boxWidth = 92;
+      const boxHeight = 43;
 
-      if (gameCount >= 1000) {
-        // 1000本以上：小さめボックス、非常に高いタワー
-        boxWidth = 40;
-        boxHeight = 19;
-        height = 2000;
-      } else if (gameCount >= 500) {
-        // 500〜999本
-        boxWidth = 46;
-        boxHeight = 21;
-        height = 1400;
-      } else if (gameCount >= 300) {
-        // 300〜499本
-        boxWidth = 55;
-        boxHeight = 26;
-        height = 1000;
-      } else if (gameCount >= 200) {
-        // 200〜299本
-        boxWidth = 60;
-        boxHeight = 28;
-        height = 750;
-      } else if (gameCount >= 100) {
-        // 100〜199本
-        boxWidth = 69;
-        boxHeight = 32;
-        height = 550;
-      } else if (gameCount >= 50) {
-        // 50〜99本
-        height = 450;
-      }
+      // 横に並ぶ数（幅600pxで約6個）
+      const boxesPerRow = Math.floor(width / (boxWidth + 5));
+      // 必要な段数
+      const rows = Math.ceil(gameCount / boxesPerRow);
+      // 物理エンジンで積み上がると圧縮されるので、0.6倍程度で計算
+      const estimatedHeight = rows * boxHeight * 0.6;
+      // 最低400px、上限なし
+      const height = Math.max(400, estimatedHeight + 50);
 
       // コンテナの高さを更新
       setContainerHeight(height);
