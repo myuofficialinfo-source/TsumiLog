@@ -156,7 +156,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const { Engine, World, Bodies, Runner, Body } = Matter;
 
       const engine = Engine.create();
-      engine.gravity.y = 1;
+      // 1000本以上は重力を2倍にして落下を速く
+      engine.gravity.y = gameCount >= 1000 ? 2 : 1;
 
       // カスタムレンダラーを使用
       const context = canvas.getContext('2d');
@@ -187,8 +188,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       let dropsPerInterval = 1; // 一度に落とす数
 
       if (gameCount >= 1000) {
-        dropIntervalMs = 10; // 1000本以上：最高速
-        dropsPerInterval = 5; // 5個ずつ落とす
+        dropIntervalMs = 5; // 1000本以上：超最高速
+        dropsPerInterval = 10; // 10個ずつ落とす
       } else if (gameCount >= 500) {
         dropIntervalMs = 15; // 500〜999本：超高速
         dropsPerInterval = 3; // 3個ずつ落とす
