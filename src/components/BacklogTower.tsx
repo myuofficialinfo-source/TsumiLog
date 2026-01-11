@@ -22,6 +22,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const [isComplete, setIsComplete] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+  const [containerHeight, setContainerHeight] = useState(400);
   const { language } = useLanguage();
 
   useEffect(() => {
@@ -68,7 +69,38 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const container = containerRef.current;
       const canvas = canvasRef.current;
       const width = container.clientWidth || 600;
-      const height = 400;
+
+      // 積みゲー数に応じてサイズとキャンバス高さを調整
+      const gameCount = backlogGames.length;
+
+      // ボックスサイズの計算（100本以上で小さくする）
+      let boxWidth = 92;
+      let boxHeight = 43;
+      let baseHeight = 400;
+
+      if (gameCount >= 200) {
+        // 200本以上：かなり小さく、高さも伸ばす
+        boxWidth = 46;
+        boxHeight = 21;
+        baseHeight = 600;
+      } else if (gameCount >= 100) {
+        // 100〜199本：少し小さく、高さを伸ばす
+        boxWidth = 69;
+        boxHeight = 32;
+        baseHeight = 500;
+      }
+
+      // 必要な高さを推定（ボックスが積み上がる高さ）
+      // 横に並ぶボックス数 × 縦に積む段数 で推定
+      const boxesPerRow = Math.floor(width / (boxWidth + 5));
+      const estimatedRows = Math.ceil(gameCount / boxesPerRow);
+      const estimatedTowerHeight = estimatedRows * (boxHeight * 0.8); // 重なりを考慮
+
+      // 最低高さとタワーの推定高さの大きい方を採用（上限800px）
+      const height = Math.min(Math.max(baseHeight, estimatedTowerHeight + 150), 800);
+
+      // コンテナの高さを更新
+      setContainerHeight(height);
 
       canvas.width = width;
       canvas.height = height;
@@ -89,23 +121,29 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         isStatic: true,
         label: 'ground',
       });
-      const leftWall = Bodies.rectangle(-25, height / 2, 50, height, {
+      const leftWall = Bodies.rectangle(-25, height / 2, 50, height * 2, {
         isStatic: true,
         label: 'wall',
       });
-      const rightWall = Bodies.rectangle(width + 25, height / 2, 50, height, {
+      const rightWall = Bodies.rectangle(width + 25, height / 2, 50, height * 2, {
         isStatic: true,
         label: 'wall',
       });
 
       World.add(engine.world, [ground, leftWall, rightWall]);
 
-      // ゲームバナーのサイズ（Steamヘッダー画像は460x215）
-      const boxWidth = 92;
-      const boxHeight = 43;
-
       // ボディとゲームIDのマッピング
       const bodyGameMap = new Map<number, number>();
+
+      // 積みゲー数に応じて落下間隔を調整（多いほど早く）
+      let dropIntervalMs = 150;
+      if (gameCount >= 200) {
+        dropIntervalMs = 30; // 200本以上：超高速
+      } else if (gameCount >= 100) {
+        dropIntervalMs = 60; // 100〜199本：高速
+      } else if (gameCount >= 50) {
+        dropIntervalMs = 100; // 50〜99本：やや高速
+      }
 
       let dropIndex = 0;
       const dropInterval = setInterval(() => {
@@ -116,8 +154,9 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         }
 
         const game = backlogGames[dropIndex];
-        // 真ん中から少しだけランダムにずらす
-        const x = width / 2 + (Math.random() - 0.5) * 60;
+        // 真ん中から少しだけランダムにずらす（幅が変わるので調整）
+        const randomOffset = Math.min(width * 0.3, 100);
+        const x = width / 2 + (Math.random() - 0.5) * randomOffset;
 
         const box = Bodies.rectangle(x, -50, boxWidth, boxHeight, {
           restitution: 0.3,
@@ -128,7 +167,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         bodyGameMap.set(box.id, game.appid);
         World.add(engine.world, box);
         dropIndex++;
-      }, 150);
+      }, dropIntervalMs);
 
       const runner = Runner.create();
       Runner.run(runner, engine);
@@ -331,7 +370,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         </p>
       </div>
 
-      <div ref={containerRef} className="relative w-full" style={{ height: '400px' }}>
+      <div ref={containerRef} className="relative w-full" style={{ height: `${containerHeight}px` }}>
         <canvas ref={canvasRef} style={{ display: 'block' }} />
 
         {isComplete && (
