@@ -278,6 +278,21 @@ function HomeContent() {
               </a>
             </div>
 
+            {/* リリースノート */}
+            <div
+              className="mt-4 px-6 py-4 rounded-xl border-2 border-[#3D3D3D] max-w-md text-left"
+              style={{ backgroundColor: 'var(--card-bg)' }}
+            >
+              <h3 className="text-sm font-bold mb-2" style={{ color: 'var(--pop-purple)' }}>
+                {language === 'ja' ? 'リリースノート' : 'Release Notes'}
+              </h3>
+              <ul className="text-xs text-gray-600 space-y-1">
+                <li><span className="font-bold">v0.2.0</span> - {language === 'ja' ? '積みゲータワーの高さ調整、リリースノート追加' : 'Tower height adjustment, Release notes added'}</li>
+                <li><span className="font-bold">v0.1.1</span> - {language === 'ja' ? 'Steam API安定性向上、キャッシュ改善' : 'Steam API stability, cache improvements'}</li>
+                <li><span className="font-bold">v0.1.0</span> - {language === 'ja' ? '初回リリース' : 'Initial release'}</li>
+              </ul>
+            </div>
+
             {error && (
               <div
                 className="mt-6 px-6 py-4 rounded-xl border-3 border-[#3D3D3D] font-medium"

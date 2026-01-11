@@ -22,6 +22,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const [isComplete, setIsComplete] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+  const [containerHeight, setContainerHeight] = useState(400);
   const { language } = useLanguage();
 
   useEffect(() => {
@@ -68,7 +69,27 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const container = containerRef.current;
       const canvas = canvasRef.current;
       const width = container.clientWidth || 600;
-      const height = 400;
+
+      // 積みゲー数に応じてサイズとキャンバス高さを調整
+      const gameCount = backlogGames.length;
+
+      // ボックスサイズは固定（見やすいサイズをキープ）
+      const boxWidth = 92;
+      const boxHeight = 43;
+
+      // 横に並ぶ数（幅600pxで約6個）
+      const boxesPerRow = Math.floor(width / (boxWidth + 5));
+      // 必要な段数
+      const rows = Math.ceil(gameCount / boxesPerRow);
+      // 物理エンジンで積み上がると圧縮されるので、0.3倍程度で計算
+      const estimatedHeight = rows * boxHeight * 0.3;
+      // 最低400px、1000本以上は999本の計算値で固定
+      const maxRows = Math.ceil(999 / boxesPerRow);
+      const maxHeight = maxRows * boxHeight * 0.3 + 50;
+      const height = gameCount >= 1000 ? maxHeight : Math.max(400, estimatedHeight + 50);
+
+      // コンテナの高さを更新
+      setContainerHeight(height);
 
       canvas.width = width;
       canvas.height = height;
@@ -78,7 +99,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const { Engine, World, Bodies, Runner, Body } = Matter;
 
       const engine = Engine.create();
-      engine.gravity.y = 1;
+      // 1000本以上は重力を2倍にして落下を速く
+      engine.gravity.y = gameCount >= 1000 ? 2 : 1;
 
       // カスタムレンダラーを使用
       const context = canvas.getContext('2d');
@@ -100,35 +122,54 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
 
       World.add(engine.world, [ground, leftWall, rightWall]);
 
-      // ゲームバナーのサイズ（Steamヘッダー画像は460x215）
-      const boxWidth = 92;
-      const boxHeight = 43;
-
       // ボディとゲームIDのマッピング
       const bodyGameMap = new Map<number, number>();
 
+      // 積みゲー数に応じて落下間隔を調整（多いほど早く）
+      let dropIntervalMs = 150;
+      let dropsPerInterval = 1;
+
+      if (gameCount >= 1000) {
+        dropIntervalMs = 5;
+        dropsPerInterval = 10;
+      } else if (gameCount >= 500) {
+        dropIntervalMs = 15;
+        dropsPerInterval = 3;
+      } else if (gameCount >= 300) {
+        dropIntervalMs = 20;
+        dropsPerInterval = 2;
+      } else if (gameCount >= 200) {
+        dropIntervalMs = 30;
+      } else if (gameCount >= 100) {
+        dropIntervalMs = 50;
+      } else if (gameCount >= 50) {
+        dropIntervalMs = 80;
+      }
+
       let dropIndex = 0;
       const dropInterval = setInterval(() => {
-        if (dropIndex >= backlogGames.length) {
-          clearInterval(dropInterval);
-          setTimeout(() => setIsComplete(true), 1000);
-          return;
+        for (let i = 0; i < dropsPerInterval; i++) {
+          if (dropIndex >= backlogGames.length) {
+            clearInterval(dropInterval);
+            setTimeout(() => setIsComplete(true), 1000);
+            return;
+          }
+
+          const game = backlogGames[dropIndex];
+          // 真ん中から少しだけランダムにずらす
+          const x = width / 2 + (Math.random() - 0.5) * 60;
+
+          const box = Bodies.rectangle(x, -50, boxWidth, boxHeight, {
+            restitution: 0.3,
+            friction: 0.8,
+            angle: (Math.random() - 0.5) * 0.5,
+          });
+
+          bodyGameMap.set(box.id, game.appid);
+          World.add(engine.world, box);
+          dropIndex++;
         }
-
-        const game = backlogGames[dropIndex];
-        // 真ん中から少しだけランダムにずらす
-        const x = width / 2 + (Math.random() - 0.5) * 60;
-
-        const box = Bodies.rectangle(x, -50, boxWidth, boxHeight, {
-          restitution: 0.3,
-          friction: 0.8,
-          angle: (Math.random() - 0.5) * 0.5,
-        });
-
-        bodyGameMap.set(box.id, game.appid);
-        World.add(engine.world, box);
-        dropIndex++;
-      }, 150);
+      }, dropIntervalMs);
 
       const runner = Runner.create();
       Runner.run(runner, engine);
@@ -173,7 +214,9 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
 
       render();
 
-      // クリックで跳ねる機能
+      // クリックで跳ねる機能（ボックスサイズに応じて力を調整）
+      // 基準サイズ(92x43)に対する比率で力をスケーリング
+      const forceScale = (boxWidth * boxHeight) / (92 * 43);
       const handleClick = (e: MouseEvent) => {
         const rect = canvas.getBoundingClientRect();
         const mouseX = e.clientX - rect.left;
@@ -189,11 +232,12 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
           const dy = body.position.y - mouseY;
           const distance = Math.sqrt(dx * dx + dy * dy);
 
-          // ボディの近くをクリックしたら跳ねさせる
-          if (distance < 60) {
+          // ボディの近くをクリックしたら跳ねさせる（当たり判定もサイズに応じて調整）
+          const hitRadius = Math.max(30, boxWidth);
+          if (distance < hitRadius) {
             Body.applyForce(body, body.position, {
-              x: (Math.random() - 0.5) * 0.3,
-              y: -0.15 - Math.random() * 0.1,
+              x: (Math.random() - 0.5) * 0.3 * forceScale,
+              y: (-0.15 - Math.random() * 0.1) * forceScale,
             });
           }
         }
