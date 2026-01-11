@@ -1007,30 +1007,28 @@ export default function BattleArena({
             className="pop-card p-8 max-w-md w-full mx-4 text-center"
             style={{ animation: 'bounce-in 0.5s ease-out' }}
           >
-            {/* ランキング情報 */}
-            {battleStats && steamId && (
-              <div className="bg-gray-100 rounded-xl p-4 mb-4 text-left">
-                <h3 className="text-sm font-bold text-gray-600 mb-2">
-                  {language === 'ja' ? 'あなたの戦績' : 'Your Stats'}
-                </h3>
-                {/* 結果ラベル */}
-                <div className="text-center mb-3">
-                  {winner === 'player' && (
-                    <span className="text-lg font-black" style={{ color: 'var(--pop-green)' }}>
-                      {language === 'ja' ? '勝利' : 'Victory'}
-                    </span>
-                  )}
-                  {winner === 'opponent' && (
-                    <span className="text-lg font-black" style={{ color: 'var(--pop-red)' }}>
-                      {language === 'ja' ? '敗北' : 'Defeat'}
-                    </span>
-                  )}
-                  {winner === 'draw' && (
-                    <span className="text-lg font-black" style={{ color: 'var(--pop-yellow)' }}>
-                      {language === 'ja' ? '引き分け' : 'Draw'}
-                    </span>
-                  )}
-                </div>
+            {/* 結果ラベル（大きく上に） */}
+            <div className="mb-6">
+              {winner === 'player' && (
+                <h2 className="text-4xl font-black" style={{ color: 'var(--pop-green)' }}>
+                  {language === 'ja' ? '勝利！' : 'Victory!'}
+                </h2>
+              )}
+              {winner === 'opponent' && (
+                <h2 className="text-4xl font-black" style={{ color: 'var(--pop-red)' }}>
+                  {language === 'ja' ? '敗北...' : 'Defeat...'}
+                </h2>
+              )}
+              {winner === 'draw' && (
+                <h2 className="text-4xl font-black" style={{ color: 'var(--pop-yellow)' }}>
+                  {language === 'ja' ? '引き分け' : 'Draw'}
+                </h2>
+              )}
+            </div>
+
+            {/* 戦績情報 */}
+            {battleStats && (
+              <div className="bg-gray-100 rounded-xl p-4 mb-4">
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-2xl font-black" style={{ color: 'var(--pop-green)' }}>
