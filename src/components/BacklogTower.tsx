@@ -131,21 +131,24 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       // 積みゲー数に応じてサイズとキャンバス高さを調整
       const gameCount = backlogGames.length;
 
-      // ボックスサイズは固定（見やすいサイズをキープ）
-      // 縦幅だけをゲーム数に応じて計算して画面を埋める
-      const boxWidth = 92;
-      const boxHeight = 43;
+      // スマホ対応: 画面幅に応じてボックスサイズを調整
+      // PC(600px以上): 92x43, スマホ(600px未満): 幅に応じて縮小
+      const isSmallScreen = width < 500;
+      const boxWidth = isSmallScreen ? Math.max(60, Math.floor(width / 5) - 5) : 92;
+      const boxHeight = isSmallScreen ? Math.floor(boxWidth * 0.47) : 43;
 
-      // 横に並ぶ数（幅600pxで約6個）
+      // 横に並ぶ数
       const boxesPerRow = Math.floor(width / (boxWidth + 5));
       // 必要な段数
       const rows = Math.ceil(gameCount / boxesPerRow);
       // 物理エンジンで積み上がると圧縮されるので、0.3倍程度で計算
       const estimatedHeight = rows * boxHeight * 0.3;
-      // 最低400px、1000本以上は999本の計算値で固定
+      // 最低高さをスマホでは小さく
+      const minHeight = isSmallScreen ? 300 : 400;
+      // 最大ゲーム数での高さ計算（1000本以上は固定）
       const maxRows = Math.ceil(999 / boxesPerRow);
       const maxHeight = maxRows * boxHeight * 0.3 + 50;
-      const height = gameCount >= 1000 ? maxHeight : Math.max(400, estimatedHeight + 50);
+      const height = gameCount >= 1000 ? maxHeight : Math.max(minHeight, estimatedHeight + 50);
 
       // コンテナの高さを更新
       setContainerHeight(height);
