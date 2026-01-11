@@ -659,114 +659,115 @@ export default function DeckBuilder({
         </div>
       </div>
 
-      {/* デッキ配置エリア */}
-      <div className="pop-card p-6 space-y-6">
-        {/* 後衛 */}
-        <div>
-          <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
-            <span className="px-2 py-1 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-blue)' }}>
-              {language === 'ja' ? '後衛' : 'Back Line'}
-            </span>
-            <span className="text-xs text-gray-500">
-              {language === 'ja' ? 'スキル効果1.5倍' : 'Skill x1.5'}
-            </span>
-          </h3>
-          <div className="flex gap-3 justify-center flex-wrap">
-            {backLine.map((card, index) => (
-              <div
-                key={`back-${index}`}
-                className={`relative transition-transform ${dragOverSlot?.line === 'back' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-blue-400' : ''}`}
-                onDragOver={(e) => handleDragOver(e, 'back', index)}
-                onDragLeave={() => setDragOverSlot(null)}
-                onDrop={(e) => handleDrop(e, 'back', index)}
-              >
-                {card ? (
-                  <div
-                    draggable
-                    onDragStart={() => handleSlotDragStart(card, 'back', index)}
-                    onDragEnd={handleDragEnd}
-                    className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
-                  >
-                    <BattleCard
-                      card={card}
+      {/* デッキ編成とステータス（横並び） */}
+      <div className="flex flex-col lg:flex-row gap-4">
+        {/* デッキ配置エリア（左側） */}
+        <div className="pop-card p-6 space-y-6 flex-1">
+          {/* 後衛 */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
+              <span className="px-2 py-1 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-blue)' }}>
+                {language === 'ja' ? '後衛' : 'Back Line'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {language === 'ja' ? 'スキル効果1.5倍' : 'Skill x1.5'}
+              </span>
+            </h3>
+            <div className="flex gap-3 justify-center flex-wrap">
+              {backLine.map((card, index) => (
+                <div
+                  key={`back-${index}`}
+                  className={`relative transition-transform ${dragOverSlot?.line === 'back' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-blue-400' : ''}`}
+                  onDragOver={(e) => handleDragOver(e, 'back', index)}
+                  onDragLeave={() => setDragOverSlot(null)}
+                  onDrop={(e) => handleDrop(e, 'back', index)}
+                >
+                  {card ? (
+                    <div
+                      draggable
+                      onDragStart={() => handleSlotDragStart(card, 'back', index)}
+                      onDragEnd={handleDragEnd}
+                      className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
+                    >
+                      <BattleCard
+                        card={card}
+                        size="small"
+                        onClick={() => setSelectedSlot({ line: 'back', index })}
+                        selected={selectedSlot?.line === 'back' && selectedSlot?.index === index}
+                      />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeCard('back', index); }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <CardSlot
+                      position="back"
                       size="small"
                       onClick={() => setSelectedSlot({ line: 'back', index })}
-                      selected={selectedSlot?.line === 'back' && selectedSlot?.index === index}
                     />
-                    <button
-                      onClick={(e) => { e.stopPropagation(); removeCard('back', index); }}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <CardSlot
-                    position="back"
-                    size="small"
-                    onClick={() => setSelectedSlot({ line: 'back', index })}
-                  />
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* 前衛 */}
-        <div>
-          <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
-            <span className="px-2 py-1 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-red)' }}>
-              {language === 'ja' ? '前衛' : 'Front Line'}
-            </span>
-            <span className="text-xs text-gray-500">
-              {language === 'ja' ? 'メインアタッカー' : 'Main Attacker'}
-            </span>
-          </h3>
-          <div className="flex gap-3 justify-center flex-wrap">
-            {frontLine.map((card, index) => (
-              <div
-                key={`front-${index}`}
-                className={`relative transition-transform ${dragOverSlot?.line === 'front' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-red-400' : ''}`}
-                onDragOver={(e) => handleDragOver(e, 'front', index)}
-                onDragLeave={() => setDragOverSlot(null)}
-                onDrop={(e) => handleDrop(e, 'front', index)}
-              >
-                {card ? (
-                  <div
-                    draggable
-                    onDragStart={() => handleSlotDragStart(card, 'front', index)}
-                    onDragEnd={handleDragEnd}
-                    className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
-                  >
-                    <BattleCard
-                      card={card}
+          {/* 前衛 */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
+              <span className="px-2 py-1 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-red)' }}>
+                {language === 'ja' ? '前衛' : 'Front Line'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {language === 'ja' ? 'メインアタッカー' : 'Main Attacker'}
+              </span>
+            </h3>
+            <div className="flex gap-3 justify-center flex-wrap">
+              {frontLine.map((card, index) => (
+                <div
+                  key={`front-${index}`}
+                  className={`relative transition-transform ${dragOverSlot?.line === 'front' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-red-400' : ''}`}
+                  onDragOver={(e) => handleDragOver(e, 'front', index)}
+                  onDragLeave={() => setDragOverSlot(null)}
+                  onDrop={(e) => handleDrop(e, 'front', index)}
+                >
+                  {card ? (
+                    <div
+                      draggable
+                      onDragStart={() => handleSlotDragStart(card, 'front', index)}
+                      onDragEnd={handleDragEnd}
+                      className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
+                    >
+                      <BattleCard
+                        card={card}
+                        size="small"
+                        onClick={() => setSelectedSlot({ line: 'front', index })}
+                        selected={selectedSlot?.line === 'front' && selectedSlot?.index === index}
+                      />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeCard('front', index); }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <CardSlot
+                      position="front"
                       size="small"
                       onClick={() => setSelectedSlot({ line: 'front', index })}
-                      selected={selectedSlot?.line === 'front' && selectedSlot?.index === index}
                     />
-                    <button
-                      onClick={(e) => { e.stopPropagation(); removeCard('front', index); }}
-                      className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10"
-                    >
-                      <X className="w-4 h-4" />
-                    </button>
-                  </div>
-                ) : (
-                  <CardSlot
-                    position="front"
-                    size="small"
-                    onClick={() => setSelectedSlot({ line: 'front', index })}
-                  />
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* デッキステータス */}
-      {deckStats.cardCount > 0 && (
-        <div className="pop-card p-4">
+        {/* デッキステータス（右側） */}
+        <div className="pop-card p-4 lg:w-80 lg:flex-shrink-0">
           <h3 className="text-sm font-bold text-gray-600 mb-3">
             {language === 'ja' ? 'デッキステータス' : 'Deck Status'}
           </h3>
@@ -779,9 +780,9 @@ export default function DeckBuilder({
                 <span className="text-xs text-gray-500">{language === 'ja' ? '総攻撃力' : 'Total ATK'}</span>
               </div>
               <p className="text-xl font-black" style={{ color: 'var(--pop-red)' }}>
-                {deckStats.buffedAttack}
+                {deckStats.cardCount > 0 ? deckStats.buffedAttack : '-'}
               </p>
-              {(sublimationBuff.totalBonus > 0 || deckStats.synergyAttackBonus > 0) && (
+              {deckStats.cardCount > 0 && (sublimationBuff.totalBonus > 0 || deckStats.synergyAttackBonus > 0) && (
                 <p className="text-xs text-gray-400">
                   ({deckStats.totalAttack} +{sublimationBuff.totalBonus + deckStats.synergyAttackBonus}%)
                 </p>
@@ -793,9 +794,9 @@ export default function DeckBuilder({
                 <span className="text-xs text-gray-500">{language === 'ja' ? '総HP' : 'Total HP'}</span>
               </div>
               <p className="text-xl font-black" style={{ color: 'var(--pop-green)' }}>
-                {deckStats.buffedHp}
+                {deckStats.cardCount > 0 ? deckStats.buffedHp : '-'}
               </p>
-              {deckStats.synergyHpBonus > 0 && (
+              {deckStats.cardCount > 0 && deckStats.synergyHpBonus > 0 && (
                 <p className="text-xs text-gray-400">
                   ({deckStats.totalHp} +{deckStats.synergyHpBonus}%)
                 </p>
@@ -804,7 +805,7 @@ export default function DeckBuilder({
           </div>
 
           {/* スキル一覧 */}
-          {deckStats.skillCount.size > 0 && (
+          {deckStats.skillCount.size > 0 ? (
             <div className="mb-4">
               <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'スキル' : 'Skills'}</p>
               <div className="flex flex-wrap gap-1">
@@ -819,10 +820,15 @@ export default function DeckBuilder({
                 ))}
               </div>
             </div>
+          ) : (
+            <div className="mb-4">
+              <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'スキル' : 'Skills'}</p>
+              <p className="text-xs text-gray-400">{language === 'ja' ? 'カードを配置するとスキルが表示されます' : 'Place cards to see skills'}</p>
+            </div>
           )}
 
           {/* シナジーボーナス */}
-          {synergies.length > 0 && (
+          {synergies.length > 0 ? (
             <div className="mb-4">
               <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'シナジー' : 'Synergies'}</p>
               <div className="flex flex-wrap gap-2">
@@ -848,10 +854,15 @@ export default function DeckBuilder({
                 ))}
               </div>
             </div>
+          ) : (
+            <div className="mb-4">
+              <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'シナジー' : 'Synergies'}</p>
+              <p className="text-xs text-gray-400">{language === 'ja' ? '同ジャンル3枚以上でシナジー発動' : '3+ same genre cards for synergy'}</p>
+            </div>
           )}
 
           {/* 昇華バフ */}
-          {sublimationBuff.sublimatedCount > 0 && (
+          {sublimationBuff.sublimatedCount > 0 ? (
             <div>
               <div className="flex items-center gap-2 mb-2">
                 <Flame className="w-4 h-4" style={{ color: 'var(--pop-orange)' }} />
@@ -888,9 +899,17 @@ export default function DeckBuilder({
                   : `${sublimationBuff.sublimatedCount} sublimated games buffing your deck`}
               </p>
             </div>
+          ) : (
+            <div>
+              <div className="flex items-center gap-2 mb-2">
+                <Flame className="w-4 h-4" style={{ color: 'var(--pop-orange)' }} />
+                <p className="text-xs font-bold text-gray-500">{language === 'ja' ? '昇華バフ' : 'Sublimation'}</p>
+              </div>
+              <p className="text-xs text-gray-400">{language === 'ja' ? '30分以上プレイしたゲームがデッキを強化' : 'Games played 30+ min buff your deck'}</p>
+            </div>
           )}
         </div>
-      )}
+      </div>
 
       {/* カード選択エリア（常に表示） */}
       <div className="pop-card p-4">
