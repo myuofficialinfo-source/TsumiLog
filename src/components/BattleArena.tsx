@@ -1050,10 +1050,10 @@ export default function BattleArena({
                     <p className="text-xs text-gray-500">{language === 'ja' ? '勝利' : 'Wins'}</p>
                   </div>
                   <div>
-                    <p className="text-2xl font-black" style={{ color: 'var(--pop-blue)' }}>
-                      {battleStats.graduations}
+                    <p className="text-2xl font-black" style={{ color: 'var(--pop-yellow)' }}>
+                      #{battleStats.rank || '-'}
                     </p>
-                    <p className="text-xs text-gray-500">{language === 'ja' ? '卒業' : 'Grads'}</p>
+                    <p className="text-xs text-gray-500">{language === 'ja' ? '順位' : 'Rank'}</p>
                   </div>
                   <div>
                     <p className="text-2xl font-black" style={{ color: 'var(--pop-purple)' }}>
@@ -1062,28 +1062,6 @@ export default function BattleArena({
                     <p className="text-xs text-gray-500">{language === 'ja' ? 'スコア' : 'Score'}</p>
                   </div>
                 </div>
-                {battleStats.rank && (
-                  <p className="text-center mt-2 text-sm">
-                    <span className="font-bold" style={{ color: 'var(--pop-yellow)' }}>
-                      #{battleStats.rank}
-                    </span>
-                    <span className="text-gray-500 ml-1">
-                      {language === 'ja' ? '位' : 'Rank'}
-                    </span>
-                  </p>
-                )}
-                {battleStats.newGraduations.length > 0 && (
-                  <div className="mt-3 pt-3 border-t border-gray-300">
-                    <p className="text-xs font-bold text-green-600 mb-1">
-                      🎓 {language === 'ja' ? '新しく卒業！' : 'New Graduations!'}
-                    </p>
-                    {battleStats.newGraduations.map(g => (
-                      <p key={g.appid} className="text-xs text-gray-600 truncate">
-                        {g.name}
-                      </p>
-                    ))}
-                  </div>
-                )}
               </div>
             )}
 

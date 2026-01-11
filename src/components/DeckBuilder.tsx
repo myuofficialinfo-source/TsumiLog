@@ -663,57 +663,7 @@ export default function DeckBuilder({
       <div className="flex flex-col lg:flex-row gap-4">
         {/* デッキ配置エリア（左側） */}
         <div className="pop-card p-6 space-y-6 flex-1">
-          {/* 後衛 */}
-          <div>
-            <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
-              <span className="px-2 py-1 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-blue)' }}>
-                {language === 'ja' ? '後衛' : 'Back Line'}
-              </span>
-              <span className="text-xs text-gray-500">
-                {language === 'ja' ? 'スキル効果1.5倍' : 'Skill x1.5'}
-              </span>
-            </h3>
-            <div className="flex gap-3 justify-center flex-wrap">
-              {backLine.map((card, index) => (
-                <div
-                  key={`back-${index}`}
-                  className={`relative transition-transform ${dragOverSlot?.line === 'back' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-blue-400' : ''}`}
-                  onDragOver={(e) => handleDragOver(e, 'back', index)}
-                  onDragLeave={() => setDragOverSlot(null)}
-                  onDrop={(e) => handleDrop(e, 'back', index)}
-                >
-                  {card ? (
-                    <div
-                      draggable
-                      onDragStart={() => handleSlotDragStart(card, 'back', index)}
-                      onDragEnd={handleDragEnd}
-                      className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
-                    >
-                      <BattleCard
-                        card={card}
-                        size="small"
-                        onClick={() => setPreviewCard(card)}
-                      />
-                      <button
-                        onClick={(e) => { e.stopPropagation(); removeCard('back', index); }}
-                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10"
-                      >
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  ) : (
-                    <CardSlot
-                      position="back"
-                      size="small"
-                      onClick={() => setSelectedSlot({ line: 'back', index })}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 前衛 */}
+          {/* 前衛（上） */}
           <div>
             <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
               <span className="px-2 py-1 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-red)' }}>
@@ -756,6 +706,56 @@ export default function DeckBuilder({
                       position="front"
                       size="small"
                       onClick={() => setSelectedSlot({ line: 'front', index })}
+                    />
+                  )}
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* 後衛（下） */}
+          <div>
+            <h3 className="text-sm font-bold text-gray-600 mb-2 flex items-center gap-2">
+              <span className="px-2 py-1 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-blue)' }}>
+                {language === 'ja' ? '後衛' : 'Back Line'}
+              </span>
+              <span className="text-xs text-gray-500">
+                {language === 'ja' ? 'スキル効果1.5倍' : 'Skill x1.5'}
+              </span>
+            </h3>
+            <div className="flex gap-3 justify-center flex-wrap">
+              {backLine.map((card, index) => (
+                <div
+                  key={`back-${index}`}
+                  className={`relative transition-transform ${dragOverSlot?.line === 'back' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-blue-400' : ''}`}
+                  onDragOver={(e) => handleDragOver(e, 'back', index)}
+                  onDragLeave={() => setDragOverSlot(null)}
+                  onDrop={(e) => handleDrop(e, 'back', index)}
+                >
+                  {card ? (
+                    <div
+                      draggable
+                      onDragStart={() => handleSlotDragStart(card, 'back', index)}
+                      onDragEnd={handleDragEnd}
+                      className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
+                    >
+                      <BattleCard
+                        card={card}
+                        size="small"
+                        onClick={() => setPreviewCard(card)}
+                      />
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeCard('back', index); }}
+                        className="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center z-10"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <CardSlot
+                      position="back"
+                      size="small"
+                      onClick={() => setSelectedSlot({ line: 'back', index })}
                     />
                   )}
                 </div>
