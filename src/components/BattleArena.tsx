@@ -160,6 +160,12 @@ export default function BattleArena({
     x: number; // ランダムX位置（%）
     y: number; // ランダムY位置（%）
   }>>([]);
+  // スキル発動表示（積み上げ式）
+  const [skillDisplays, setSkillDisplays] = useState<Array<{
+    skill: GenreSkill;
+    isPlayerAttacking: boolean;
+    key: number;
+  }>>([]);
 
   // バトルログ
   const [battleLog, setBattleLog] = useState<string[]>([]);
@@ -506,9 +512,32 @@ export default function BattleArena({
           y: randomY,
         }]);
 
-        // ログ追加
+        // スキル発動表示を追加（積み上げ式、最大5件まで）
+        if (action.skill) {
+          const skillKey = Date.now() + Math.random();
+          setSkillDisplays(prev => {
+            const newDisplays = [...prev, {
+              skill: action.skill!,
+              isPlayerAttacking: action.isPlayerAttacking,
+              key: skillKey,
+            }];
+            // 最大5件まで（古いものは即削除）
+            return newDisplays.slice(-5);
+          });
+
+          // 3秒後に一番古いものから順に削除
+          setTimeout(() => {
+            setSkillDisplays(prev => prev.filter(d => d.key !== skillKey));
+          }, 3000 / speed);
+        }
+
+        // ログ追加（自分/敵のゲーム名 → 敵/自分 形式）
+        const ownerLabel = action.isPlayerAttacking ? 'あなた' : '敵';
+        const targetLabel = action.isPlayerAttacking ? '敵' : 'あなた';
+        const skillText = action.skill ? ` [${action.skill}]` : '';
+        const critText = action.isCritical ? ' CRIT!' : '';
         setBattleLog(prev => [
-          `${action.attacker} → ${action.defender} (-${action.damage}${action.isCritical ? ' CRIT!' : ''})`,
+          `${ownerLabel}の${action.attacker}${skillText} → ${targetLabel} (-${action.damage}${critText})`,
           ...prev.slice(0, 9),
         ]);
 
@@ -573,6 +602,7 @@ export default function BattleArena({
     setDamageDisplays([]);
     setShakeTarget(null);
     setHitEffects([]);
+    setSkillDisplays([]);
     setBattleState('finished');
     // ポップアップ表示はAPIレスポンス後に行う（useEffect内で処理）
   }, [battleCards]);
@@ -764,33 +794,37 @@ export default function BattleArena({
             </div>
           </div>
 
-          {/* VS（中央）- スキル発動時に表示 */}
-          <div className="flex items-center justify-center order-1 lg:order-2 py-2 lg:py-0 lg:px-4 relative min-w-16">
+          {/* VS（中央）- スキル発動表示（積み上げ式） */}
+          <div className="flex items-center justify-center order-1 lg:order-2 py-2 lg:py-0 lg:px-4 relative min-w-20">
             <span className="text-3xl lg:text-4xl font-black text-gray-300">VS</span>
-            {/* スキル発動時のみ表示（枠色で自分/敵を判別） */}
-            {currentAction?.skill && (
-              <div
-                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                style={{ animation: 'bounce-in 0.2s ease-out' }}
-              >
-                <div
-                  className="px-3 py-2 lg:px-4 lg:py-3 rounded-xl border-3 text-center"
-                  style={{
-                    backgroundColor: 'rgba(0,0,0,0.85)',
-                    borderColor: currentAction.isPlayerAttacking ? 'var(--pop-green)' : 'var(--pop-red)',
-                    boxShadow: currentAction.isPlayerAttacking
-                      ? '0 0 15px rgba(42, 157, 143, 0.6)'
-                      : '0 0 15px rgba(230, 57, 70, 0.6)',
-                  }}
-                >
-                  <Zap
-                    className="w-5 h-5 lg:w-6 lg:h-6 mx-auto mb-1"
-                    style={{ color: currentAction.isPlayerAttacking ? 'var(--pop-green)' : 'var(--pop-red)' }}
-                  />
-                  <span className="text-white font-black text-xs lg:text-sm block">
-                    {SKILL_DESCRIPTIONS[currentAction.skill][language === 'ja' ? 'ja' : 'en'].split('（')[0]}
-                  </span>
-                </div>
+            {/* スキル発動を積み上げ表示（下から上へ） */}
+            {skillDisplays.length > 0 && (
+              <div className="absolute inset-0 flex flex-col-reverse items-center justify-center pointer-events-none gap-1 overflow-visible">
+                {skillDisplays.map((display, index) => (
+                  <div
+                    key={display.key}
+                    className="px-2 py-1 lg:px-3 lg:py-2 rounded-lg border-2 text-center whitespace-nowrap"
+                    style={{
+                      backgroundColor: 'rgba(0,0,0,0.85)',
+                      borderColor: display.isPlayerAttacking ? 'var(--pop-green)' : 'var(--pop-red)',
+                      boxShadow: display.isPlayerAttacking
+                        ? '0 0 10px rgba(42, 157, 143, 0.5)'
+                        : '0 0 10px rgba(230, 57, 70, 0.5)',
+                      animation: 'bounce-in 0.2s ease-out',
+                      opacity: 1 - (index * 0.15), // 古いものは少し薄く
+                    }}
+                  >
+                    <div className="flex items-center gap-1">
+                      <Zap
+                        className="w-3 h-3 lg:w-4 lg:h-4"
+                        style={{ color: display.isPlayerAttacking ? 'var(--pop-green)' : 'var(--pop-red)' }}
+                      />
+                      <span className="text-white font-bold text-xs block">
+                        {SKILL_DESCRIPTIONS[display.skill][language === 'ja' ? 'ja' : 'en'].split('（')[0]}
+                      </span>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
