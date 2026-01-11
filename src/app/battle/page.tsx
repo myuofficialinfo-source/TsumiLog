@@ -446,6 +446,7 @@ function BattleContent() {
             steamId={steamId || undefined}
             personaName={steamData?.profile?.personaName}
             avatarUrl={steamData?.profile?.avatarUrl}
+            opponentName="AI"
           />
         )}
       </main>

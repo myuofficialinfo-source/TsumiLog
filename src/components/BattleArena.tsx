@@ -21,6 +21,8 @@ interface BattleArenaProps {
   steamId?: string;
   personaName?: string;
   avatarUrl?: string;
+  opponentName?: string;
+  opponentAvatarUrl?: string;
 }
 
 // カードの攻撃インターバルを計算
@@ -103,6 +105,8 @@ export default function BattleArena({
   steamId,
   personaName,
   avatarUrl,
+  opponentName,
+  opponentAvatarUrl,
 }: BattleArenaProps) {
   const { language } = useLanguage();
   const [battleState, setBattleState] = useState<'preparing' | 'fighting' | 'finished'>('preparing');
@@ -654,22 +658,34 @@ export default function BattleArena({
             ))}
 
             {/* プレイヤーHPバー */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold w-16 lg:w-12" style={{ color: 'var(--pop-green)' }}>
-                {language === 'ja' ? 'あなた' : 'You'}
-              </span>
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
-                <div
-                  className="h-full rounded-full transition-all duration-200"
-                  style={{
-                    width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
-                    backgroundColor: 'var(--pop-green)',
-                  }}
-                />
+            <div className="flex items-center gap-2 p-2 rounded-lg border-2" style={{ borderColor: 'var(--pop-green)', backgroundColor: 'rgba(42, 157, 143, 0.1)' }}>
+              {/* アイコン */}
+              {avatarUrl ? (
+                <img src={avatarUrl} alt="" className="w-8 h-8 rounded-full border-2" style={{ borderColor: 'var(--pop-green)' }} />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: 'var(--pop-green)' }}>
+                  {personaName?.charAt(0)?.toUpperCase() || 'P'}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold truncate" style={{ color: 'var(--pop-green)' }}>
+                    {personaName || (language === 'ja' ? 'あなた' : 'You')}
+                  </span>
+                  <span className="text-xs font-bold ml-2" style={{ color: 'var(--pop-green)' }}>
+                    {playerTotalHp} / {playerMaxHp}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D]">
+                  <div
+                    className="h-full rounded-full transition-all duration-200"
+                    style={{
+                      width: `${playerMaxHp > 0 ? (playerTotalHp / playerMaxHp) * 100 : 0}%`,
+                      backgroundColor: 'var(--pop-green)',
+                    }}
+                  />
+                </div>
               </div>
-              <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-green)' }}>
-                {playerTotalHp} / {playerMaxHp}
-              </span>
             </div>
 
             {/* プレイヤー前衛 */}
@@ -748,15 +764,32 @@ export default function BattleArena({
             </div>
           </div>
 
-          {/* VS（中央） */}
-          <div className="flex items-center justify-center order-1 lg:order-2 py-2 lg:py-0 lg:px-4 relative">
+          {/* VS（中央）- スキル発動時に表示 */}
+          <div className="flex items-center justify-center order-1 lg:order-2 py-2 lg:py-0 lg:px-4 relative min-w-16">
             <span className="text-3xl lg:text-4xl font-black text-gray-300">VS</span>
-            {currentAction && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ animation: 'bounce-in 0.2s ease-out' }}>
-                <div className="bg-black/80 px-3 py-1 lg:px-4 lg:py-2 rounded-xl flex items-center gap-1 lg:gap-2">
-                  <span className="text-white font-bold text-xs lg:text-sm truncate max-w-16 lg:max-w-24">{currentAction.attacker}</span>
-                  <Swords className="w-4 h-4 lg:w-5 lg:h-5 text-orange-400 animate-pulse" />
-                  <span className="text-white font-bold text-xs lg:text-sm truncate max-w-16 lg:max-w-24">{currentAction.defender}</span>
+            {/* スキル発動時のみ表示（枠色で自分/敵を判別） */}
+            {currentAction?.skill && (
+              <div
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{ animation: 'bounce-in 0.2s ease-out' }}
+              >
+                <div
+                  className="px-3 py-2 lg:px-4 lg:py-3 rounded-xl border-3 text-center"
+                  style={{
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    borderColor: currentAction.isPlayerAttacking ? 'var(--pop-green)' : 'var(--pop-red)',
+                    boxShadow: currentAction.isPlayerAttacking
+                      ? '0 0 15px rgba(42, 157, 143, 0.6)'
+                      : '0 0 15px rgba(230, 57, 70, 0.6)',
+                  }}
+                >
+                  <Zap
+                    className="w-5 h-5 lg:w-6 lg:h-6 mx-auto mb-1"
+                    style={{ color: currentAction.isPlayerAttacking ? 'var(--pop-green)' : 'var(--pop-red)' }}
+                  />
+                  <span className="text-white font-black text-xs lg:text-sm block">
+                    {SKILL_DESCRIPTIONS[currentAction.skill][language === 'ja' ? 'ja' : 'en'].split('（')[0]}
+                  </span>
                 </div>
               </div>
             )}
@@ -785,22 +818,34 @@ export default function BattleArena({
             ))}
 
             {/* 相手HPバー */}
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-bold w-16 lg:w-12" style={{ color: 'var(--pop-red)' }}>
-                {language === 'ja' ? '相手' : 'Enemy'}
-              </span>
-              <div className="flex-1 h-3 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D] relative">
-                <div
-                  className="h-full rounded-full transition-all duration-200"
-                  style={{
-                    width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
-                    backgroundColor: 'var(--pop-red)',
-                  }}
-                />
+            <div className="flex items-center gap-2 p-2 rounded-lg border-2" style={{ borderColor: 'var(--pop-red)', backgroundColor: 'rgba(230, 57, 70, 0.1)' }}>
+              {/* アイコン */}
+              {opponentAvatarUrl ? (
+                <img src={opponentAvatarUrl} alt="" className="w-8 h-8 rounded-full border-2" style={{ borderColor: 'var(--pop-red)' }} />
+              ) : (
+                <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold" style={{ backgroundColor: 'var(--pop-red)' }}>
+                  {opponentName?.charAt(0)?.toUpperCase() || 'AI'}
+                </div>
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-bold truncate" style={{ color: 'var(--pop-red)' }}>
+                    {opponentName || 'AI'}
+                  </span>
+                  <span className="text-xs font-bold ml-2" style={{ color: 'var(--pop-red)' }}>
+                    {opponentTotalHp} / {opponentMaxHp}
+                  </span>
+                </div>
+                <div className="h-2 bg-gray-200 rounded-full overflow-hidden border border-[#3D3D3D]">
+                  <div
+                    className="h-full rounded-full transition-all duration-200"
+                    style={{
+                      width: `${opponentMaxHp > 0 ? (opponentTotalHp / opponentMaxHp) * 100 : 0}%`,
+                      backgroundColor: 'var(--pop-red)',
+                    }}
+                  />
+                </div>
               </div>
-              <span className="text-xs font-bold w-20 text-right" style={{ color: 'var(--pop-red)' }}>
-                {opponentTotalHp} / {opponentMaxHp}
-              </span>
             </div>
 
             {/* 相手前衛 */}
@@ -880,19 +925,6 @@ export default function BattleArena({
           </div>
         </div>
 
-        {/* スキル発動エフェクト */}
-        {currentAction?.skill && (
-          <div
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ animation: 'skill-flash 0.4s ease-out' }}
-          >
-            <div className="bg-purple-600/90 px-6 py-3 rounded-xl">
-              <span className="text-white font-black text-xl">
-                {SKILL_DESCRIPTIONS[currentAction.skill][language === 'ja' ? 'ja' : 'en'].split('（')[0]}
-              </span>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* バトルログ */}
