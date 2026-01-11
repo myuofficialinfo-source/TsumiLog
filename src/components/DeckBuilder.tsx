@@ -19,7 +19,7 @@ import {
   BACKLOG_THRESHOLD_MINUTES,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame } from 'lucide-react';
+import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame, ArrowUp, ArrowDown } from 'lucide-react';
 import Link from 'next/link';
 
 // ランクティア定義
@@ -257,7 +257,8 @@ export default function DeckBuilder({
   const [previewCard, setPreviewCard] = useState<BattleCardType | null>(null);
   const [draggedCard, setDraggedCard] = useState<BattleCardType | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
-  const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'playtime'>('rarity');
+  const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'hp'>('rarity');
+  const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   // 選択済みカードのappid
   const selectedAppIds = useMemo(() => {
@@ -278,27 +279,28 @@ export default function DeckBuilder({
   // ソートされたカード（安定ソート：同値の場合はappidでソート）
   const sortedCards = useMemo(() => {
     const cards = [...availableCards].filter(card => !selectedAppIds.has(card.appid));
+    const multiplier = sortOrder === 'desc' ? 1 : -1;
 
     switch (sortBy) {
       case 'rarity':
         return cards.sort((a, b) => {
-          const diff = (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0);
+          const diff = ((rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0)) * multiplier;
           return diff !== 0 ? diff : a.appid - b.appid;
         });
       case 'attack':
         return cards.sort((a, b) => {
-          const diff = b.attack - a.attack;
+          const diff = (b.attack - a.attack) * multiplier;
           return diff !== 0 ? diff : a.appid - b.appid;
         });
-      case 'playtime':
+      case 'hp':
         return cards.sort((a, b) => {
-          const diff = b.playtimeMinutes - a.playtimeMinutes;
+          const diff = (b.hp - a.hp) * multiplier;
           return diff !== 0 ? diff : a.appid - b.appid;
         });
       default:
         return cards;
     }
-  }, [availableCards, selectedAppIds, sortBy]);
+  }, [availableCards, selectedAppIds, sortBy, sortOrder]);
 
   // シナジー計算
   const synergies = useMemo(() => {
@@ -788,13 +790,23 @@ export default function DeckBuilder({
                 {language === 'ja' ? '攻撃力' : 'ATK'}
               </button>
               <button
-                onClick={() => setSortBy('playtime')}
-                className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'playtime' ? 'text-white' : ''}`}
-                style={{ backgroundColor: sortBy === 'playtime' ? 'var(--pop-blue)' : 'var(--card-bg)' }}
+                onClick={() => setSortBy('hp')}
+                className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'hp' ? 'text-white' : ''}`}
+                style={{ backgroundColor: sortBy === 'hp' ? 'var(--pop-green)' : 'var(--card-bg)' }}
               >
-                {language === 'ja' ? 'プレイ時間' : 'Time'}
+                HP
               </button>
             </div>
+            {/* 昇順/降順ボタン */}
+            <button
+              onClick={() => setSortOrder(prev => prev === 'desc' ? 'asc' : 'desc')}
+              className="flex items-center gap-1 px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold"
+              style={{ backgroundColor: 'var(--card-bg)' }}
+              title={sortOrder === 'desc' ? (language === 'ja' ? '降順' : 'Descending') : (language === 'ja' ? '昇順' : 'Ascending')}
+            >
+              {sortOrder === 'desc' ? <ArrowDown className="w-3 h-3" /> : <ArrowUp className="w-3 h-3" />}
+              {sortOrder === 'desc' ? (language === 'ja' ? '降順' : 'DESC') : (language === 'ja' ? '昇順' : 'ASC')}
+            </button>
             {selectedSlot && (
               <span className="px-3 py-1 rounded-full text-xs font-bold text-white" style={{ backgroundColor: selectedSlot.line === 'front' ? 'var(--pop-red)' : 'var(--pop-blue)' }}>
                 {language === 'ja'
@@ -814,14 +826,14 @@ export default function DeckBuilder({
             {language === 'ja' ? 'スロットにドロップしてください' : 'Drop on a slot'}
           </p>
         )}
-        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 max-h-80 overflow-y-auto">
+        <div className="flex flex-wrap gap-1 max-h-80 overflow-y-auto">
           {sortedCards.map(card => (
             <div
               key={card.appid}
               draggable
               onDragStart={() => handleDragStart(card)}
               onDragEnd={handleDragEnd}
-              className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
+              className={`cursor-grab active:cursor-grabbing flex-shrink-0 ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
             >
               <BattleCard
                 card={card}
