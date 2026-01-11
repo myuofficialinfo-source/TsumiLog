@@ -131,34 +131,39 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       // 積みゲー数に応じてサイズとキャンバス高さを調整
       const gameCount = backlogGames.length;
 
-      // ボックスサイズの計算（本数に応じて小さくする）
+      // ボックスサイズと高さを計算（画面を埋めるようにバランス調整）
+      // 横幅600pxで約6〜7個並ぶサイズを基準に、タワーが画面を埋めるように設計
       let boxWidth = 92;
       let boxHeight = 43;
-
-      // 積みゲー数に応じて固定の高さを設定（画面を埋めるため）
-      let height = 400; // デフォルト（〜49本）
+      let height = 400;
 
       if (gameCount >= 1000) {
-        boxWidth = 23;
-        boxHeight = 11;
-        height = 1200;
-      } else if (gameCount >= 500) {
-        boxWidth = 32;
-        boxHeight = 15;
-        height = 900;
-      } else if (gameCount >= 300) {
+        // 1000本以上：小さめボックス、非常に高いタワー
         boxWidth = 40;
         boxHeight = 19;
-        height = 700;
-      } else if (gameCount >= 200) {
+        height = 2000;
+      } else if (gameCount >= 500) {
+        // 500〜999本
         boxWidth = 46;
         boxHeight = 21;
-        height = 550;
+        height = 1400;
+      } else if (gameCount >= 300) {
+        // 300〜499本
+        boxWidth = 55;
+        boxHeight = 26;
+        height = 1000;
+      } else if (gameCount >= 200) {
+        // 200〜299本
+        boxWidth = 60;
+        boxHeight = 28;
+        height = 750;
       } else if (gameCount >= 100) {
+        // 100〜199本
         boxWidth = 69;
         boxHeight = 32;
-        height = 500;
+        height = 550;
       } else if (gameCount >= 50) {
+        // 50〜99本
         height = 450;
       }
 
