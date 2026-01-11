@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, Suspense } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import DeckBuilder from '@/components/DeckBuilder';
 import BattleArena from '@/components/BattleArena';
 import {
@@ -50,6 +50,63 @@ interface SteamData {
   games: Game[];
 }
 
+
+// テスト用ダミーゲームを生成
+function generateDummyGames(count: number): Game[] {
+  const dummyGames: Game[] = [];
+  const sampleAppIds = [
+    730, 570, 440, 304930, 292030, 271590, 620, 227300, 49520,
+    8930, 105600, 289070, 252490, 311210, 374320, 377160, 435150,
+    582010, 632360, 892970, 1174180, 1245620, 1091500, 367520,
+    550, 413150, 219740, 286160, 322330, 242760, 261640, 274170,
+    285900, 294100, 289130, 230410, 236390, 245620, 250900, 255220,
+  ];
+
+  const genres = ['Action', 'RPG', 'Indie', 'Strategy', 'Simulation', 'Puzzle', 'Horror'];
+
+  for (let i = 0; i < count; i++) {
+    const baseAppId = sampleAppIds[i % sampleAppIds.length];
+    const appid = baseAppId + Math.floor(i / sampleAppIds.length) * 10000;
+    // ランダムなプレイ時間（0〜29分）= 積みゲー
+    const playtime = Math.floor(Math.random() * 30);
+
+    dummyGames.push({
+      appid,
+      name: `Dummy Game ${i + 1}`,
+      playtime_forever: playtime,
+      playtimeHours: playtime / 60,
+      isBacklog: true,
+      headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${baseAppId}/header.jpg`,
+    });
+  }
+  return dummyGames;
+}
+
+// ダミーゲーム詳細を生成
+function generateDummyGameDetails(games: Game[]): Map<number, GameDetail> {
+  const details = new Map<number, GameDetail>();
+  const genres = ['Action', 'RPG', 'Indie', 'Strategy', 'Simulation', 'Puzzle', 'Horror'];
+  const developers = ['Dummy Dev A', 'Dummy Dev B', 'Dummy Dev C', 'Dummy Dev D'];
+  const publishers = ['Dummy Pub X', 'Dummy Pub Y', 'Dummy Pub Z'];
+
+  games.forEach((game, index) => {
+    const genreCount = 1 + Math.floor(Math.random() * 3);
+    const gameGenres = [];
+    for (let i = 0; i < genreCount; i++) {
+      gameGenres.push({ description: genres[(index + i) % genres.length] });
+    }
+
+    details.set(game.appid, {
+      genres: gameGenres,
+      developers: [developers[index % developers.length]],
+      publishers: [publishers[index % publishers.length]],
+      recommendations: { total: Math.floor(Math.random() * 100000) },
+      positiveRate: 50 + Math.floor(Math.random() * 50),
+    });
+  });
+
+  return details;
+}
 
 // AIのデッキを生成（積みゲーのみ）
 function generateAIDeck(availableCards: BattleCardType[]): Deck {
@@ -116,6 +173,7 @@ function createBattleCard(
 
 function BattleContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { language } = useLanguage();
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingDetails, setIsLoadingDetails] = useState(true);
@@ -128,8 +186,50 @@ function BattleContent() {
   const [opponentDeck, setOpponentDeck] = useState<Deck | null>(null);
   const [, setBattleResult] = useState<BattleResult | null>(null);
 
+  // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用
+  const dummyCount = searchParams.get('dummyBacklog');
+  const dummyCountNum = dummyCount ? parseInt(dummyCount, 10) : 0;
+
+  // ダミーデータをメモ化
+  const dummyGames = useMemo(() => {
+    if (dummyCountNum > 0) {
+      return generateDummyGames(dummyCountNum);
+    }
+    return null;
+  }, [dummyCountNum]);
+
+  const dummyDetails = useMemo(() => {
+    if (dummyGames) {
+      return generateDummyGameDetails(dummyGames);
+    }
+    return null;
+  }, [dummyGames]);
+
   // Steam IDの取得とデータ読み込み（キャッシュ対応）
   useEffect(() => {
+    // ダミーモードの場合はSteamデータ取得をスキップ
+    if (dummyGames && dummyDetails) {
+      setSteamId('dummy');
+      setSteamData({
+        profile: {
+          personaName: 'Test User',
+          avatarUrl: '',
+          profileUrl: '',
+        },
+        stats: {
+          totalGames: dummyGames.length,
+          backlogCount: dummyGames.length,
+          totalPlaytimeHours: 0,
+          playedGames: 0,
+        },
+        games: dummyGames,
+      });
+      setGameDetails(dummyDetails);
+      setIsLoading(false);
+      setIsLoadingDetails(false);
+      return;
+    }
+
     const savedSteamId = localStorage.getItem('steamId');
     if (!savedSteamId) {
       router.push('/');
@@ -170,11 +270,13 @@ function BattleContent() {
     };
 
     fetchData();
-  }, [router]);
+  }, [router, dummyGames, dummyDetails]);
 
   // ゲーム詳細の取得（キャッシュ対応、全部読み込んでから表示）
   useEffect(() => {
     if (!steamData?.games || !steamId) return;
+    // ダミーモードでは既に設定済み
+    if (dummyGames) return;
 
     const detailsCacheKey = `battleGameDetails_${steamId}_${language}`;
 
@@ -236,7 +338,7 @@ function BattleContent() {
     };
 
     fetchDetails();
-  }, [steamData?.games, steamId, language]);
+  }, [steamData?.games, steamId, language, dummyGames]);
 
   // デッキ完成時
   const handleDeckComplete = (deck: Deck) => {

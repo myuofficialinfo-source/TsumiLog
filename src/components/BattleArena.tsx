@@ -130,6 +130,7 @@ export default function BattleArena({
   const [currentAction, setCurrentAction] = useState<{
     attacker: string;
     attackerIndex: number;
+    attackerPosition: 'front' | 'back';
     attackerIsPlayer: boolean;
     defender: string;
     damage: number;
@@ -342,6 +343,7 @@ export default function BattleArena({
   const pendingActionRef = useRef<{
     attacker: string;
     attackerIndex: number;
+    attackerPosition: 'front' | 'back';
     attackerIsPlayer: boolean;
     defender: string;
     damage: number;
@@ -426,6 +428,7 @@ export default function BattleArena({
               pendingActionRef.current = {
                 attacker: card.name,
                 attackerIndex: card.index,
+                attackerPosition: card.position,
                 attackerIsPlayer: card.isPlayer,
                 defender: target.name,
                 damage: result.damage,
@@ -551,6 +554,16 @@ export default function BattleArena({
   const opponentFrontCards = battleCards.filter(c => !c.isPlayer && c.position === 'front');
   const opponentBackCards = battleCards.filter(c => !c.isPlayer && c.position === 'back');
 
+  // カードがアクティブ（攻撃/スキル発動中）かどうか
+  const isCardActive = (isPlayer: boolean, position: 'front' | 'back', index: number) => {
+    if (!currentAction) return false;
+    return (
+      currentAction.attackerIsPlayer === isPlayer &&
+      currentAction.attackerPosition === position &&
+      currentAction.attackerIndex === index
+    );
+  };
+
   // チームのHP残りがあるかどうか
   const isPlayerTeamAlive = playerTotalHp > 0;
   const isOpponentTeamAlive = opponentTotalHp > 0;
@@ -630,62 +643,88 @@ export default function BattleArena({
           </div>
 
           {/* 相手後衛 */}
-          <div className="flex gap-2 justify-center">
-            {opponentBackCards.map((card, index) => (
-              <div
-                key={`opponent-back-${index}`}
-                className={`relative ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}
-              >
-                <BattleCard
-                  card={card}
-                  size="small"
-                  showStats={false}
-                  disabled={!isOpponentTeamAlive}
-                />
-                {/* ゲージオーバーレイ */}
-                {isOpponentTeamAlive && (
-                  <div
-                    className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-                    style={{ border: '3px solid transparent' }}
-                  >
+          <div className="flex gap-2 justify-center items-end">
+            {opponentBackCards.map((card, index) => {
+              const active = isCardActive(false, 'back', card.index);
+              return (
+                <div
+                  key={`opponent-back-${index}`}
+                  className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${active ? 'scale-110 z-10' : ''}`}
+                >
+                  <BattleCard
+                    card={card}
+                    size="small"
+                    showStats={false}
+                    disabled={!isOpponentTeamAlive}
+                  />
+                  {/* ゲージオーバーレイ */}
+                  {isOpponentTeamAlive && (
                     <div
-                      className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
-                      style={{ height: `${getCardTimerPercent(card)}%` }}
+                      className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
+                      style={{ border: '3px solid transparent' }}
+                    >
+                      <div
+                        className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
+                        style={{ height: `${getCardTimerPercent(card)}%` }}
+                      />
+                    </div>
+                  )}
+                  {/* アクティブ時のグロー */}
+                  {active && (
+                    <div
+                      className="absolute inset-0 rounded-xl pointer-events-none"
+                      style={{
+                        boxShadow: '0 0 20px 5px rgba(255, 165, 0, 0.7)',
+                        animation: 'pulse 0.3s ease-in-out infinite',
+                      }}
                     />
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '後衛' : 'Back Line'}</p>
 
           {/* 相手前衛 */}
-          <div className="flex gap-2 justify-center relative">
-            {opponentFrontCards.map((card, index) => (
-              <div
-                key={`opponent-front-${index}`}
-                className={`relative ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}
-              >
-                <BattleCard
-                  card={card}
-                  size="small"
-                  showStats={false}
-                  disabled={!isOpponentTeamAlive}
-                />
-                {/* ゲージオーバーレイ */}
-                {isOpponentTeamAlive && (
-                  <div
-                    className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-                    style={{ border: '3px solid transparent' }}
-                  >
+          <div className="flex gap-2 justify-center relative items-end">
+            {opponentFrontCards.map((card, index) => {
+              const active = isCardActive(false, 'front', card.index);
+              return (
+                <div
+                  key={`opponent-front-${index}`}
+                  className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${active ? 'scale-110 z-10' : ''}`}
+                >
+                  <BattleCard
+                    card={card}
+                    size="small"
+                    showStats={false}
+                    disabled={!isOpponentTeamAlive}
+                  />
+                  {/* ゲージオーバーレイ */}
+                  {isOpponentTeamAlive && (
                     <div
-                      className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
-                      style={{ height: `${getCardTimerPercent(card)}%` }}
+                      className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
+                      style={{ border: '3px solid transparent' }}
+                    >
+                      <div
+                        className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
+                        style={{ height: `${getCardTimerPercent(card)}%` }}
+                      />
+                    </div>
+                  )}
+                  {/* アクティブ時のグロー */}
+                  {active && (
+                    <div
+                      className="absolute inset-0 rounded-xl pointer-events-none"
+                      style={{
+                        boxShadow: '0 0 20px 5px rgba(255, 165, 0, 0.7)',
+                        animation: 'pulse 0.3s ease-in-out infinite',
+                      }}
                     />
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
             {/* 火花ヒットエフェクト（相手デッキ - ランダム位置） */}
             {hitEffects.filter(e => e.target === 'opponent').map(effect => (
               <div
@@ -745,32 +784,45 @@ export default function BattleArena({
         <div className="space-y-2">
           {/* プレイヤー前衛 */}
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '前衛' : 'Front Line'}</p>
-          <div className="flex gap-2 justify-center relative">
-            {playerFrontCards.map((card, index) => (
-              <div
-                key={`player-front-${index}`}
-                className={`relative ${shakeTarget === 'player' ? 'animate-shake' : ''}`}
-              >
-                <BattleCard
-                  card={card}
-                  size="small"
-                  showStats={false}
-                  disabled={!isPlayerTeamAlive}
-                />
-                {/* ゲージオーバーレイ */}
-                {isPlayerTeamAlive && (
-                  <div
-                    className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-                    style={{ border: '3px solid transparent' }}
-                  >
+          <div className="flex gap-2 justify-center relative items-start">
+            {playerFrontCards.map((card, index) => {
+              const active = isCardActive(true, 'front', card.index);
+              return (
+                <div
+                  key={`player-front-${index}`}
+                  className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${active ? 'scale-110 z-10' : ''}`}
+                >
+                  <BattleCard
+                    card={card}
+                    size="small"
+                    showStats={false}
+                    disabled={!isPlayerTeamAlive}
+                  />
+                  {/* ゲージオーバーレイ */}
+                  {isPlayerTeamAlive && (
                     <div
-                      className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
-                      style={{ height: `${getCardTimerPercent(card)}%` }}
+                      className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
+                      style={{ border: '3px solid transparent' }}
+                    >
+                      <div
+                        className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
+                        style={{ height: `${getCardTimerPercent(card)}%` }}
+                      />
+                    </div>
+                  )}
+                  {/* アクティブ時のグロー */}
+                  {active && (
+                    <div
+                      className="absolute inset-0 rounded-xl pointer-events-none"
+                      style={{
+                        boxShadow: '0 0 20px 5px rgba(59, 130, 246, 0.7)',
+                        animation: 'pulse 0.3s ease-in-out infinite',
+                      }}
                     />
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
             {/* 火花ヒットエフェクト（プレイヤーデッキ - ランダム位置） */}
             {hitEffects.filter(e => e.target === 'player').map(effect => (
               <div
@@ -809,32 +861,45 @@ export default function BattleArena({
 
           {/* プレイヤー後衛 */}
           <p className="text-xs text-center text-gray-400">{language === 'ja' ? '後衛' : 'Back Line'}</p>
-          <div className="flex gap-2 justify-center">
-            {playerBackCards.map((card, index) => (
-              <div
-                key={`player-back-${index}`}
-                className={`relative ${shakeTarget === 'player' ? 'animate-shake' : ''}`}
-              >
-                <BattleCard
-                  card={card}
-                  size="small"
-                  showStats={false}
-                  disabled={!isPlayerTeamAlive}
-                />
-                {/* ゲージオーバーレイ */}
-                {isPlayerTeamAlive && (
-                  <div
-                    className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
-                    style={{ border: '3px solid transparent' }}
-                  >
+          <div className="flex gap-2 justify-center items-start">
+            {playerBackCards.map((card, index) => {
+              const active = isCardActive(true, 'back', card.index);
+              return (
+                <div
+                  key={`player-back-${index}`}
+                  className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${active ? 'scale-110 z-10' : ''}`}
+                >
+                  <BattleCard
+                    card={card}
+                    size="small"
+                    showStats={false}
+                    disabled={!isPlayerTeamAlive}
+                  />
+                  {/* ゲージオーバーレイ */}
+                  {isPlayerTeamAlive && (
                     <div
-                      className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
-                      style={{ height: `${getCardTimerPercent(card)}%` }}
+                      className="absolute inset-0 rounded-xl pointer-events-none overflow-hidden"
+                      style={{ border: '3px solid transparent' }}
+                    >
+                      <div
+                        className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75"
+                        style={{ height: `${getCardTimerPercent(card)}%` }}
+                      />
+                    </div>
+                  )}
+                  {/* アクティブ時のグロー */}
+                  {active && (
+                    <div
+                      className="absolute inset-0 rounded-xl pointer-events-none"
+                      style={{
+                        boxShadow: '0 0 20px 5px rgba(59, 130, 246, 0.7)',
+                        animation: 'pulse 0.3s ease-in-out infinite',
+                      }}
                     />
-                  </div>
-                )}
-              </div>
-            ))}
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* プレイヤーHPバー */}
