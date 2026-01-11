@@ -304,3 +304,128 @@ export async function getMostUsedGames(limit: number = 20): Promise<Array<{
     uniqueUsers: parseInt(row.unique_users as string, 10),
   }));
 }
+
+// デッキテーブル初期化
+export async function initDeckTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_decks (
+      id SERIAL PRIMARY KEY,
+      steam_id VARCHAR(20) NOT NULL,
+      deck_number INTEGER NOT NULL CHECK (deck_number >= 1 AND deck_number <= 5),
+      front_line JSONB NOT NULL DEFAULT '[]',
+      back_line JSONB NOT NULL DEFAULT '[]',
+      is_active BOOLEAN DEFAULT FALSE,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(steam_id, deck_number)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_decks_steam_id ON user_decks(steam_id)`;
+}
+
+// デッキカードの型（保存用、appidのみ保存）
+export interface SavedDeckCard {
+  appid: number;
+}
+
+// デッキを保存
+export async function saveDeck(
+  steamId: string,
+  deckNumber: number,
+  frontLine: SavedDeckCard[],
+  backLine: SavedDeckCard[]
+): Promise<void> {
+  await sql`
+    INSERT INTO user_decks (steam_id, deck_number, front_line, back_line, updated_at)
+    VALUES (${steamId}, ${deckNumber}, ${JSON.stringify(frontLine)}, ${JSON.stringify(backLine)}, CURRENT_TIMESTAMP)
+    ON CONFLICT (steam_id, deck_number)
+    DO UPDATE SET
+      front_line = ${JSON.stringify(frontLine)},
+      back_line = ${JSON.stringify(backLine)},
+      updated_at = CURRENT_TIMESTAMP
+  `;
+}
+
+// デッキを取得
+export async function getDeck(
+  steamId: string,
+  deckNumber: number
+): Promise<{
+  frontLine: SavedDeckCard[];
+  backLine: SavedDeckCard[];
+  isActive: boolean;
+} | null> {
+  const result = await sql`
+    SELECT front_line, back_line, is_active
+    FROM user_decks
+    WHERE steam_id = ${steamId} AND deck_number = ${deckNumber}
+  `;
+
+  if (result.length === 0) return null;
+
+  return {
+    frontLine: result[0].front_line as SavedDeckCard[],
+    backLine: result[0].back_line as SavedDeckCard[],
+    isActive: result[0].is_active as boolean,
+  };
+}
+
+// 全デッキを取得
+export async function getAllDecks(steamId: string): Promise<Array<{
+  deckNumber: number;
+  frontLine: SavedDeckCard[];
+  backLine: SavedDeckCard[];
+  isActive: boolean;
+}>> {
+  const result = await sql`
+    SELECT deck_number, front_line, back_line, is_active
+    FROM user_decks
+    WHERE steam_id = ${steamId}
+    ORDER BY deck_number
+  `;
+
+  return result.map(row => ({
+    deckNumber: row.deck_number as number,
+    frontLine: row.front_line as SavedDeckCard[],
+    backLine: row.back_line as SavedDeckCard[],
+    isActive: row.is_active as boolean,
+  }));
+}
+
+// アクティブデッキを設定
+export async function setActiveDeck(steamId: string, deckNumber: number): Promise<void> {
+  // 全デッキを非アクティブに
+  await sql`
+    UPDATE user_decks
+    SET is_active = FALSE, updated_at = CURRENT_TIMESTAMP
+    WHERE steam_id = ${steamId}
+  `;
+
+  // 指定デッキをアクティブに
+  await sql`
+    UPDATE user_decks
+    SET is_active = TRUE, updated_at = CURRENT_TIMESTAMP
+    WHERE steam_id = ${steamId} AND deck_number = ${deckNumber}
+  `;
+}
+
+// アクティブデッキを取得
+export async function getActiveDeck(steamId: string): Promise<{
+  deckNumber: number;
+  frontLine: SavedDeckCard[];
+  backLine: SavedDeckCard[];
+} | null> {
+  const result = await sql`
+    SELECT deck_number, front_line, back_line
+    FROM user_decks
+    WHERE steam_id = ${steamId} AND is_active = TRUE
+  `;
+
+  if (result.length === 0) return null;
+
+  return {
+    deckNumber: result[0].deck_number as number,
+    frontLine: result[0].front_line as SavedDeckCard[],
+    backLine: result[0].back_line as SavedDeckCard[],
+  };
+}

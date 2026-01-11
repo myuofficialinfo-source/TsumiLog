@@ -250,6 +250,18 @@ export default function DeckBuilder({
       });
   }, [availableGames, gameDetails]);
 
+  // デッキ番号管理（1〜5）
+  const [currentDeckNumber, setCurrentDeckNumber] = useState(1);
+  const [deckStates, setDeckStates] = useState<{
+    [key: number]: {
+      frontLine: (BattleCardType | null)[];
+      backLine: (BattleCardType | null)[];
+      isActive: boolean;
+    };
+  }>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const [isLoadingDecks, setIsLoadingDecks] = useState(true);
+
   // デッキ状態
   const [frontLine, setFrontLine] = useState<(BattleCardType | null)[]>([null, null, null, null, null]);
   const [backLine, setBackLine] = useState<(BattleCardType | null)[]>([null, null, null, null, null]);
@@ -260,6 +272,179 @@ export default function DeckBuilder({
   const [dragOverSlot, setDragOverSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
   const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'hp'>('rarity');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
+
+  // 保存されたデッキをロード
+  useEffect(() => {
+    if (!steamId) {
+      setIsLoadingDecks(false);
+      return;
+    }
+
+    const loadDecks = async () => {
+      try {
+        const response = await fetch(`/api/deck?steamId=${steamId}`);
+        if (response.ok) {
+          const data = await response.json();
+          const newDeckStates: typeof deckStates = {};
+
+          // 保存されたデッキをappidからBattleCardに復元
+          for (const deck of data.decks || []) {
+            const restoredFront: (BattleCardType | null)[] = [null, null, null, null, null];
+            const restoredBack: (BattleCardType | null)[] = [null, null, null, null, null];
+
+            deck.frontLine.forEach((saved: { appid: number }, idx: number) => {
+              if (idx < 5) {
+                const card = availableCards.find(c => c.appid === saved.appid);
+                if (card) restoredFront[idx] = card;
+              }
+            });
+
+            deck.backLine.forEach((saved: { appid: number }, idx: number) => {
+              if (idx < 5) {
+                const card = availableCards.find(c => c.appid === saved.appid);
+                if (card) restoredBack[idx] = card;
+              }
+            });
+
+            newDeckStates[deck.deckNumber] = {
+              frontLine: restoredFront,
+              backLine: restoredBack,
+              isActive: deck.isActive,
+            };
+
+            // アクティブデッキを現在のデッキとして設定
+            if (deck.isActive) {
+              setCurrentDeckNumber(deck.deckNumber);
+              setFrontLine(restoredFront);
+              setBackLine(restoredBack);
+            }
+          }
+
+          setDeckStates(newDeckStates);
+        }
+      } catch (error) {
+        console.error('Failed to load decks:', error);
+      } finally {
+        setIsLoadingDecks(false);
+      }
+    };
+
+    // availableCardsがロードされてから実行
+    if (availableCards.length > 0) {
+      loadDecks();
+    }
+  }, [steamId, availableCards]);
+
+  // デッキを保存
+  const saveDeckToServer = useCallback(async (deckNum: number, front: (BattleCardType | null)[], back: (BattleCardType | null)[]) => {
+    if (!steamId) return;
+
+    setIsSaving(true);
+    try {
+      const frontLine = front.filter(c => c !== null).map(c => ({ appid: c!.appid }));
+      const backLine = back.filter(c => c !== null).map(c => ({ appid: c!.appid }));
+
+      await fetch('/api/deck', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steamId,
+          deckNumber: deckNum,
+          frontLine,
+          backLine,
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to save deck:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  }, [steamId]);
+
+  // 現在のデッキを保存（デッキ変更時に自動保存）
+  useEffect(() => {
+    if (!steamId || isLoadingDecks) return;
+
+    // デバウンス処理
+    const timer = setTimeout(() => {
+      saveDeckToServer(currentDeckNumber, frontLine, backLine);
+
+      // ローカル状態も更新
+      setDeckStates(prev => ({
+        ...prev,
+        [currentDeckNumber]: {
+          frontLine,
+          backLine,
+          isActive: prev[currentDeckNumber]?.isActive || false,
+        },
+      }));
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, [frontLine, backLine, currentDeckNumber, steamId, saveDeckToServer, isLoadingDecks]);
+
+  // デッキ番号を切り替え
+  const switchDeck = useCallback((deckNum: number) => {
+    if (deckNum === currentDeckNumber) return;
+
+    // 現在のデッキをローカル状態に保存
+    setDeckStates(prev => ({
+      ...prev,
+      [currentDeckNumber]: {
+        frontLine,
+        backLine,
+        isActive: prev[currentDeckNumber]?.isActive || false,
+      },
+    }));
+
+    // 新しいデッキをロード
+    const newDeck = deckStates[deckNum];
+    if (newDeck) {
+      setFrontLine(newDeck.frontLine);
+      setBackLine(newDeck.backLine);
+    } else {
+      setFrontLine([null, null, null, null, null]);
+      setBackLine([null, null, null, null, null]);
+    }
+
+    setCurrentDeckNumber(deckNum);
+  }, [currentDeckNumber, frontLine, backLine, deckStates]);
+
+  // デッキをアクティブに設定
+  const setDeckActive = useCallback(async (deckNum: number) => {
+    if (!steamId) return;
+
+    try {
+      await fetch('/api/deck', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ steamId, deckNumber: deckNum }),
+      });
+
+      // ローカル状態を更新
+      setDeckStates(prev => {
+        const newStates = { ...prev };
+        Object.keys(newStates).forEach(key => {
+          newStates[parseInt(key)].isActive = false;
+        });
+        if (newStates[deckNum]) {
+          newStates[deckNum].isActive = true;
+        } else {
+          newStates[deckNum] = {
+            frontLine: deckNum === currentDeckNumber ? frontLine : [null, null, null, null, null],
+            backLine: deckNum === currentDeckNumber ? backLine : [null, null, null, null, null],
+            isActive: true,
+          };
+        }
+        return newStates;
+      });
+    } catch (error) {
+      console.error('Failed to set active deck:', error);
+    }
+  }, [steamId, currentDeckNumber, frontLine, backLine]);
+
+  // 現在のデッキがアクティブかどうか
+  const isCurrentDeckActive = deckStates[currentDeckNumber]?.isActive || false;
 
   // 選択済みカードのappid
   const selectedAppIds = useMemo(() => {
@@ -658,6 +843,83 @@ export default function DeckBuilder({
           </button>
         </div>
       </div>
+
+      {/* デッキ番号選択 */}
+      {steamId && (
+        <div className="pop-card p-4">
+          <div className="flex items-center justify-between flex-wrap gap-4">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-bold text-gray-600">
+                {language === 'ja' ? 'デッキ' : 'Deck'}
+              </span>
+              <div className="flex gap-1">
+                {[1, 2, 3, 4, 5].map((num) => {
+                  const isSelected = num === currentDeckNumber;
+                  const deckState = deckStates[num];
+                  const isActive = deckState?.isActive || false;
+                  const hasCards = deckState && (
+                    deckState.frontLine.some(c => c !== null) ||
+                    deckState.backLine.some(c => c !== null)
+                  );
+
+                  return (
+                    <button
+                      key={num}
+                      onClick={() => switchDeck(num)}
+                      className={`relative w-10 h-10 rounded-lg border-2 font-bold text-lg transition-all ${
+                        isSelected
+                          ? 'border-[#3D3D3D] bg-[#3D3D3D] text-white'
+                          : hasCards
+                          ? 'border-[#3D3D3D] bg-white text-[#3D3D3D] hover:bg-gray-100'
+                          : 'border-gray-300 bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                    >
+                      {num}
+                      {/* アクティブマーク */}
+                      {isActive && (
+                        <div
+                          className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
+                          style={{ backgroundColor: 'var(--pop-green)' }}
+                        >
+                          <Check className="w-3 h-3 text-white" />
+                        </div>
+                      )}
+                    </button>
+                  );
+                })}
+              </div>
+              {isSaving && (
+                <span className="text-xs text-gray-400 ml-2">
+                  {language === 'ja' ? '保存中...' : 'Saving...'}
+                </span>
+              )}
+            </div>
+
+            {/* バトル使用設定ボタン */}
+            <button
+              onClick={() => setDeckActive(currentDeckNumber)}
+              disabled={isCurrentDeckActive}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
+                isCurrentDeckActive
+                  ? 'border-green-500 bg-green-50 text-green-700'
+                  : 'border-[#3D3D3D] hover:bg-gray-100'
+              }`}
+              style={!isCurrentDeckActive ? { backgroundColor: 'var(--card-bg)' } : {}}
+            >
+              <Check className={`w-4 h-4 ${isCurrentDeckActive ? 'text-green-600' : ''}`} />
+              {isCurrentDeckActive
+                ? (language === 'ja' ? 'バトル使用中' : 'Active for Battle')
+                : (language === 'ja' ? 'バトルで使う' : 'Use for Battle')
+              }
+            </button>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            {language === 'ja'
+              ? 'チェックを入れたデッキがバトルで使用されます。デッキは自動保存されます。'
+              : 'The checked deck will be used in battle. Decks are auto-saved.'}
+          </p>
+        </div>
+      )}
 
       {/* デッキ編成とステータス（横並び） */}
       <div className="flex flex-col lg:flex-row gap-4">
