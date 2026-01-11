@@ -613,7 +613,7 @@ export default function BattleArena({
       </div>
 
       {/* バトルフィールド */}
-      <div className="pop-card p-6 space-y-4 relative overflow-hidden" style={{ minHeight: '600px' }}>
+      <div className="pop-card p-6 space-y-4 relative overflow-hidden" style={{ height: '600px' }}>
         {/* ダメージ表示（フィールド全体のオーバーレイ - 固定位置） */}
         {damageDisplay && (
           <div
