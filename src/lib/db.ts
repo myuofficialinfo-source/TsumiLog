@@ -1,6 +1,10 @@
 import { neon } from '@neondatabase/serverless';
+import type { DefenseDeckCard } from '@/types/cardBattle';
 
 const sql = neon(process.env.DATABASE_URL!);
+
+// 型を再エクスポート（他のファイルとの互換性のため）
+export type { DefenseDeckCard } from '@/types/cardBattle';
 
 export default sql;
 
@@ -428,4 +432,188 @@ export async function getActiveDeck(steamId: string): Promise<{
     frontLine: result[0].front_line as SavedDeckCard[],
     backLine: result[0].back_line as SavedDeckCard[],
   };
+}
+
+// ===== 防衛デッキ機能（非同期PVP用） =====
+
+// 防衛デッキテーブル初期化
+export async function initDefenseDeckTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS defense_decks (
+      id SERIAL PRIMARY KEY,
+      steam_id VARCHAR(20) UNIQUE NOT NULL,
+      front_line JSONB NOT NULL DEFAULT '[]',
+      back_line JSONB NOT NULL DEFAULT '[]',
+      total_hp INTEGER DEFAULT 0,
+      total_attack INTEGER DEFAULT 0,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_defense_decks_steam_id ON defense_decks(steam_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_defense_decks_total_hp ON defense_decks(total_hp)`;
+}
+
+// 防衛デッキを保存
+export async function saveDefenseDeck(
+  steamId: string,
+  frontLine: DefenseDeckCard[],
+  backLine: DefenseDeckCard[]
+): Promise<void> {
+  // 総HPと総攻撃力を計算（マッチング用）
+  const allCards = [...frontLine, ...backLine];
+  const totalHp = allCards.reduce((sum, card) => sum + card.hp, 0);
+  const totalAttack = allCards.reduce((sum, card) => sum + card.attack, 0);
+
+  await sql`
+    INSERT INTO defense_decks (steam_id, front_line, back_line, total_hp, total_attack, updated_at)
+    VALUES (${steamId}, ${JSON.stringify(frontLine)}, ${JSON.stringify(backLine)}, ${totalHp}, ${totalAttack}, CURRENT_TIMESTAMP)
+    ON CONFLICT (steam_id)
+    DO UPDATE SET
+      front_line = ${JSON.stringify(frontLine)},
+      back_line = ${JSON.stringify(backLine)},
+      total_hp = ${totalHp},
+      total_attack = ${totalAttack},
+      updated_at = CURRENT_TIMESTAMP
+  `;
+}
+
+// 防衛デッキを取得
+export async function getDefenseDeck(steamId: string): Promise<{
+  frontLine: DefenseDeckCard[];
+  backLine: DefenseDeckCard[];
+  totalHp: number;
+  totalAttack: number;
+} | null> {
+  const result = await sql`
+    SELECT front_line, back_line, total_hp, total_attack
+    FROM defense_decks
+    WHERE steam_id = ${steamId}
+  `;
+
+  if (result.length === 0) return null;
+
+  return {
+    frontLine: result[0].front_line as DefenseDeckCard[],
+    backLine: result[0].back_line as DefenseDeckCard[],
+    totalHp: result[0].total_hp as number,
+    totalAttack: result[0].total_attack as number,
+  };
+}
+
+// マッチング用：ランダムに対戦相手の防衛デッキを取得（自分以外）
+export async function getRandomOpponentDeck(excludeSteamId: string): Promise<{
+  steamId: string;
+  personaName: string;
+  avatarUrl: string;
+  frontLine: DefenseDeckCard[];
+  backLine: DefenseDeckCard[];
+  totalHp: number;
+  totalAttack: number;
+} | null> {
+  // ランダムに1件取得（自分以外の防衛デッキ）
+  const result = await sql`
+    SELECT
+      d.steam_id,
+      d.front_line,
+      d.back_line,
+      d.total_hp,
+      d.total_attack,
+      u.persona_name,
+      u.avatar_url
+    FROM defense_decks d
+    LEFT JOIN users u ON d.steam_id = u.steam_id
+    WHERE d.steam_id != ${excludeSteamId}
+    ORDER BY RANDOM()
+    LIMIT 1
+  `;
+
+  if (result.length === 0) return null;
+
+  return {
+    steamId: result[0].steam_id as string,
+    personaName: result[0].persona_name as string || 'Unknown',
+    avatarUrl: result[0].avatar_url as string || '',
+    frontLine: result[0].front_line as DefenseDeckCard[],
+    backLine: result[0].back_line as DefenseDeckCard[],
+    totalHp: result[0].total_hp as number,
+    totalAttack: result[0].total_attack as number,
+  };
+}
+
+// マッチング用：パワーレベルに近い対戦相手を取得（より公平なマッチング）
+export async function getMatchedOpponentDeck(
+  excludeSteamId: string,
+  targetPower: number
+): Promise<{
+  steamId: string;
+  personaName: string;
+  avatarUrl: string;
+  frontLine: DefenseDeckCard[];
+  backLine: DefenseDeckCard[];
+  totalHp: number;
+  totalAttack: number;
+} | null> {
+  // 総HP + 総攻撃力でパワーを計算し、近いデッキを取得
+  const result = await sql`
+    SELECT
+      d.steam_id,
+      d.front_line,
+      d.back_line,
+      d.total_hp,
+      d.total_attack,
+      u.persona_name,
+      u.avatar_url,
+      ABS((d.total_hp + d.total_attack) - ${targetPower}) as power_diff
+    FROM defense_decks d
+    LEFT JOIN users u ON d.steam_id = u.steam_id
+    WHERE d.steam_id != ${excludeSteamId}
+    ORDER BY power_diff ASC, RANDOM()
+    LIMIT 1
+  `;
+
+  if (result.length === 0) return null;
+
+  return {
+    steamId: result[0].steam_id as string,
+    personaName: result[0].persona_name as string || 'Unknown',
+    avatarUrl: result[0].avatar_url as string || '',
+    frontLine: result[0].front_line as DefenseDeckCard[],
+    backLine: result[0].back_line as DefenseDeckCard[],
+    totalHp: result[0].total_hp as number,
+    totalAttack: result[0].total_attack as number,
+  };
+}
+
+// 防衛デッキの総数を取得
+export async function getDefenseDeckCount(): Promise<number> {
+  const result = await sql`
+    SELECT COUNT(*) as count FROM defense_decks
+  `;
+  return parseInt(result[0]?.count || '0', 10);
+}
+
+// PVPバトル結果を記録（opponent_steam_idを追加）
+export async function recordPvpBattle(
+  steamId: string,
+  result: 'win' | 'lose' | 'draw',
+  opponentSteamId: string
+): Promise<void> {
+  await sql`
+    INSERT INTO battles (steam_id, result, opponent_type, opponent_steam_id)
+    VALUES (${steamId}, ${result}, 'pvp', ${opponentSteamId})
+  `;
+}
+
+// battlesテーブルにopponent_steam_idカラムを追加するマイグレーション
+export async function migrateBattlesTable() {
+  try {
+    await sql`
+      ALTER TABLE battles
+      ADD COLUMN IF NOT EXISTS opponent_steam_id VARCHAR(20)
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_battles_opponent ON battles(opponent_steam_id)`;
+  } catch {
+    // カラムが既に存在する場合は無視
+  }
 }

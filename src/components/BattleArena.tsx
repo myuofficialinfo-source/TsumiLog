@@ -23,6 +23,7 @@ interface BattleArenaProps {
   avatarUrl?: string;
   opponentName?: string;
   opponentAvatarUrl?: string;
+  opponentSteamId?: string; // PVP対戦時の相手のSteamID
 }
 
 // カードの攻撃インターバルを計算
@@ -107,6 +108,7 @@ export default function BattleArena({
   avatarUrl,
   opponentName,
   opponentAvatarUrl,
+  opponentSteamId,
 }: BattleArenaProps) {
   const { language } = useLanguage();
   const [battleState, setBattleState] = useState<'preparing' | 'fighting' | 'finished'>('preparing');
@@ -228,6 +230,7 @@ export default function BattleArena({
             avatarUrl,
             graduatedGames,
             deckGames,
+            opponentSteamId, // PVP対戦時の相手のSteamID
           }),
         });
 

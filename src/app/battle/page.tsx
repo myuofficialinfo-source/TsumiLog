@@ -11,8 +11,11 @@ import {
   GENRE_SKILL_MAP,
   calculateAttack,
   calculateHP,
-  isBacklogGame,
   GenreSkill,
+  OpponentInfo,
+  convertDefenseDeckToCards,
+  calculateRarityFromReviews,
+  generateEnemyDeck,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2 } from 'lucide-react';
@@ -108,35 +111,6 @@ function generateDummyGameDetails(games: Game[]): Map<number, GameDetail> {
   return details;
 }
 
-// AIのデッキを生成（積みゲーのみ）
-function generateAIDeck(availableCards: BattleCardType[]): Deck {
-  const shuffled = [...availableCards]
-    .sort(() => Math.random() - 0.5);
-
-  const frontLine: (BattleCardType | null)[] = [];
-  const backLine: (BattleCardType | null)[] = [];
-
-  for (let i = 0; i < 5 && i < shuffled.length; i++) {
-    frontLine.push(shuffled[i]);
-  }
-  for (let i = 5; i < 10 && i < shuffled.length; i++) {
-    backLine.push(shuffled[i]);
-  }
-
-  while (frontLine.length < 5) frontLine.push(null);
-  while (backLine.length < 5) backLine.push(null);
-
-  return { frontLine, backLine, synergies: [] };
-}
-
-// レビュー数からレアリティを計算
-function calculateRarityFromReviews(reviewCount: number): 'common' | 'rare' | 'superRare' | 'ultraRare' {
-  if (reviewCount >= 50000) return 'common';      // 5万件以上 → C
-  if (reviewCount >= 10000) return 'rare';        // 1万件以上 → R
-  if (reviewCount >= 500) return 'superRare';     // 500件以上 → SR
-  return 'ultraRare';                              // 500件未満 → UC
-}
-
 // ゲームからバトルカードを生成
 function createBattleCard(
   game: Game,
@@ -181,10 +155,13 @@ function BattleContent() {
   const [steamId, setSteamId] = useState<string | null>(null);
   const [steamData, setSteamData] = useState<SteamData | null>(null);
   const [gameDetails, setGameDetails] = useState<Map<number, GameDetail>>(new Map());
-  const [phase, setPhase] = useState<'deck' | 'battle' | 'result'>('deck');
+  const [phase, setPhase] = useState<'deck' | 'matching' | 'battle' | 'result'>('deck');
   const [playerDeck, setPlayerDeck] = useState<Deck | null>(null);
   const [opponentDeck, setOpponentDeck] = useState<Deck | null>(null);
   const [, setBattleResult] = useState<BattleResult | null>(null);
+  const [opponentInfo, setOpponentInfo] = useState<OpponentInfo | null>(null);
+  const [enemyName, setEnemyName] = useState<string | null>(null);
+  const [playerScore, setPlayerScore] = useState<number>(0);
 
   // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用
   const dummyCount = searchParams.get('dummyBacklog');
@@ -340,17 +317,55 @@ function BattleContent() {
     fetchDetails();
   }, [steamData?.games, steamId, language, dummyGames]);
 
-  // デッキ完成時
-  const handleDeckComplete = (deck: Deck) => {
-    setPlayerDeck(deck);
+  // プレイヤーのスコアを取得（エネミー強度調整用）
+  useEffect(() => {
+    if (!steamId || steamId === 'dummy') return;
 
-    // AI対戦相手のデッキを生成（積みゲーのみ = 30分未満）
-    if (steamData) {
-      const availableCards = steamData.games
-        .filter(g => isBacklogGame(g.playtime_forever))
-        .map(g => createBattleCard(g, gameDetails.get(g.appid)));
-      const aiDeck = generateAIDeck(availableCards);
-      setOpponentDeck(aiDeck);
+    const fetchScore = async () => {
+      try {
+        const response = await fetch(`/api/battle?steamId=${encodeURIComponent(steamId)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPlayerScore(data.score || 0);
+        }
+      } catch (error) {
+        console.error('Failed to fetch player score:', error);
+      }
+    };
+
+    fetchScore();
+  }, [steamId]);
+
+  // デッキ完成時 - 対戦相手を検索してバトル開始
+  const handleDeckComplete = async (deck: Deck) => {
+    setPlayerDeck(deck);
+    setPhase('matching');
+
+    // 他プレイヤーの防衛デッキを検索
+    let opponent: OpponentInfo | null = null;
+    try {
+      const response = await fetch(`/api/matchmaking?steamId=${encodeURIComponent(steamId || '')}`);
+      const data = await response.json();
+      if (data.found && data.opponent) {
+        opponent = data.opponent as OpponentInfo;
+      }
+    } catch (error) {
+      console.error('Matchmaking error:', error);
+    }
+
+    if (opponent) {
+      // 他プレイヤーの防衛デッキと対戦
+      setOpponentInfo(opponent);
+      setEnemyName(null);
+      const frontLine = convertDefenseDeckToCards(opponent.frontLine);
+      const backLine = convertDefenseDeckToCards(opponent.backLine);
+      setOpponentDeck({ frontLine, backLine, synergies: [] });
+    } else {
+      // 対戦相手がいない場合はエネミー対戦（ランクに応じた強さ）
+      const { deck: enemyDeck, enemyName: name } = generateEnemyDeck(playerScore);
+      setOpponentDeck(enemyDeck);
+      setEnemyName(name);
+      setOpponentInfo(null);
     }
 
     setPhase('battle');
@@ -435,6 +450,16 @@ function BattleContent() {
           />
         )}
 
+        {/* マッチング中 */}
+        {phase === 'matching' && (
+          <div className="flex flex-col items-center justify-center gap-4 py-20">
+            <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--pop-blue)' }} />
+            <p className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>
+              {language === 'ja' ? '対戦相手を探しています...' : 'Finding opponent...'}
+            </p>
+          </div>
+        )}
+
         {/* バトルフェーズ */}
         {phase === 'battle' && playerDeck && opponentDeck && (
           <BattleArena
@@ -446,7 +471,9 @@ function BattleContent() {
             steamId={steamId || undefined}
             personaName={steamData?.profile?.personaName}
             avatarUrl={steamData?.profile?.avatarUrl}
-            opponentName="AI"
+            opponentName={opponentInfo?.personaName || enemyName || 'Enemy'}
+            opponentAvatarUrl={opponentInfo?.avatarUrl}
+            opponentSteamId={opponentInfo?.steamId}
           />
         )}
       </main>

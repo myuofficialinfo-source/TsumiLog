@@ -8,6 +8,9 @@ import {
   initDatabase,
   initGameUsageTable,
   recordGameUsage,
+  recordPvpBattle,
+  initDefenseDeckTable,
+  migrateBattlesTable,
 } from '@/lib/db';
 
 // DB初期化フラグ
@@ -17,6 +20,8 @@ async function ensureDbInitialized() {
   if (!dbInitialized) {
     await initDatabase();
     await initGameUsageTable();
+    await initDefenseDeckTable();
+    await migrateBattlesTable();
     dbInitialized = true;
   }
 }
@@ -34,6 +39,7 @@ export async function POST(request: NextRequest) {
       avatarUrl,
       graduatedGames, // 新しく卒業したゲームのリスト [{appid, name}]
       deckGames, // デッキで使用したゲームのリスト [{appid, name}]
+      opponentSteamId, // PVP対戦時の相手のSteamID
     } = body;
 
     if (!steamId || !result) {
@@ -53,8 +59,12 @@ export async function POST(request: NextRequest) {
     // ユーザー情報を更新/登録
     await upsertUser(steamId, personaName, avatarUrl);
 
-    // バトル結果を記録
-    await recordBattle(steamId, result);
+    // バトル結果を記録（PVP対戦の場合は相手のSteamIDも記録）
+    if (opponentSteamId) {
+      await recordPvpBattle(steamId, result, opponentSteamId);
+    } else {
+      await recordBattle(steamId, result);
+    }
 
     // 新しく卒業したゲームを記録
     const newGraduations: Array<{ appid: number; name: string }> = [];
