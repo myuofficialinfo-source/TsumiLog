@@ -1042,6 +1042,24 @@ export default function BattleArena({
                 <h3 className="text-sm font-bold text-gray-600 mb-2">
                   {language === 'ja' ? 'あなたの戦績' : 'Your Stats'}
                 </h3>
+                {/* 結果ラベル */}
+                <div className="text-center mb-3">
+                  {winner === 'player' && (
+                    <span className="text-lg font-black" style={{ color: 'var(--pop-green)' }}>
+                      {language === 'ja' ? '勝利' : 'Victory'}
+                    </span>
+                  )}
+                  {winner === 'opponent' && (
+                    <span className="text-lg font-black" style={{ color: 'var(--pop-red)' }}>
+                      {language === 'ja' ? '敗北' : 'Defeat'}
+                    </span>
+                  )}
+                  {winner === 'draw' && (
+                    <span className="text-lg font-black" style={{ color: 'var(--pop-yellow)' }}>
+                      {language === 'ja' ? '引き分け' : 'Draw'}
+                    </span>
+                  )}
+                </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
                   <div>
                     <p className="text-2xl font-black" style={{ color: 'var(--pop-green)' }}>
