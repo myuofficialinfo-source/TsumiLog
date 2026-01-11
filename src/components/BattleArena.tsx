@@ -217,11 +217,24 @@ export default function BattleArena({
         }
       } catch (error) {
         console.error('Failed to report battle:', error);
+      } finally {
+        // APIレスポンス後にポップアップ表示
+        setShowResultPopup(true);
       }
     };
 
     reportBattle();
   }, [battleState, winner, steamId, personaName, avatarUrl, playerDeck]);
+
+  // steamIdがない場合（ダミーモード）はすぐにポップアップ表示
+  useEffect(() => {
+    if (battleState !== 'finished' || !winner) return;
+    if (steamId) return; // steamIdがある場合はAPIレスポンス後に表示
+
+    // ダミーモード：1秒後にポップアップ表示
+    const timer = setTimeout(() => setShowResultPopup(true), 1000);
+    return () => clearTimeout(timer);
+  }, [battleState, winner, steamId]);
 
   // バトル初期化
   useEffect(() => {
@@ -373,7 +386,7 @@ export default function BattleArena({
           setWinner('player');
         }
         setBattleState('finished');
-        setTimeout(() => setShowResultPopup(true), 1000);
+        // ポップアップ表示はAPIレスポンス後に行う（useEffect内で処理）
         return;
       }
 
@@ -540,7 +553,7 @@ export default function BattleArena({
     setShakeTarget(null);
     setHitEffects([]);
     setBattleState('finished');
-    setTimeout(() => setShowResultPopup(true), 1000);
+    // ポップアップ表示はAPIレスポンス後に行う（useEffect内で処理）
   }, [battleCards]);
 
   // カードのタイマー表示用
