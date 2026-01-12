@@ -100,6 +100,8 @@ export default function TermsOfService() {
                   <li>サービスの運営を妨害する行為</li>
                   <li>他のユーザーになりすます行為</li>
                   <li>APIの過度な利用やスクレイピング</li>
+                  <li>バトル機能における不正行為（データ改ざん、チートツール使用等）</li>
+                  <li>ランキング操作を目的とした行為</li>
                 </ul>
               </section>
 
@@ -125,7 +127,23 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
-                  6. 知的財産権
+                  6. バトル機能について
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  本サービスのバトル機能では、以下の点にご同意いただいたものとします：
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>あなたが作成したバトル用デッキは、他のユーザーとの対戦に使用されます</li>
+                  <li>ランキングや対戦結果の正確性・公平性について保証しません</li>
+                  <li>不正行為が確認された場合、予告なくデータ削除やアカウント制限を行う場合があります</li>
+                  <li>バトルシステムのバランス調整により、過去の結果が変動する場合があります</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
+                  7. 知的財産権
                 </h2>
                 <p className="text-gray-600">
                   Steam、およびSteamのロゴはValve Corporationの商標です。
@@ -136,7 +154,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  7. 規約の変更
+                  8. 規約の変更
                 </h2>
                 <p className="text-gray-600">
                   本規約は予告なく変更される場合があります。
@@ -146,7 +164,7 @@ export default function TermsOfService() {
 
               <div className="pt-4 border-t-2 border-gray-200">
                 <p className="text-sm text-gray-400">
-                  最終更新日: 2025年1月
+                  最終更新日: 2026年1月
                 </p>
               </div>
             </div>
@@ -198,6 +216,8 @@ export default function TermsOfService() {
                   <li>Actions that interfere with service operation</li>
                   <li>Impersonating other users</li>
                   <li>Excessive API usage or scraping</li>
+                  <li>Cheating in battle features (data manipulation, cheat tools, etc.)</li>
+                  <li>Actions intended to manipulate rankings</li>
                 </ul>
               </section>
 
@@ -223,7 +243,23 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
-                  6. Intellectual Property
+                  6. Battle Features
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  By using the battle features of this service, you agree to the following:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>Your battle deck will be used in battles against other users</li>
+                  <li>We do not guarantee the accuracy or fairness of rankings or battle results</li>
+                  <li>If cheating is detected, we may delete data or restrict accounts without notice</li>
+                  <li>Past results may change due to battle system balance adjustments</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
+                  7. Intellectual Property
                 </h2>
                 <p className="text-gray-600">
                   Steam and the Steam logo are trademarks of Valve Corporation.
@@ -234,7 +270,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  7. Changes to Terms
+                  8. Changes to Terms
                 </h2>
                 <p className="text-gray-600">
                   These terms may be changed without notice.
@@ -244,7 +280,7 @@ export default function TermsOfService() {
 
               <div className="pt-4 border-t-2 border-gray-200">
                 <p className="text-sm text-gray-400">
-                  Last updated: January 2025
+                  Last updated: January 2026
                 </p>
               </div>
             </div>

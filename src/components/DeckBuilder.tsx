@@ -1381,9 +1381,9 @@ export default function DeckBuilder({
 
       {/* ゲーム詳細ポップアップ */}
       {previewCard && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setPreviewCard(null)}>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto" onClick={() => setPreviewCard(null)}>
           <div
-            className="pop-card p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto"
+            className="pop-card p-6 max-w-2xl w-full my-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex gap-6">

@@ -162,6 +162,8 @@ function BattleContent() {
   const [opponentInfo, setOpponentInfo] = useState<OpponentInfo | null>(null);
   const [enemyName, setEnemyName] = useState<string | null>(null);
   const [playerScore, setPlayerScore] = useState<number>(0);
+  // サーバーサイドバトル結果
+  const [serverBattleResult, setServerBattleResult] = useState<any>(null);
 
   // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用
   const dummyCount = searchParams.get('dummyBacklog');
@@ -373,39 +375,140 @@ function BattleContent() {
     syncSublimations();
   }, [steamId, steamData]);
 
-  // デッキ完成時 - 対戦相手を検索してバトル開始
+  // デッキ完成時 - サーバーでバトルを実行
   const handleDeckComplete = async (deck: Deck) => {
     setPlayerDeck(deck);
     setPhase('matching');
 
-    // 他プレイヤーの防衛デッキを検索
-    let opponent: OpponentInfo | null = null;
     try {
-      const response = await fetch(`/api/matchmaking?steamId=${encodeURIComponent(steamId || '')}`);
-      const data = await response.json();
-      if (data.found && data.opponent) {
-        opponent = data.opponent as OpponentInfo;
+      // サーバーサイドでバトルを実行
+      // ※防衛デッキが設定されていない場合のフォールバックとしてデッキデータも送信
+      const playerDeckData = {
+        frontLine: deck.frontLine.map(card => card ? {
+          appid: card.appid,
+          name: card.name,
+          attack: card.attack,
+          hp: card.hp,
+          maxHp: card.maxHp,
+          rarity: card.rarity,
+          skills: card.skills,
+          genres: card.genres,
+          playtimeMinutes: card.playtimeMinutes,
+          developer: card.developer,
+          publisher: card.publisher,
+        } : null),
+        backLine: deck.backLine.map(card => card ? {
+          appid: card.appid,
+          name: card.name,
+          attack: card.attack,
+          hp: card.hp,
+          maxHp: card.maxHp,
+          rarity: card.rarity,
+          skills: card.skills,
+          genres: card.genres,
+          playtimeMinutes: card.playtimeMinutes,
+          developer: card.developer,
+          publisher: card.publisher,
+        } : null),
+      };
+
+      const response = await fetch('/api/battle/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steamId: steamId || 'dummy',
+          personaName: steamData?.profile?.personaName,
+          avatarUrl: steamData?.profile?.avatarUrl,
+          playerDeckData, // 防衛デッキがない場合のフォールバック
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Battle execution failed');
       }
+
+      const data = await response.json();
+
+      // サーバーから返されたデッキ情報を使用
+      const serverPlayerDeck = data.playerDeck;
+      const serverOpponentDeck = data.opponentDeck;
+
+      // プレイヤーデッキをDeck形式に変換
+      setPlayerDeck({
+        frontLine: serverPlayerDeck.frontLine.map((card: any) => card ? {
+          ...card,
+          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+        } : null),
+        backLine: serverPlayerDeck.backLine.map((card: any) => card ? {
+          ...card,
+          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+        } : null),
+        synergies: deck.synergies, // シナジーは元のデッキから引き継ぐ
+      });
+
+      // 相手デッキをDeck形式に変換
+      setOpponentDeck({
+        frontLine: serverOpponentDeck.frontLine.map((card: any) => card ? {
+          ...card,
+          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+        } : null),
+        backLine: serverOpponentDeck.backLine.map((card: any) => card ? {
+          ...card,
+          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+        } : null),
+        synergies: [], // 相手のシナジーは計算しない（表示用）
+      });
+
+      // 相手情報を設定
+      if (data.isPvp && data.opponentSteamId) {
+        setOpponentInfo({
+          steamId: data.opponentSteamId,
+          personaName: data.opponentName,
+          avatarUrl: '', // PvP相手のアバターは未取得
+          frontLine: serverOpponentDeck.frontLine,
+          backLine: serverOpponentDeck.backLine,
+        });
+        setEnemyName(null);
+      } else {
+        setOpponentInfo(null);
+        setEnemyName(data.opponentName || 'AI');
+      }
+
+      // サーバーバトル結果を保存
+      setServerBattleResult(data.battleResult);
+
+      setPhase('battle');
     } catch (error) {
-      console.error('Matchmaking error:', error);
-    }
+      console.error('Battle execution error:', error);
+      // エラー時はクライアントサイドバトルにフォールバック
+      // 他プレイヤーの防衛デッキを検索
+      let opponent: OpponentInfo | null = null;
+      try {
+        const response = await fetch(`/api/matchmaking?steamId=${encodeURIComponent(steamId || '')}`);
+        const matchData = await response.json();
+        if (matchData.found && matchData.opponent) {
+          opponent = matchData.opponent as OpponentInfo;
+        }
+      } catch (matchError) {
+        console.error('Matchmaking error:', matchError);
+      }
 
-    if (opponent) {
-      // 他プレイヤーの防衛デッキと対戦
-      setOpponentInfo(opponent);
-      setEnemyName(null);
-      const frontLine = convertDefenseDeckToCards(opponent.frontLine);
-      const backLine = convertDefenseDeckToCards(opponent.backLine);
-      setOpponentDeck({ frontLine, backLine, synergies: [] });
-    } else {
-      // 対戦相手がいない場合はエネミー対戦（ランクに応じた強さ）
-      const { deck: enemyDeck, enemyName: name } = generateEnemyDeck(playerScore);
-      setOpponentDeck(enemyDeck);
-      setEnemyName(name);
-      setOpponentInfo(null);
-    }
+      if (opponent) {
+        setOpponentInfo(opponent);
+        setEnemyName(null);
+        const frontLine = convertDefenseDeckToCards(opponent.frontLine);
+        const backLine = convertDefenseDeckToCards(opponent.backLine);
+        setOpponentDeck({ frontLine, backLine, synergies: [] });
+      } else {
+        const { deck: enemyDeck, enemyName: name } = generateEnemyDeck(playerScore);
+        setOpponentDeck(enemyDeck);
+        setEnemyName(name);
+        setOpponentInfo(null);
+      }
 
-    setPhase('battle');
+      setServerBattleResult(null); // クライアントサイドバトルにフォールバック
+      setPhase('battle');
+    }
   };
 
   // バトル終了時
@@ -419,6 +522,7 @@ function BattleContent() {
     setPlayerDeck(null);
     setOpponentDeck(null);
     setBattleResult(null);
+    setServerBattleResult(null); // サーバーバトル結果もリセット
     setPhase('deck');
   };
 
@@ -516,6 +620,8 @@ function BattleContent() {
             opponentName={opponentInfo?.personaName || enemyName || 'Enemy'}
             opponentAvatarUrl={opponentInfo?.avatarUrl}
             opponentSteamId={opponentInfo?.steamId}
+            serverMode={!!serverBattleResult}
+            serverBattleResult={serverBattleResult}
           />
         )}
       </main>

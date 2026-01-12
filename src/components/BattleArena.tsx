@@ -11,6 +11,19 @@ import {
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Swords, Zap, Trophy, RotateCcw, Home, X, Play, FastForward } from 'lucide-react';
+import { BattleLogEntry } from '@/lib/battleEngine';
+
+// サーバーから返されるバトル結果の型
+interface ServerBattleResult {
+  winner: 'player' | 'opponent' | 'draw';
+  playerFinalHp: number;
+  opponentFinalHp: number;
+  totalDamageDealt: number;
+  totalDamageReceived: number;
+  battleDurationMs: number;
+  logs: BattleLogEntry[];
+  seed: number;
+}
 
 interface BattleArenaProps {
   playerDeck: Deck;
@@ -24,6 +37,9 @@ interface BattleArenaProps {
   opponentName?: string;
   opponentAvatarUrl?: string;
   opponentSteamId?: string; // PVP対戦時の相手のSteamID
+  // サーバーサイドバトルモード用
+  serverMode?: boolean;  // trueの場合、サーバーからバトル結果を取得して再生
+  serverBattleResult?: ServerBattleResult;  // サーバーから取得済みのバトル結果
 }
 
 // カードの攻撃インターバルを計算
@@ -294,6 +310,8 @@ export default function BattleArena({
   opponentName,
   opponentAvatarUrl,
   opponentSteamId,
+  serverMode = false,
+  serverBattleResult,
 }: BattleArenaProps) {
   const { language } = useLanguage();
   const [battleState, setBattleState] = useState<'preparing' | 'fighting' | 'finished'>('preparing');
@@ -577,6 +595,161 @@ export default function BattleArena({
     setBattleState('fighting');
   }, [battleState, playerDeck, opponentDeck, showBattleStart]);
 
+  // サーバーモード：バトルログ再生用のstate
+  const serverLogIndexRef = useRef(0);
+  const serverLogsRef = useRef<BattleLogEntry[]>([]);
+
+  // サーバーモード：バトル結果を使ってログを再生
+  useEffect(() => {
+    if (!serverMode || !serverBattleResult || battleState !== 'fighting') return;
+
+    // サーバーのバトルログを設定
+    serverLogsRef.current = serverBattleResult.logs;
+    serverLogIndexRef.current = 0;
+
+    // 最大HPを計算（サーバー結果から逆算）
+    // サーバーから最初のログのHPを取得してセット
+    const firstLog = serverBattleResult.logs.find(log => log.playerHp !== undefined);
+    if (firstLog && firstLog.playerHp !== undefined && firstLog.opponentHp !== undefined) {
+      // 最初の攻撃前のHP（ダメージを加算して復元）
+      let initialPlayerHp = firstLog.playerHp;
+      let initialOpponentHp = firstLog.opponentHp;
+
+      // 最初のログがダメージログの場合、ダメージを加算
+      if (firstLog.damage) {
+        if (firstLog.attackerId?.startsWith('player')) {
+          initialOpponentHp += firstLog.damage;
+        } else {
+          initialPlayerHp += firstLog.damage;
+        }
+      }
+
+      // デッキからHPを計算する代わりに、サーバー結果を使用
+      setPlayerMaxHp(initialPlayerHp);
+      setOpponentMaxHp(initialOpponentHp);
+      playerHpRef.current = initialPlayerHp;
+      opponentHpRef.current = initialOpponentHp;
+      setPlayerTotalHp(initialPlayerHp);
+      setOpponentTotalHp(initialOpponentHp);
+    }
+  }, [serverMode, serverBattleResult, battleState]);
+
+  // サーバーモード：ログ再生ループ
+  useEffect(() => {
+    if (!serverMode || !serverBattleResult || battleState !== 'fighting') return;
+    if (serverLogsRef.current.length === 0) return;
+
+    let timeoutId: NodeJS.Timeout;
+
+    const playNextLog = () => {
+      const currentIndex = serverLogIndexRef.current;
+      if (currentIndex >= serverLogsRef.current.length) {
+        // 全ログ再生完了
+        setWinner(serverBattleResult.winner);
+        setBattleState('finished');
+        return;
+      }
+
+      const currentLog = serverLogsRef.current[currentIndex];
+      const nextLog = serverLogsRef.current[currentIndex + 1];
+
+      // ログに基づいてUIを更新
+      if (currentLog.type === 'attack' || currentLog.type === 'damage') {
+        const isPlayerAttacking = currentLog.attackerId?.startsWith('player') ?? false;
+        const targetSide: 'player' | 'opponent' = isPlayerAttacking ? 'opponent' : 'player';
+
+        // HP更新
+        if (currentLog.playerHp !== undefined) {
+          playerHpRef.current = currentLog.playerHp;
+          setPlayerTotalHp(currentLog.playerHp);
+        }
+        if (currentLog.opponentHp !== undefined) {
+          opponentHpRef.current = currentLog.opponentHp;
+          setOpponentTotalHp(currentLog.opponentHp);
+        }
+
+        // ダメージ表示
+        if (currentLog.damage && currentLog.damage > 0) {
+          const damageKey = Date.now() + Math.random();
+          const offsetX = (Math.random() - 0.5) * 150;
+          const offsetY = (Math.random() - 0.5) * 80;
+          setDamageDisplays(prev => [...prev, {
+            target: targetSide,
+            damage: currentLog.damage!,
+            isCritical: currentLog.type === 'critical',
+            key: damageKey,
+            offsetX,
+            offsetY,
+          }]);
+
+          // ダメージ表示クリア
+          setTimeout(() => {
+            setDamageDisplays(prev => prev.filter(d => d.key !== damageKey));
+          }, 2500 / speed);
+        }
+
+        // シェイクエフェクト
+        setShakeTarget(targetSide);
+        setTimeout(() => {
+          setShakeTarget(null);
+        }, 400 / speed);
+
+        // 火花エフェクト
+        const newEffectKey = Date.now() + Math.random();
+        const randomX = Math.random() * 80 + 10;
+        const randomY = Math.random() * 60 + 20;
+        setHitEffects(prev => [...prev, {
+          target: targetSide,
+          key: newEffectKey,
+          x: randomX,
+          y: randomY,
+        }]);
+        setTimeout(() => {
+          setHitEffects(prev => prev.filter(e => e.key !== newEffectKey));
+        }, 600 / speed);
+
+        // バトルログ追加
+        if (currentLog.message) {
+          setBattleLog(prev => [currentLog.message!, ...prev.slice(0, 9)]);
+        }
+      }
+
+      // スキル発動表示
+      if (currentLog.skill) {
+        const isPlayerAttacking = currentLog.attackerId?.startsWith('player') ?? false;
+        const skillKey = Date.now() + Math.random();
+        setSkillDisplays(prev => {
+          const newDisplays = [...prev, {
+            skill: currentLog.skill!,
+            isPlayerAttacking,
+            key: skillKey,
+          }];
+          return newDisplays.slice(-5);
+        });
+        setTimeout(() => {
+          setSkillDisplays(prev => prev.filter(d => d.key !== skillKey));
+        }, 3000 / speed);
+      }
+
+      // 次のログへ
+      serverLogIndexRef.current++;
+
+      // 次のログまでの待機時間を計算
+      const delay = nextLog
+        ? Math.max(100, (nextLog.timestamp - currentLog.timestamp) / speed)
+        : 500;
+
+      timeoutId = setTimeout(playNextLog, delay);
+    };
+
+    // 最初のログ再生開始
+    timeoutId = setTimeout(playNextLog, 500 / speed);
+
+    return () => {
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [serverMode, serverBattleResult, battleState, speed]);
+
   // アクション処理用のref
   const pendingActionRef = useRef<{
     attacker: string;
@@ -592,8 +765,11 @@ export default function BattleArena({
     reflectDamage: number;
   } | null>(null);
 
-  // リアルタイムバトルループ
+  // リアルタイムバトルループ（クライアントサイドバトル用 - serverModeがfalseの場合のみ実行）
+  // ※ サーバーモード時は上のサーバーログ再生ループが使用される
   useEffect(() => {
+    // サーバーモードの場合はこのバトルループを使用しない
+    if (serverMode) return;
     if (battleState !== 'fighting') return;
 
     const tick = (timestamp: number) => {
@@ -826,7 +1002,7 @@ export default function BattleArena({
       }
       lastTimeRef.current = 0;
     };
-  }, [battleState, speed]);
+  }, [battleState, speed, serverMode]);
 
   // スキップ
   const skipToEnd = useCallback(() => {
@@ -834,27 +1010,37 @@ export default function BattleArena({
       cancelAnimationFrame(animationRef.current);
     }
 
-    // 簡易シミュレーション
-    const playerCards = battleCards.filter(c => c.isPlayer);
-    const opponentCards = battleCards.filter(c => !c.isPlayer);
-    const playerDps = playerCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
-    const opponentDps = opponentCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
-
-    const playerTime = opponentHpRef.current / playerDps;
-    const opponentTime = playerHpRef.current / opponentDps;
-
-    if (playerTime < opponentTime) {
-      opponentHpRef.current = 0;
-      setWinner('player');
-    } else if (opponentTime < playerTime) {
-      playerHpRef.current = 0;
-      setWinner('opponent');
+    // サーバーモードの場合は、サーバー結果をそのまま使用
+    if (serverMode && serverBattleResult) {
+      playerHpRef.current = serverBattleResult.playerFinalHp;
+      opponentHpRef.current = serverBattleResult.opponentFinalHp;
+      setPlayerTotalHp(serverBattleResult.playerFinalHp);
+      setOpponentTotalHp(serverBattleResult.opponentFinalHp);
+      setWinner(serverBattleResult.winner);
     } else {
-      setWinner('draw');
+      // クライアントモード：簡易シミュレーション
+      const playerCards = battleCards.filter(c => c.isPlayer);
+      const opponentCards = battleCards.filter(c => !c.isPlayer);
+      const playerDps = playerCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
+      const opponentDps = opponentCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
+
+      const playerTime = opponentHpRef.current / playerDps;
+      const opponentTime = playerHpRef.current / opponentDps;
+
+      if (playerTime < opponentTime) {
+        opponentHpRef.current = 0;
+        setWinner('player');
+      } else if (opponentTime < playerTime) {
+        playerHpRef.current = 0;
+        setWinner('opponent');
+      } else {
+        setWinner('draw');
+      }
+
+      setPlayerTotalHp(playerHpRef.current);
+      setOpponentTotalHp(opponentHpRef.current);
     }
 
-    setPlayerTotalHp(playerHpRef.current);
-    setOpponentTotalHp(opponentHpRef.current);
     setCurrentAction(null);
     setDamageDisplays([]);
     setShakeTarget(null);
@@ -862,7 +1048,7 @@ export default function BattleArena({
     setSkillDisplays([]);
     setBattleState('finished');
     // ポップアップ表示はAPIレスポンス後に行う（useEffect内で処理）
-  }, [battleCards]);
+  }, [battleCards, serverMode, serverBattleResult]);
 
   // カードのタイマー表示用
   const getCardTimerPercent = (card: BattleCardState) => {
