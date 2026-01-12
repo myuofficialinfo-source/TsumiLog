@@ -738,7 +738,15 @@ export default function BattleArena({
         setShakeTarget(targetSide);
         setTimeout(() => {
           setShakeTarget(null);
-          setCurrentAction(null); // アクティブ状態も解除
+          // 同じ攻撃者の場合のみリセット（次の攻撃で上書きされていたらリセットしない）
+          setCurrentAction(prev => {
+            if (prev && prev.attackerIsPlayer === isPlayerAttacking &&
+                prev.attackerPosition === attackerPosition &&
+                prev.attackerIndex === attackerIndex) {
+              return null;
+            }
+            return prev;
+          });
         }, 400 / speed);
 
         // 火花エフェクト
