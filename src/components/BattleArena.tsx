@@ -1252,7 +1252,7 @@ export default function BattleArena({
         <div className="flex flex-col lg:flex-row lg:items-stretch gap-4">
 
           {/* プレイヤー側（PC: 左、スマホ: 下なのでorderで調整） */}
-          <div ref={playerContainerRef} className="flex-1 space-y-2 order-2 lg:order-1 relative">
+          <div className="flex-1 space-y-2 order-2 lg:order-1 relative">
             {/* ダメージ表示（プレイヤー側・複数スタック） */}
             {damageDisplays.filter(d => d.target === 'player').map((damageDisplay) => (
               <div
@@ -1304,6 +1304,8 @@ export default function BattleArena({
               </div>
             </div>
 
+            {/* プレイヤーカードエリア（シェイク対象） */}
+            <div ref={playerContainerRef} className="space-y-2">
             {/* プレイヤー前衛 */}
             <div>
               <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '前衛' : 'Front'}</p>
@@ -1376,6 +1378,7 @@ export default function BattleArena({
                 })}
               </div>
             </div>
+            </div>
           </div>
 
           {/* VS（中央）- スキル発動表示（積み上げ式） */}
@@ -1414,7 +1417,7 @@ export default function BattleArena({
           </div>
 
           {/* 相手側（PC: 右、スマホ: 上） */}
-          <div ref={opponentContainerRef} className="flex-1 space-y-2 order-0 lg:order-3 relative">
+          <div className="flex-1 space-y-2 order-0 lg:order-3 relative">
             {/* ダメージ表示（相手側・複数スタック） */}
             {damageDisplays.filter(d => d.target === 'opponent').map((damageDisplay) => (
               <div
