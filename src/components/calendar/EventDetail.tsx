@@ -1,17 +1,25 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
-import { X, Trash2, ExternalLink } from 'lucide-react';
+import { X, Trash2, ExternalLink, Edit2, Save, Calendar } from 'lucide-react';
 import { GameEvent } from '@/types/calendar';
 
 interface EventDetailProps {
   event: GameEvent;
   onClose: () => void;
   onDelete: (eventId: string) => void;
+  onUpdate: (event: GameEvent) => void;
   language: string;
 }
 
-export default function EventDetail({ event, onClose, onDelete, language }: EventDetailProps) {
+export default function EventDetail({ event, onClose, onDelete, onUpdate, language }: EventDetailProps) {
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedDate, setEditedDate] = useState(event.date);
+  const [editedEndDate, setEditedEndDate] = useState(event.endDate || '');
+  const [editedNote, setEditedNote] = useState(event.note || '');
+  const [editedType, setEditedType] = useState(event.type);
+
   const getTypeLabel = (type: GameEvent['type']) => {
     switch (type) {
       case 'planned':
@@ -46,6 +54,18 @@ export default function EventDetail({ event, onClose, onDelete, language }: Even
     }
   };
 
+  const handleSave = () => {
+    const updatedEvent: GameEvent = {
+      ...event,
+      date: editedDate,
+      endDate: editedEndDate || undefined,
+      note: editedNote || undefined,
+      type: editedType,
+    };
+    onUpdate(updatedEvent);
+    setIsEditing(false);
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
       <div
@@ -71,9 +91,9 @@ export default function EventDetail({ event, onClose, onDelete, language }: Even
           {/* タイプバッジ */}
           <div
             className="absolute bottom-2 left-2 px-3 py-1 rounded-lg text-sm font-bold text-white"
-            style={{ backgroundColor: getTypeColor(event.type) }}
+            style={{ backgroundColor: getTypeColor(isEditing ? editedType : event.type) }}
           >
-            {getTypeLabel(event.type)}
+            {getTypeLabel(isEditing ? editedType : event.type)}
           </div>
         </div>
 
@@ -82,21 +102,104 @@ export default function EventDetail({ event, onClose, onDelete, language }: Even
           {/* ゲーム名 */}
           <div>
             <h2 className="text-xl font-black">{event.gameName}</h2>
-            <p className="text-sm text-gray-500 mt-1">{formatDate(event.date)}</p>
+
+            {isEditing ? (
+              <div className="mt-3 space-y-3">
+                {/* 日付入力 */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    {language === 'ja' ? '開始日' : 'Start Date'}
+                  </label>
+                  <input
+                    type="date"
+                    value={editedDate}
+                    onChange={(e) => setEditedDate(e.target.value)}
+                    className="w-full px-3 py-2 rounded-lg border-2 border-[#3D3D3D] text-sm"
+                    style={{ backgroundColor: 'var(--background)' }}
+                  />
+                </div>
+
+                {/* 終了日入力 */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    {language === 'ja' ? '終了日（任意）' : 'End Date (optional)'}
+                  </label>
+                  <input
+                    type="date"
+                    value={editedEndDate}
+                    onChange={(e) => setEditedEndDate(e.target.value)}
+                    min={editedDate}
+                    className="w-full px-3 py-2 rounded-lg border-2 border-[#3D3D3D] text-sm"
+                    style={{ backgroundColor: 'var(--background)' }}
+                  />
+                </div>
+
+                {/* タイプ選択 */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    {language === 'ja' ? '種類' : 'Type'}
+                  </label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'planned', label: language === 'ja' ? '予定' : 'Planned', color: 'var(--pop-blue)' },
+                      { value: 'played', label: language === 'ja' ? 'プレイ済み' : 'Played', color: 'var(--pop-green)' },
+                    ].map(type => (
+                      <button
+                        key={type.value}
+                        onClick={() => setEditedType(type.value as GameEvent['type'])}
+                        className={`px-3 py-1 text-xs font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
+                          editedType === type.value ? 'text-white' : ''
+                        }`}
+                        style={{
+                          backgroundColor: editedType === type.value ? type.color : 'var(--card-bg)'
+                        }}
+                      >
+                        {type.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
+                <Calendar className="w-4 h-4" />
+                <span>{formatDate(event.date)}</span>
+                {event.endDate && (
+                  <>
+                    <span>〜</span>
+                    <span>{formatDate(event.endDate)}</span>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* メモ */}
-          {event.note && (
+          {isEditing ? (
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">
+                {language === 'ja' ? 'メモ' : 'Note'}
+              </label>
+              <textarea
+                value={editedNote}
+                onChange={(e) => setEditedNote(e.target.value)}
+                placeholder={language === 'ja' ? '例: ストーリークリアを目指す' : 'e.g., Complete the main story'}
+                className="w-full px-3 py-2 rounded-lg border-2 border-[#3D3D3D] text-sm resize-none"
+                style={{ backgroundColor: 'var(--background)' }}
+                rows={2}
+              />
+            </div>
+          ) : event.note ? (
             <div
               className="p-3 rounded-xl"
               style={{ backgroundColor: 'var(--background-secondary)' }}
             >
               <p className="text-sm text-gray-600">{event.note}</p>
             </div>
-          )}
+          ) : null}
 
           {/* プレイ時間 */}
-          {event.playtimeMinutes && (
+          {event.playtimeMinutes && !isEditing && (
             <div className="flex items-center gap-2 text-sm">
               <span className="text-gray-500">{language === 'ja' ? 'プレイ時間:' : 'Playtime:'}</span>
               <span className="font-bold">
@@ -108,24 +211,52 @@ export default function EventDetail({ event, onClose, onDelete, language }: Even
 
           {/* アクションボタン */}
           <div className="flex gap-3 pt-2">
-            <a
-              href={`https://store.steampowered.com/app/${event.gameId}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
-              style={{ backgroundColor: 'var(--card-bg)' }}
-            >
-              <ExternalLink className="w-4 h-4" />
-              Steam
-            </a>
-            <button
-              onClick={handleDelete}
-              className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors hover:opacity-90"
-              style={{ backgroundColor: 'var(--pop-red)' }}
-            >
-              <Trash2 className="w-4 h-4" />
-              {language === 'ja' ? '削除' : 'Delete'}
-            </button>
+            {isEditing ? (
+              <>
+                <button
+                  onClick={() => setIsEditing(false)}
+                  className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+                  style={{ backgroundColor: 'var(--card-bg)' }}
+                >
+                  {language === 'ja' ? 'キャンセル' : 'Cancel'}
+                </button>
+                <button
+                  onClick={handleSave}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-lg transition-colors hover:opacity-90"
+                  style={{ backgroundColor: 'var(--pop-green)' }}
+                >
+                  <Save className="w-4 h-4" />
+                  {language === 'ja' ? '保存' : 'Save'}
+                </button>
+              </>
+            ) : (
+              <>
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="flex-1 flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+                  style={{ backgroundColor: 'var(--card-bg)' }}
+                >
+                  <Edit2 className="w-4 h-4" />
+                  {language === 'ja' ? '編集' : 'Edit'}
+                </button>
+                <a
+                  href={`https://store.steampowered.com/app/${event.gameId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+                  style={{ backgroundColor: 'var(--card-bg)' }}
+                >
+                  <ExternalLink className="w-4 h-4" />
+                </a>
+                <button
+                  onClick={handleDelete}
+                  className="flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors hover:opacity-90"
+                  style={{ backgroundColor: 'var(--pop-red)' }}
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>

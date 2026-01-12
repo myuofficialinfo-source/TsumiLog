@@ -19,6 +19,14 @@ interface SteamGame {
   headerImage: string;
 }
 
+interface WishlistRelease {
+  appid: number;
+  name: string;
+  releaseDate: string | null;
+  comingSoon: boolean;
+  headerImage: string;
+}
+
 interface CalendarDayExtended extends CalendarDay {
   holiday?: Holiday;
   dateStr: string;
@@ -45,6 +53,8 @@ export default function CalendarPage() {
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<GameEvent | null>(null);
   const [steamId, setSteamId] = useState<string | null>(null);
+  const [wishlistReleases, setWishlistReleases] = useState<WishlistRelease[]>([]);
+  const [draggedEvent, setDraggedEvent] = useState<GameEvent | null>(null);
 
   // localStorageからsteamIdとイベントを復元
   useEffect(() => {
@@ -80,6 +90,25 @@ export default function CalendarPage() {
     fetchGames();
   }, [steamId]);
 
+  // ウィッシュリストの発売日を取得
+  useEffect(() => {
+    if (!steamId) return;
+
+    const fetchWishlistReleases = async () => {
+      try {
+        const response = await fetch(`/api/wishlist-releases?steamId=${encodeURIComponent(steamId)}`);
+        const data = await response.json();
+        if (data.releases) {
+          setWishlistReleases(data.releases);
+        }
+      } catch (error) {
+        console.error('Failed to fetch wishlist releases:', error);
+      }
+    };
+
+    fetchWishlistReleases();
+  }, [steamId]);
+
   // イベントをlocalStorageに保存
   useEffect(() => {
     if (events.length > 0) {
@@ -105,6 +134,17 @@ export default function CalendarPage() {
 
     const days: CalendarDayExtended[] = [];
 
+    // イベントがその日に該当するかチェック（期間イベント対応）
+    const getEventsForDate = (dateStr: string) => {
+      return events.filter(e => {
+        // 開始日と一致
+        if (e.date === dateStr) return true;
+        // 期間イベントの場合、範囲内かチェック
+        if (e.endDate && dateStr > e.date && dateStr <= e.endDate) return true;
+        return false;
+      });
+    };
+
     // 前月の日付を埋める
     const startDayOfWeek = firstDay.getDay();
     for (let i = startDayOfWeek - 1; i >= 0; i--) {
@@ -114,7 +154,7 @@ export default function CalendarPage() {
         date,
         isCurrentMonth: false,
         isToday: false,
-        events: events.filter(e => e.date === dateStr),
+        events: getEventsForDate(dateStr),
         holiday: getHoliday(dateStr),
         dateStr,
       });
@@ -128,7 +168,7 @@ export default function CalendarPage() {
         date,
         isCurrentMonth: true,
         isToday: date.getTime() === today.getTime(),
-        events: events.filter(e => e.date === dateStr),
+        events: getEventsForDate(dateStr),
         holiday: getHoliday(dateStr),
         dateStr,
       });
@@ -143,7 +183,7 @@ export default function CalendarPage() {
         date,
         isCurrentMonth: false,
         isToday: false,
-        events: events.filter(e => e.date === dateStr),
+        events: getEventsForDate(dateStr),
         holiday: getHoliday(dateStr),
         dateStr,
       });
@@ -268,6 +308,51 @@ export default function CalendarPage() {
     setSelectedEvent(null);
   };
 
+  const handleUpdateEvent = (updatedEvent: GameEvent) => {
+    setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
+    setSelectedEvent(null);
+  };
+
+  // ドラッグ開始
+  const handleDragStart = (e: React.DragEvent, event: GameEvent) => {
+    setDraggedEvent(event);
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', event.id);
+  };
+
+  // ドラッグオーバー
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  // ドロップ
+  const handleDrop = (e: React.DragEvent, targetDate: string) => {
+    e.preventDefault();
+    if (!draggedEvent) return;
+
+    // 期間イベントの場合、日数の差分を計算して両方の日付を更新
+    const daysDiff = Math.floor(
+      (new Date(targetDate).getTime() - new Date(draggedEvent.date).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    let newEndDate: string | undefined;
+    if (draggedEvent.endDate) {
+      const endDate = new Date(draggedEvent.endDate);
+      endDate.setDate(endDate.getDate() + daysDiff);
+      newEndDate = formatDateKey(endDate);
+    }
+
+    const updatedEvent: GameEvent = {
+      ...draggedEvent,
+      date: targetDate,
+      endDate: newEndDate,
+    };
+
+    setEvents(prev => prev.map(e => e.id === draggedEvent.id ? updatedEvent : e));
+    setDraggedEvent(null);
+  };
+
   const weekDays = language === 'ja'
     ? ['日', '月', '火', '水', '木', '金', '土']
     : ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
@@ -283,6 +368,44 @@ export default function CalendarPage() {
       case 'release': return 'var(--pop-yellow)';
       default: return 'var(--pop-purple)';
     }
+  };
+
+  // ウィッシュリストの発売日を日付文字列に変換
+  const parseReleaseDate = (dateStr: string | null): string | null => {
+    if (!dateStr) return null;
+
+    // "2025年1月15日" 形式
+    const jaMatch = dateStr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+    if (jaMatch) {
+      return `${jaMatch[1]}-${jaMatch[2].padStart(2, '0')}-${jaMatch[3].padStart(2, '0')}`;
+    }
+
+    // "Jan 15, 2025" 形式
+    const enMatch = dateStr.match(/([A-Za-z]+)\s+(\d{1,2}),?\s+(\d{4})/);
+    if (enMatch) {
+      const months: Record<string, string> = {
+        'Jan': '01', 'Feb': '02', 'Mar': '03', 'Apr': '04',
+        'May': '05', 'Jun': '06', 'Jul': '07', 'Aug': '08',
+        'Sep': '09', 'Oct': '10', 'Nov': '11', 'Dec': '12'
+      };
+      const month = months[enMatch[1]] || '01';
+      return `${enMatch[3]}-${month}-${enMatch[2].padStart(2, '0')}`;
+    }
+
+    // "2025-01-15" 形式
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      return dateStr;
+    }
+
+    return null;
+  };
+
+  // 特定の日付のウィッシュリスト発売日を取得
+  const getWishlistReleasesForDate = (dateStr: string): WishlistRelease[] => {
+    return wishlistReleases.filter(release => {
+      const parsedDate = parseReleaseDate(release.releaseDate);
+      return parsedDate === dateStr && !release.comingSoon;
+    });
   };
 
   return (
@@ -447,9 +570,11 @@ export default function CalendarPage() {
                       <div
                         key={dayIndex}
                         onClick={() => handleDateClick(day.date)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, day.dateStr)}
                         className={`border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50 transition-colors ${
                           !day.isCurrentMonth ? 'opacity-40' : ''
-                        } ${day.isToday ? 'ring-2 ring-inset' : ''}`}
+                        } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
                           minHeight: `${Math.max(100, 28 + barAreaHeight + 50)}px`,
@@ -485,14 +610,36 @@ export default function CalendarPage() {
 
                         {/* ユーザーイベント表示 */}
                         <div className="space-y-1">
-                          {day.events.slice(0, 2).map(event => (
+                          {/* ウィッシュリスト発売日 */}
+                          {getWishlistReleasesForDate(day.dateStr).slice(0, 1).map(release => (
+                            <div
+                              key={`wl-${release.appid}`}
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-white truncate"
+                              style={{ backgroundColor: 'var(--pop-yellow)' }}
+                              title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
+                            >
+                              <Image
+                                src={release.headerImage}
+                                alt={release.name}
+                                width={14}
+                                height={14}
+                                className="rounded-sm flex-shrink-0"
+                              />
+                              <span className="truncate text-[10px]">🎮 {release.name}</span>
+                            </div>
+                          ))}
+                          {/* ユーザーイベント */}
+                          {day.events.slice(0, getWishlistReleasesForDate(day.dateStr).length > 0 ? 1 : 2).map(event => (
                             <div
                               key={event.id}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, event)}
+                              onDragEnd={() => setDraggedEvent(null)}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setSelectedEvent(event);
                               }}
-                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-white truncate cursor-pointer hover:opacity-80"
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing"
                               style={{ backgroundColor: getEventTypeColor(event.type) }}
                             >
                               <Image
@@ -505,9 +652,9 @@ export default function CalendarPage() {
                               <span className="truncate text-[10px]">{event.gameName}</span>
                             </div>
                           ))}
-                          {day.events.length > 2 && (
+                          {(day.events.length + getWishlistReleasesForDate(day.dateStr).length) > 2 && (
                             <span className="text-[10px] text-gray-500 font-medium">
-                              +{day.events.length - 2} {language === 'ja' ? '件' : 'more'}
+                              +{day.events.length + getWishlistReleasesForDate(day.dateStr).length - 2} {language === 'ja' ? '件' : 'more'}
                             </span>
                           )}
                         </div>
@@ -532,7 +679,7 @@ export default function CalendarPage() {
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: 'var(--pop-yellow)' }} />
-            <span>{language === 'ja' ? '発売日' : 'Release'}</span>
+            <span>{language === 'ja' ? '発売日 / WL発売' : 'Release / WL Release'}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-amber-500" />
@@ -554,6 +701,7 @@ export default function CalendarPage() {
         <AddEventModal
           date={selectedDate}
           games={games}
+          steamId={steamId || undefined}
           onAdd={handleAddEvent}
           onClose={() => {
             setShowAddModal(false);
@@ -569,6 +717,7 @@ export default function CalendarPage() {
           event={selectedEvent}
           onClose={() => setSelectedEvent(null)}
           onDelete={handleDeleteEvent}
+          onUpdate={handleUpdateEvent}
           language={language}
         />
       )}

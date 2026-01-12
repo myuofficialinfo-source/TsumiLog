@@ -1,8 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { X, Search, Gamepad2 } from 'lucide-react';
+import { X, Search, Gamepad2, Loader2 } from 'lucide-react';
 import { GameEvent } from '@/types/calendar';
 
 interface SteamGame {
@@ -10,31 +10,115 @@ interface SteamGame {
   name: string;
   playtime_forever: number;
   headerImage: string;
+  isBacklog?: boolean;
+  isCompleted?: boolean;
 }
+
+// DBから取得するゲーム情報の型
+interface DBGame {
+  appid: number;
+  name: string;
+  playtime: number;
+  is_backlog: boolean;
+  is_completed: boolean;
+}
+
+type GameFilter = 'all' | 'playing' | 'backlog';
 
 interface AddEventModalProps {
   date: string;
   games: SteamGame[];
+  steamId?: string;
   onAdd: (event: Omit<GameEvent, 'id' | 'createdAt'>) => void;
   onClose: () => void;
   language: string;
 }
 
-export default function AddEventModal({ date, games, onAdd, onClose, language }: AddEventModalProps) {
+export default function AddEventModal({ date, games: propGames, steamId, onAdd, onClose, language }: AddEventModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGame, setSelectedGame] = useState<SteamGame | null>(null);
   const [eventType, setEventType] = useState<GameEvent['type']>('planned');
   const [note, setNote] = useState('');
+  const [gameFilter, setGameFilter] = useState<GameFilter>('all');
+  const [dbGames, setDbGames] = useState<SteamGame[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [endDate, setEndDate] = useState('');
 
-  const filteredGames = games.filter(game =>
-    game.name.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // DBからゲーム情報を取得
+  useEffect(() => {
+    if (!steamId) {
+      setDbGames(propGames);
+      return;
+    }
+
+    const fetchGames = async () => {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/user-games?steamId=${steamId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.games && Array.isArray(data.games)) {
+            const converted: SteamGame[] = data.games.map((g: DBGame) => ({
+              appid: g.appid,
+              name: g.name,
+              playtime_forever: g.playtime,
+              headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
+              isBacklog: g.is_backlog,
+              isCompleted: g.is_completed,
+            }));
+            setDbGames(converted);
+          } else {
+            setDbGames(propGames);
+          }
+        } else {
+          setDbGames(propGames);
+        }
+      } catch (error) {
+        console.error('Failed to fetch games:', error);
+        setDbGames(propGames);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchGames();
+  }, [steamId, propGames]);
+
+  // フィルター適用したゲームリスト
+  const games = dbGames.length > 0 ? dbGames : propGames;
+
+  // フィルターとソート適用
+  const filteredGames = games
+    .filter(game => {
+      // 検索クエリでフィルター
+      if (!game.name.toLowerCase().includes(searchQuery.toLowerCase())) {
+        return false;
+      }
+      // カテゴリーでフィルター
+      if (gameFilter === 'playing') {
+        return !game.isBacklog && !game.isCompleted;
+      }
+      if (gameFilter === 'backlog') {
+        return game.isBacklog && !game.isCompleted;
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // プレイ中を先に、次に積みゲー
+      if (gameFilter === 'all') {
+        if (!a.isBacklog && b.isBacklog) return -1;
+        if (a.isBacklog && !b.isBacklog) return 1;
+      }
+      // プレイ時間でソート
+      return b.playtime_forever - a.playtime_forever;
+    });
 
   const handleSubmit = () => {
     if (!selectedGame) return;
 
     onAdd({
       date,
+      endDate: endDate || undefined,
       gameId: selectedGame.appid,
       gameName: selectedGame.name,
       gameImage: selectedGame.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/header.jpg`,
@@ -74,11 +158,35 @@ export default function AddEventModal({ date, games, onAdd, onClose, language }:
         {/* コンテンツ */}
         <div className="p-4 space-y-4 overflow-y-auto flex-grow">
           {/* 日付表示 */}
-          <div className="flex items-center gap-2 text-sm">
-            <span className="font-medium text-gray-500">
-              {language === 'ja' ? '日付:' : 'Date:'}
-            </span>
-            <span className="font-bold">{formatDate(date)}</span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-sm">
+              <span className="font-medium text-gray-500">
+                {language === 'ja' ? '開始日:' : 'Start:'}
+              </span>
+              <span className="font-bold">{formatDate(date)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-500">
+                {language === 'ja' ? '終了日:' : 'End:'}
+              </span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={date}
+                className="flex-1 px-3 py-1.5 rounded-lg border-2 border-[#3D3D3D] text-sm"
+                style={{ backgroundColor: 'var(--background)' }}
+                placeholder={language === 'ja' ? '任意' : 'Optional'}
+              />
+              {endDate && (
+                <button
+                  onClick={() => setEndDate('')}
+                  className="p-1 rounded hover:bg-gray-200"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              )}
+            </div>
           </div>
 
           {/* イベントタイプ */}
@@ -113,6 +221,30 @@ export default function AddEventModal({ date, games, onAdd, onClose, language }:
             <label className="block text-sm font-medium text-gray-600 mb-2">
               {language === 'ja' ? 'ゲームを選択' : 'Select Game'}
             </label>
+
+            {/* フィルタータブ */}
+            <div className="flex gap-1 mb-3 p-1 rounded-lg border-2 border-[#3D3D3D]" style={{ backgroundColor: 'var(--background)' }}>
+              {[
+                { value: 'all', label: language === 'ja' ? 'すべて' : 'All' },
+                { value: 'playing', label: language === 'ja' ? 'プレイ中' : 'Playing' },
+                { value: 'backlog', label: language === 'ja' ? '積みゲー' : 'Backlog' },
+              ].map(filter => (
+                <button
+                  key={filter.value}
+                  onClick={() => setGameFilter(filter.value as GameFilter)}
+                  className={`flex-1 px-2 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    gameFilter === filter.value
+                      ? 'text-white'
+                      : 'hover:bg-gray-100'
+                  }`}
+                  style={{
+                    backgroundColor: gameFilter === filter.value ? 'var(--pop-blue)' : 'transparent'
+                  }}
+                >
+                  {filter.label}
+                </button>
+              ))}
+            </div>
 
             {/* 選択中のゲーム */}
             {selectedGame && (
@@ -162,7 +294,12 @@ export default function AddEventModal({ date, games, onAdd, onClose, language }:
                   className="max-h-[200px] overflow-y-auto rounded-lg border-2 border-[#3D3D3D]"
                   style={{ backgroundColor: 'var(--background)' }}
                 >
-                  {filteredGames.length === 0 ? (
+                  {loading ? (
+                    <div className="p-4 text-center text-gray-500 text-sm">
+                      <Loader2 className="w-8 h-8 mx-auto mb-2 animate-spin opacity-50" />
+                      {language === 'ja' ? '読み込み中...' : 'Loading...'}
+                    </div>
+                  ) : filteredGames.length === 0 ? (
                     <div className="p-4 text-center text-gray-500 text-sm">
                       <Gamepad2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
                       {language === 'ja' ? 'ゲームが見つかりません' : 'No games found'}
