@@ -654,29 +654,17 @@ export default function BattleArena({
     }
   }, [serverMode, serverBattleResult, battleState]);
 
-  // サーバーモード：ログ再生ループ
+  // サーバーモード：統合されたログ再生＆ゲージアニメーションループ
+  // requestAnimationFrameで統一し、時間軸を完全に同期
   useEffect(() => {
     if (!serverMode || !serverBattleResult || battleState !== 'fighting') return;
     if (serverLogsRef.current.length === 0) return;
 
-    let timeoutId: NodeJS.Timeout;
+    let animFrameId: number;
+    let isRunning = true;
 
-    const playNextLog = () => {
-      const currentIndex = serverLogIndexRef.current;
-      if (currentIndex >= serverLogsRef.current.length) {
-        // 全ログ再生完了
-        setWinner(serverBattleResult.winner);
-        setBattleState('finished');
-        return;
-      }
-
-      const currentLog = serverLogsRef.current[currentIndex];
-      const nextLog = serverLogsRef.current[currentIndex + 1];
-
-      // 現在の再生時刻を記録（補間計算用）
-      lastLogTimestampRef.current = currentLog.timestamp;
-      lastLogRealTimeRef.current = performance.now();
-
+    // ログを処理する関数（UIの更新のみ、時間管理は呼び出し元で）
+    const processLog = (currentLog: BattleLogEntry) => {
       // ログに基づいてUIを更新（攻撃/ダメージ/クリティカルのいずれか）
       const isDamageLog = currentLog.type === 'attack' || currentLog.type === 'damage' || currentLog.type === 'critical';
       if (isDamageLog) {
@@ -715,8 +703,6 @@ export default function BattleArena({
           isPlayerAttacking,
           skill: currentLog.skill,
         });
-
-        // タイマーはアニメーションループで自動計算されるため、ここでのリセットは不要
 
         // HP更新
         if (currentLog.playerHp !== undefined) {
@@ -798,40 +784,41 @@ export default function BattleArena({
           setSkillDisplays(prev => prev.filter(d => d.key !== skillKey));
         }, 3000 / speed);
       }
-
-      // 次のログへ
-      serverLogIndexRef.current++;
-
-      // 次のログまでの待機時間を計算
-      const delay = nextLog
-        ? Math.max(100, (nextLog.timestamp - currentLog.timestamp) / speed)
-        : 500;
-
-      timeoutId = setTimeout(playNextLog, delay);
     };
 
-    // 最初のログ再生開始
-    timeoutId = setTimeout(playNextLog, 500 / speed);
+    // メインループ：ゲージ更新とログ処理を統合
+    const mainLoop = () => {
+      if (!isRunning) return;
 
-    return () => {
-      if (timeoutId) clearTimeout(timeoutId);
-    };
-  }, [serverMode, serverBattleResult, battleState, speed, language, opponentName, personaName]);
-
-  // サーバーモード：タイマーを徐々に増加させるアニメーションループ
-  // リアルタイムの経過時間を使って、ログ間の時間を補間
-  useEffect(() => {
-    if (!serverMode || battleState !== 'fighting') return;
-
-    let animFrameId: number;
-
-    const updateTimers = () => {
-      // 実際の経過時間から現在の再生時刻を補間計算
       const now = performance.now();
       const realTimeElapsed = now - lastLogRealTimeRef.current;
-      // speed倍速を考慮してバトル内時間に変換
       const battleTimeElapsed = realTimeElapsed * speed;
       const currentBattleTime = lastLogTimestampRef.current + battleTimeElapsed;
+
+      // 処理すべきログがあるかチェック
+      while (serverLogIndexRef.current < serverLogsRef.current.length) {
+        const nextLog = serverLogsRef.current[serverLogIndexRef.current];
+        if (nextLog.timestamp <= currentBattleTime) {
+          // このログを処理
+          processLog(nextLog);
+          // 時間基準を更新（次のログとの相対時間計算用）
+          lastLogTimestampRef.current = nextLog.timestamp;
+          lastLogRealTimeRef.current = now;
+          serverLogIndexRef.current++;
+        } else {
+          break;
+        }
+      }
+
+      // 全ログ処理完了チェック
+      if (serverLogIndexRef.current >= serverLogsRef.current.length) {
+        // 少し待ってから終了（最後のエフェクトを見せる）
+        setTimeout(() => {
+          setWinner(serverBattleResult.winner);
+          setBattleState('finished');
+        }, 500);
+        return;
+      }
 
       // 各カードのゲージを計算
       setBattleCards(prev => prev.map(card => {
@@ -839,7 +826,6 @@ export default function BattleArena({
         const attackTimes = cardAttackTimesRef.current.get(cardId) || [];
 
         if (attackTimes.length === 0) {
-          // このカードは攻撃しない（またはデータがない）
           return { ...card, currentTimer: 0 };
         }
 
@@ -857,7 +843,7 @@ export default function BattleArena({
           }
         }
 
-        // 進捗率を計算（lastAttackTimeからnextAttackTimeまでの間で現在どこにいるか）
+        // 進捗率を計算
         const totalInterval = nextAttackTime - lastAttackTime;
         const elapsed = currentBattleTime - lastAttackTime;
         const progress = totalInterval > 0 ? Math.min(1, elapsed / totalInterval) : 0;
@@ -868,15 +854,20 @@ export default function BattleArena({
         };
       }));
 
-      animFrameId = requestAnimationFrame(updateTimers);
+      animFrameId = requestAnimationFrame(mainLoop);
     };
 
-    animFrameId = requestAnimationFrame(updateTimers);
+    // 開始遅延（500ms / speed）後にメインループ開始
+    const startTimeout = setTimeout(() => {
+      animFrameId = requestAnimationFrame(mainLoop);
+    }, 500 / speed);
 
     return () => {
-      cancelAnimationFrame(animFrameId);
+      isRunning = false;
+      clearTimeout(startTimeout);
+      if (animFrameId) cancelAnimationFrame(animFrameId);
     };
-  }, [serverMode, battleState, speed]);
+  }, [serverMode, serverBattleResult, battleState, speed, language, opponentName, personaName]);
 
   // アクション処理用のref
   const pendingActionRef = useRef<{
