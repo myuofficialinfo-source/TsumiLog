@@ -27,6 +27,31 @@ interface WishlistRelease {
   headerImage: string;
 }
 
+// フレンド情報の型
+interface FriendActivity {
+  friend: {
+    steamid: string;
+    personaname: string;
+    avatar: string;
+    avatarmedium: string;
+    gameextrainfo?: string;
+    gameid?: string;
+  };
+  recentGames: {
+    appid: number;
+    name: string;
+    playtime_2weeks: number;
+  }[];
+}
+
+// 自分の最近プレイしたゲーム
+interface MyRecentGame {
+  appid: number;
+  name: string;
+  playtime_2weeks: number;
+  playtime_forever: number;
+}
+
 interface CalendarDayExtended extends CalendarDay {
   holiday?: Holiday;
   dateStr: string;
@@ -55,6 +80,8 @@ export default function CalendarPage() {
   const [steamId, setSteamId] = useState<string | null>(null);
   const [wishlistReleases, setWishlistReleases] = useState<WishlistRelease[]>([]);
   const [draggedEvent, setDraggedEvent] = useState<GameEvent | null>(null);
+  const [friendsActivity, setFriendsActivity] = useState<FriendActivity[]>([]);
+  const [myRecentGames, setMyRecentGames] = useState<MyRecentGame[]>([]);
 
   // localStorageからsteamIdとイベントを復元
   useEffect(() => {
@@ -107,6 +134,44 @@ export default function CalendarPage() {
     };
 
     fetchWishlistReleases();
+  }, [steamId]);
+
+  // フレンドの最近のプレイ履歴を取得
+  useEffect(() => {
+    if (!steamId) return;
+
+    const fetchFriendsActivity = async () => {
+      try {
+        const response = await fetch(`/api/steam/friends-activity?steamId=${encodeURIComponent(steamId)}`);
+        const data = await response.json();
+        if (data.friendsActivity) {
+          setFriendsActivity(data.friendsActivity);
+        }
+      } catch (error) {
+        console.error('Failed to fetch friends activity:', error);
+      }
+    };
+
+    fetchFriendsActivity();
+  }, [steamId]);
+
+  // 自分の最近プレイしたゲームを取得
+  useEffect(() => {
+    if (!steamId) return;
+
+    const fetchMyRecentGames = async () => {
+      try {
+        const response = await fetch(`/api/steam/recent-games?steamId=${encodeURIComponent(steamId)}&count=20`);
+        const data = await response.json();
+        if (data.games) {
+          setMyRecentGames(data.games);
+        }
+      } catch (error) {
+        console.error('Failed to fetch recent games:', error);
+      }
+    };
+
+    fetchMyRecentGames();
   }, [steamId]);
 
   // イベントをlocalStorageに保存
@@ -645,6 +710,51 @@ export default function CalendarPage() {
                               +{Math.max(0, day.events.length - 3) + (day.events.length === 0 ? Math.max(0, getWishlistReleasesForDate(day.dateStr).length - 2) : 0)} {language === 'ja' ? '件' : 'more'}
                             </span>
                           )}
+
+                          {/* 自分の最近プレイしたゲーム（今日のみ表示） */}
+                          {day.isToday && myRecentGames.length > 0 && (
+                            <div className="mt-1 pt-1 border-t border-gray-200">
+                              {myRecentGames.slice(0, 2).map(game => (
+                                <div
+                                  key={`my-${game.appid}`}
+                                  className="flex items-center gap-1 px-1 py-0.5 rounded text-[9px] text-gray-600 truncate"
+                                  style={{ backgroundColor: 'rgba(139, 92, 246, 0.15)' }}
+                                  title={`${game.name} - ${Math.round(game.playtime_2weeks / 60)}${language === 'ja' ? '時間' : 'h'}`}
+                                >
+                                  <span className="truncate">{game.name}</span>
+                                  <span className="text-purple-600 font-medium flex-shrink-0">
+                                    {Math.round(game.playtime_2weeks / 60)}{language === 'ja' ? 'h' : 'h'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* フレンドのプレイ履歴（今日のみ表示） */}
+                          {day.isToday && friendsActivity.length > 0 && (
+                            <div className="mt-1 flex flex-wrap gap-0.5">
+                              {friendsActivity.slice(0, 4).map(activity => (
+                                <div
+                                  key={activity.friend.steamid}
+                                  className="relative group"
+                                  title={`${activity.friend.personaname}: ${activity.recentGames[0]?.name || ''}`}
+                                >
+                                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                                  <img
+                                    src={activity.friend.avatar}
+                                    alt={activity.friend.personaname}
+                                    className="w-5 h-5 rounded-full border border-gray-300"
+                                  />
+                                  {activity.friend.gameextrainfo && (
+                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
+                                  )}
+                                </div>
+                              ))}
+                              {friendsActivity.length > 4 && (
+                                <span className="text-[9px] text-gray-400">+{friendsActivity.length - 4}</span>
+                              )}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
@@ -670,11 +780,19 @@ export default function CalendarPage() {
             <span>{language === 'ja' ? '発売日 / WL発売' : 'Release / WL Release'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-amber-500" />
+            <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(139, 92, 246, 0.5)' }} />
+            <span>{language === 'ja' ? '最近プレイ' : 'Recently Played'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded-full bg-gray-400" />
+            <span>{language === 'ja' ? 'フレンド' : 'Friends'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-amber-500 opacity-60" />
             <span>{language === 'ja' ? 'Steamセール' : 'Steam Sale'}</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-purple-600" />
+            <div className="w-3 h-3 rounded bg-purple-600 opacity-60" />
             <span>{language === 'ja' ? 'Steamフェス' : 'Steam Fest'}</span>
           </div>
           <div className="flex items-center gap-2">

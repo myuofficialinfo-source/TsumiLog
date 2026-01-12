@@ -375,6 +375,112 @@ export async function getNewReleases(userGenres: string[] = []): Promise<NewRele
   }
 }
 
+// フレンド情報の型
+export interface SteamFriend {
+  steamid: string;
+  personaname: string;
+  avatar: string;
+  avatarmedium: string;
+  avatarfull: string;
+  personastate: number; // 0=Offline, 1=Online, 2=Busy, 3=Away, 4=Snooze, 5=looking to trade, 6=looking to play
+  gameextrainfo?: string; // 現在プレイ中のゲーム名
+  gameid?: string; // 現在プレイ中のゲームID
+}
+
+// 最近プレイしたゲームの型
+export interface RecentlyPlayedGame {
+  appid: number;
+  name: string;
+  playtime_2weeks: number; // 過去2週間のプレイ時間（分）
+  playtime_forever: number;
+  img_icon_url: string;
+}
+
+// フレンドリストを取得
+export async function getFriendList(steamId: string): Promise<{ steamid: string; friend_since: number }[]> {
+  try {
+    const response = await fetch(
+      `${STEAM_API_BASE}/ISteamUser/GetFriendList/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&relationship=friend`
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data.friendslist?.friends || [];
+  } catch {
+    return [];
+  }
+}
+
+// 複数ユーザーのプロフィールを一括取得
+export async function getPlayerSummaries(steamIds: string[]): Promise<SteamFriend[]> {
+  if (steamIds.length === 0) return [];
+
+  try {
+    // 一度に100人まで取得可能
+    const response = await fetch(
+      `${STEAM_API_BASE}/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamIds.join(',')}`
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data.response?.players || [];
+  } catch {
+    return [];
+  }
+}
+
+// ユーザーの最近プレイしたゲームを取得
+export async function getRecentlyPlayedGames(steamId: string, count: number = 10): Promise<RecentlyPlayedGame[]> {
+  try {
+    const response = await fetch(
+      `${STEAM_API_BASE}/IPlayerService/GetRecentlyPlayedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&count=${count}`
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data.response?.games || [];
+  } catch {
+    return [];
+  }
+}
+
+// フレンドの最近のプレイ履歴を取得（アイコン付き）
+export async function getFriendsRecentActivity(steamId: string, limit: number = 20): Promise<{
+  friend: SteamFriend;
+  recentGames: RecentlyPlayedGame[];
+}[]> {
+  try {
+    // フレンドリストを取得
+    const friendsList = await getFriendList(steamId);
+    if (friendsList.length === 0) return [];
+
+    // フレンドのSteamIDを取得（最大100人）
+    const friendIds = friendsList.slice(0, 100).map(f => f.steamid);
+
+    // フレンドのプロフィールを取得
+    const friends = await getPlayerSummaries(friendIds);
+
+    // 各フレンドの最近のプレイ履歴を取得（上位20人のみ、API負荷軽減）
+    const activeFriends = friends
+      .filter(f => f.personastate > 0 || f.gameextrainfo) // オンラインまたはゲーム中
+      .slice(0, limit);
+
+    const results = await Promise.all(
+      activeFriends.map(async (friend) => {
+        const recentGames = await getRecentlyPlayedGames(friend.steamid, 5);
+        return { friend, recentGames };
+      })
+    );
+
+    return results.filter(r => r.recentGames.length > 0);
+  } catch {
+    return [];
+  }
+}
+
 // SteamIDを抽出（URL形式に対応）
 export function extractSteamId(input: string): string {
   // 直接SteamID64が入力された場合
