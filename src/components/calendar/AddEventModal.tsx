@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import Image from 'next/image';
 import { X, Search, Gamepad2, Loader2 } from 'lucide-react';
 import { GameEvent } from '@/types/calendar';
 
@@ -252,11 +251,12 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
                 className="flex items-center gap-3 p-3 rounded-xl border-2 border-[#3D3D3D] mb-3"
                 style={{ backgroundColor: 'var(--background-secondary)' }}
               >
-                <Image
-                  src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/header.jpg`}
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/capsule_184x69.jpg`}
                   alt={selectedGame.name}
                   width={92}
-                  height={43}
+                  height={34}
                   className="rounded border border-gray-300 flex-shrink-0 object-cover"
                 />
                 <div className="flex-grow min-w-0">
@@ -312,11 +312,12 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
                         onClick={() => setSelectedGame(game)}
                         className="w-full flex items-center gap-3 p-2 hover:bg-gray-100 transition-colors border-b border-gray-200 last:border-b-0"
                       >
-                        <Image
-                          src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
+                          src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/capsule_184x69.jpg`}
                           alt={game.name}
                           width={69}
-                          height={32}
+                          height={26}
                           className="rounded border border-gray-300 flex-shrink-0 object-cover"
                         />
                         <div className="flex-grow text-left min-w-0">
