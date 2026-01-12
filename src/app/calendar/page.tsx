@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Home, Calendar as CalendarIcon } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { GameEvent, CalendarDay, CalendarView } from '@/types/calendar';
 import { getHoliday, Holiday } from '@/lib/holidays';
@@ -503,19 +503,27 @@ export default function CalendarPage() {
       {/* ヘッダー */}
       <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
         <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-              <ArrowLeft className="w-5 h-5" />
-              <Image src="/icons/icom.png" alt="ツミナビ" width={40} height={40} />
+          <div className="flex items-center gap-4">
+            {/* 戻るボタン（バトル画面と同じスタイル） */}
+            <Link
+              href="/"
+              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 font-bold transition-colors"
+              style={{ backgroundColor: 'var(--card-bg)' }}
+            >
+              <Home className="w-5 h-5" />
+              <span className="hidden sm:inline">{language === 'ja' ? '戻る' : 'Back'}</span>
             </Link>
-            <div>
-              <h1 className="text-xl font-black gradient-text flex items-center gap-2">
-                <CalendarIcon className="w-5 h-5" />
-                {language === 'ja' ? 'ゲームカレンダー' : 'Game Calendar'}
-              </h1>
-              <p className="text-xs text-gray-500">
-                {language === 'ja' ? 'ゲームの予定を管理' : 'Manage your gaming schedule'}
-              </p>
+            <div className="flex items-center gap-3">
+              <Image src="/icons/icom.png" alt="ツミナビ" width={40} height={40} />
+              <div>
+                <h1 className="text-xl font-black gradient-text flex items-center gap-2">
+                  <CalendarIcon className="w-5 h-5" />
+                  {language === 'ja' ? 'ゲームカレンダー' : 'Game Calendar'}
+                </h1>
+                <p className="text-xs text-gray-500">
+                  {language === 'ja' ? 'ゲームの予定を管理' : 'Manage your gaming schedule'}
+                </p>
+              </div>
             </div>
           </div>
 
