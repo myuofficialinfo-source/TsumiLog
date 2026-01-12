@@ -253,21 +253,22 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
                 style={{ backgroundColor: 'var(--background-secondary)' }}
               >
                 <Image
-                  src={selectedGame.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/header.jpg`}
+                  src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/capsule_sm_120.jpg`}
                   alt={selectedGame.name}
-                  width={92}
-                  height={43}
-                  className="rounded border border-gray-300"
+                  width={60}
+                  height={28}
+                  className="rounded border border-gray-300 flex-shrink-0"
                 />
-                <div className="flex-grow">
-                  <p className="font-bold text-sm">{selectedGame.name}</p>
+                <div className="flex-grow min-w-0">
+                  <p className="font-bold text-sm truncate">{selectedGame.name}</p>
                   <p className="text-xs text-gray-500">
                     {Math.round(selectedGame.playtime_forever / 60)}{language === 'ja' ? '時間プレイ' : 'h played'}
+                    {selectedGame.isBacklog && <span className="ml-1 text-orange-500">積みゲー</span>}
                   </p>
                 </div>
                 <button
                   onClick={() => setSelectedGame(null)}
-                  className="p-1 rounded hover:bg-gray-200"
+                  className="p-1 rounded hover:bg-gray-200 flex-shrink-0"
                 >
                   <X className="w-4 h-4 text-gray-400" />
                 </button>
@@ -312,13 +313,19 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
                         className="w-full flex items-center gap-3 p-2 hover:bg-gray-100 transition-colors border-b border-gray-200 last:border-b-0"
                       >
                         <Image
-                          src={game.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
+                          src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/capsule_sm_120.jpg`}
                           alt={game.name}
-                          width={46}
-                          height={21}
-                          className="rounded border border-gray-300"
+                          width={40}
+                          height={18}
+                          className="rounded border border-gray-300 flex-shrink-0"
                         />
-                        <span className="text-sm font-medium truncate">{game.name}</span>
+                        <div className="flex-grow text-left min-w-0">
+                          <span className="text-sm font-medium truncate block">{game.name}</span>
+                          <span className="text-[10px] text-gray-500">
+                            {Math.round(game.playtime_forever / 60)}{language === 'ja' ? '時間' : 'h'}
+                            {game.isBacklog && <span className="ml-1 text-orange-500">積みゲー</span>}
+                          </span>
+                        </div>
                       </button>
                     ))
                   )}

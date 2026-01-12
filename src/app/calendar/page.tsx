@@ -524,7 +524,7 @@ export default function CalendarPage() {
             const weekDays = calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7);
             const bars = weekEventBars[weekIndex] || [];
             const maxRow = Math.max(0, ...bars.map(b => b.row));
-            const barAreaHeight = (maxRow + 1) * 22; // 各バーの高さ20px + 余白2px
+            const barAreaHeight = bars.length > 0 ? (maxRow + 1) * 22 : 0; // イベントがある時のみバーエリアを確保
 
             return (
               <div key={weekIndex} className="relative">
@@ -577,7 +577,7 @@ export default function CalendarPage() {
                         } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: `${Math.max(100, 28 + barAreaHeight + 50)}px`,
+                          minHeight: '130px', // 固定の高さで縦に伸ばす
                           paddingTop: `${28 + barAreaHeight + 4}px`,
                           paddingLeft: '8px',
                           paddingRight: '8px',
@@ -608,28 +608,10 @@ export default function CalendarPage() {
                           )}
                         </div>
 
-                        {/* ユーザーイベント表示 */}
+                        {/* ユーザーイベント表示 - 自分の予定を先に表示 */}
                         <div className="space-y-1">
-                          {/* ウィッシュリスト発売日 */}
-                          {getWishlistReleasesForDate(day.dateStr).slice(0, 1).map(release => (
-                            <div
-                              key={`wl-${release.appid}`}
-                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-white truncate"
-                              style={{ backgroundColor: 'var(--pop-yellow)' }}
-                              title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
-                            >
-                              <Image
-                                src={release.headerImage}
-                                alt={release.name}
-                                width={14}
-                                height={14}
-                                className="rounded-sm flex-shrink-0"
-                              />
-                              <span className="truncate text-[10px]">🎮 {release.name}</span>
-                            </div>
-                          ))}
-                          {/* ユーザーイベント */}
-                          {day.events.slice(0, getWishlistReleasesForDate(day.dateStr).length > 0 ? 1 : 2).map(event => (
+                          {/* ユーザーの予定（最大3件） */}
+                          {day.events.slice(0, 3).map(event => (
                             <div
                               key={event.id}
                               draggable
@@ -643,18 +625,36 @@ export default function CalendarPage() {
                               style={{ backgroundColor: getEventTypeColor(event.type) }}
                             >
                               <Image
-                                src={event.gameImage}
+                                src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${event.gameId}/capsule_sm_120.jpg`}
                                 alt={event.gameName}
-                                width={14}
-                                height={14}
+                                width={20}
+                                height={9}
                                 className="rounded-sm flex-shrink-0"
                               />
                               <span className="truncate text-[10px]">{event.gameName}</span>
                             </div>
                           ))}
-                          {(day.events.length + getWishlistReleasesForDate(day.dateStr).length) > 2 && (
+                          {/* ウィッシュリスト発売日（予定がない場合のみ表示） */}
+                          {day.events.length === 0 && getWishlistReleasesForDate(day.dateStr).slice(0, 2).map(release => (
+                            <div
+                              key={`wl-${release.appid}`}
+                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-white truncate"
+                              style={{ backgroundColor: 'var(--pop-yellow)' }}
+                              title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
+                            >
+                              <Image
+                                src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${release.appid}/capsule_sm_120.jpg`}
+                                alt={release.name}
+                                width={20}
+                                height={9}
+                                className="rounded-sm flex-shrink-0"
+                              />
+                              <span className="truncate text-[10px]">🎮 {release.name}</span>
+                            </div>
+                          ))}
+                          {(day.events.length > 3 || (day.events.length === 0 && getWishlistReleasesForDate(day.dateStr).length > 2)) && (
                             <span className="text-[10px] text-gray-500 font-medium">
-                              +{day.events.length + getWishlistReleasesForDate(day.dateStr).length - 2} {language === 'ja' ? '件' : 'more'}
+                              +{Math.max(0, day.events.length - 3) + (day.events.length === 0 ? Math.max(0, getWishlistReleasesForDate(day.dateStr).length - 2) : 0)} {language === 'ja' ? '件' : 'more'}
                             </span>
                           )}
                         </div>
