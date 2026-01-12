@@ -396,6 +396,7 @@ function BattleContent() {
           playtimeMinutes: card.playtimeMinutes,
           developer: card.developer,
           publisher: card.publisher,
+          headerImage: card.headerImage,
         } : null),
         backLine: deck.backLine.map(card => card ? {
           appid: card.appid,
@@ -409,6 +410,7 @@ function BattleContent() {
           playtimeMinutes: card.playtimeMinutes,
           developer: card.developer,
           publisher: card.publisher,
+          headerImage: card.headerImage,
         } : null),
       };
 
@@ -437,11 +439,11 @@ function BattleContent() {
       setPlayerDeck({
         frontLine: serverPlayerDeck.frontLine.map((card: any) => card ? {
           ...card,
-          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+          headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
         } : null),
         backLine: serverPlayerDeck.backLine.map((card: any) => card ? {
           ...card,
-          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+          headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
         } : null),
         synergies: deck.synergies, // シナジーは元のデッキから引き継ぐ
       });
@@ -450,11 +452,11 @@ function BattleContent() {
       setOpponentDeck({
         frontLine: serverOpponentDeck.frontLine.map((card: any) => card ? {
           ...card,
-          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+          headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
         } : null),
         backLine: serverOpponentDeck.backLine.map((card: any) => card ? {
           ...card,
-          headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+          headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
         } : null),
         synergies: [], // 相手のシナジーは計算しない（表示用）
       });

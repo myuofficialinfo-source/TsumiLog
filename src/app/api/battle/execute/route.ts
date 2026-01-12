@@ -47,6 +47,7 @@ function convertDefenseDeckCardToServerCard(card: DefenseDeckCard): ServerBattle
     playtimeMinutes: card.playtimeMinutes,
     developer: card.developer,
     publisher: card.publisher,
+    headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
   };
 }
 
@@ -72,6 +73,7 @@ function generatePveOpponentDeck(playerScore: number): {
       playtimeMinutes: card.playtimeMinutes || 0,
       developer: card.developer,
       publisher: card.publisher,
+      headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
     };
   };
 
@@ -146,6 +148,7 @@ export async function POST(request: NextRequest) {
               playtimeMinutes: card.playtimeMinutes || 0,
               developer: card.developer,
               publisher: card.publisher,
+              headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
             };
           }
         });
@@ -165,6 +168,7 @@ export async function POST(request: NextRequest) {
               playtimeMinutes: card.playtimeMinutes || 0,
               developer: card.developer,
               publisher: card.publisher,
+              headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
             };
           }
         });

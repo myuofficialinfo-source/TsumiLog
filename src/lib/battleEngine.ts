@@ -20,6 +20,7 @@ export interface ServerBattleCard {
   playtimeMinutes: number;
   developer?: string;
   publisher?: string;
+  headerImage?: string;  // カード画像URL
 }
 
 // バトル中のカード状態
