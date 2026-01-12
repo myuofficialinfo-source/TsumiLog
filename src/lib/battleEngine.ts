@@ -68,10 +68,13 @@ const POSITION_MODIFIERS = {
 };
 
 // 攻撃インターバル計算
+// ※クライアント側(BattleArena.tsx)のcalculateIntervalと同じ計算式を使用すること
 function calculateAttackInterval(card: ServerBattleCard): number {
   const baseInterval = 2000;
-  const attackPenalty = card.attack > 200 ? (card.attack - 200) * 2 : 0;
-  const hpBonus = card.hp > 1000 ? Math.min(300, (card.hp - 1000) / 10) : 0;
+  // 攻撃力10ごとに100msペナルティ（最大500ms）- 高火力カードは攻撃が遅い
+  const attackPenalty = Math.min(500, Math.floor(card.attack / 10) * 100);
+  // HP100ごとに50msボーナス（最大300ms）- 高耐久カードは攻撃が速い
+  const hpBonus = Math.min(300, Math.floor(card.hp / 100) * 50);
   const firstStrikeBonus = card.skills.includes('firstStrike') ? -500 : 0;
   const speedBonus = card.skills.includes('speed') ? -300 : 0;
   const earlybirdBonus = card.skills.includes('earlybird') ? -800 : 0;

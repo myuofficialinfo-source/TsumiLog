@@ -1302,9 +1302,8 @@ export default function BattleArena({
                 {playerFrontCards.map((card, index) => {
                   return (
                     <div
-                      key={`player-front-${index}`}
-                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''}`}
-                      style={shakeTarget === 'player' ? { animation: `shake 0.5s ease-in-out ${shakeKey}` } : undefined}
+                      key={`player-front-${index}-${shakeTarget === 'player' ? shakeKey : 0}`}
+                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''} ${shakeTarget === 'player' ? 'animate-shake' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1346,9 +1345,8 @@ export default function BattleArena({
                 {playerBackCards.map((card, index) => {
                   return (
                     <div
-                      key={`player-back-${index}`}
-                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''}`}
-                      style={shakeTarget === 'player' ? { animation: `shake 0.5s ease-in-out ${shakeKey}` } : undefined}
+                      key={`player-back-${index}-${shakeTarget === 'player' ? shakeKey : 0}`}
+                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''} ${shakeTarget === 'player' ? 'animate-shake' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1466,9 +1464,8 @@ export default function BattleArena({
                 {opponentFrontCards.map((card, index) => {
                   return (
                     <div
-                      key={`opponent-front-${index}`}
-                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''}`}
-                      style={shakeTarget === 'opponent' ? { animation: `shake 0.5s ease-in-out ${shakeKey}` } : undefined}
+                      key={`opponent-front-${index}-${shakeTarget === 'opponent' ? shakeKey : 0}`}
+                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''} ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1510,9 +1507,8 @@ export default function BattleArena({
                 {opponentBackCards.map((card, index) => {
                   return (
                     <div
-                      key={`opponent-back-${index}`}
-                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''}`}
-                      style={shakeTarget === 'opponent' ? { animation: `shake 0.5s ease-in-out ${shakeKey}` } : undefined}
+                      key={`opponent-back-${index}-${shakeTarget === 'opponent' ? shakeKey : 0}`}
+                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''} ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}
                     >
                       <BattleCard
                         card={card}
