@@ -424,12 +424,19 @@ export function calculateSublimationBuff(
 }
 
 // レビュー数からレアリティを計算
-// レビュー数が多い（有名）= コモン、少ない（マイナー）= レア
+// 超マイナー・超メジャー = コモン、中堅マイナー = レア
+// 10-500件の隠れた良作がUC（ウルトラレア）
 export function calculateRarityFromReviews(reviewCount: number): Rarity {
-  if (reviewCount >= 50000) return 'common';      // 5万件以上 → C
-  if (reviewCount >= 10000) return 'rare';        // 1万件以上 → R
-  if (reviewCount >= 500) return 'superRare';     // 500件以上 → SR
-  return 'ultraRare';                              // 500件未満 → UC
+  // レビュー10件以下または5万件以上 → C（みんな持ってる or ゲーム未満）
+  if (reviewCount <= 10 || reviewCount >= 50000) return 'common';
+  // 1万〜5万件 → C（メジャータイトル）
+  if (reviewCount >= 10000) return 'common';
+  // 1000〜1万件 → R（人気作）
+  if (reviewCount >= 1000) return 'rare';
+  // 500〜1000件 → SR（中堅タイトル）
+  if (reviewCount >= 500) return 'superRare';
+  // 10〜500件 → UC（掘り出し物・隠れた名作）
+  return 'ultraRare';
 }
 
 // ===== 防衛デッキ関連の型（非同期PVP用） =====
