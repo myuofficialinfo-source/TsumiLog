@@ -101,6 +101,11 @@ function HomeContent() {
       }
 
       setSteamData(data);
+
+      // ゲームリストをlocalStorageにキャッシュ（カレンダー等で使用）
+      if (data.games && Array.isArray(data.games) && data.games.length > 0) {
+        localStorage.setItem('cachedGames', JSON.stringify(data.games));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {

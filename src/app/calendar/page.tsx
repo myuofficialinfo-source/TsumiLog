@@ -75,19 +75,34 @@ export default function CalendarPage() {
     }
   }, [router]);
 
-  // ゲームリストを取得
+  // ゲームリストを取得（localStorageからのフォールバック付き）
   useEffect(() => {
     if (!steamId) return;
 
     const fetchGames = async () => {
       try {
+        // まずlocalStorageからキャッシュを読み込む
+        const cachedGames = localStorage.getItem('cachedGames');
+        if (cachedGames) {
+          const parsed = JSON.parse(cachedGames);
+          if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+            setGames(parsed);
+          }
+        }
+
+        // APIからも取得を試みる
         const response = await fetch(`/api/steam/games?steamId=${encodeURIComponent(steamId)}`);
-        const data = await response.json();
-        if (data.games) {
-          setGames(data.games);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.games && Array.isArray(data.games) && data.games.length > 0) {
+            setGames(data.games);
+            // 成功したらキャッシュを更新
+            localStorage.setItem('cachedGames', JSON.stringify(data.games));
+          }
         }
       } catch (error) {
         console.error('Failed to fetch games:', error);
+        // エラー時はキャッシュを使用（既に読み込み済み）
       }
     };
 

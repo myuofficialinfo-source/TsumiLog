@@ -245,6 +245,10 @@ function BattleContent() {
           setSteamData(data);
           // セッションにキャッシュ
           sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          // ゲームリストをlocalStorageにキャッシュ（カレンダー等で使用）
+          if (data.games && Array.isArray(data.games) && data.games.length > 0) {
+            localStorage.setItem('cachedGames', JSON.stringify(data.games));
+          }
         } else {
           router.push('/');
         }
