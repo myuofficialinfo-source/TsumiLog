@@ -627,12 +627,46 @@ export default function CalendarPage() {
             const maxRow = Math.max(0, ...bars.map(b => b.row));
             const barAreaHeight = bars.length > 0 ? (maxRow + 1) * 22 : 0;
 
-            // ユーザーイベントの最大件数を計算（敷き詰め表示用）
-            const maxUserEvents = Math.max(...weekDays.map(d => d.events.length), 0);
-            const userEventAreaHeight = maxUserEvents > 0 ? maxUserEvents * 20 : 0;
-
             return (
               <div key={weekIndex} className="relative">
+                {/* Steamイベントバー（期間表示）- 日付のすぐ下に表示 */}
+                {bars.length > 0 && (
+                  <div
+                    className="absolute left-0 right-0 pointer-events-none"
+                    style={{
+                      top: '24px',
+                      height: `${barAreaHeight}px`,
+                      zIndex: 1,
+                    }}
+                  >
+                    {bars.map((bar, barIndex) => (
+                      <div
+                        key={`${bar.event.id}-${barIndex}`}
+                        className="absolute flex items-center text-[10px] font-bold truncate"
+                        style={{
+                          left: `calc(${(bar.startCol / 7) * 100}% + 4px)`,
+                          width: `calc(${(bar.span / 7) * 100}% - 8px)`,
+                          top: `${bar.row * 22}px`,
+                          height: '20px',
+                          backgroundColor: bar.event.color,
+                          opacity: 0.7,
+                          color: 'white',
+                          borderRadius: bar.isStart && bar.isEnd ? '4px' :
+                                        bar.isStart ? '4px 0 0 4px' :
+                                        bar.isEnd ? '0 4px 4px 0' : '0',
+                          paddingLeft: bar.isStart ? '6px' : '2px',
+                          paddingRight: bar.isEnd ? '6px' : '2px',
+                        }}
+                        title={`${language === 'ja' ? bar.event.name : bar.event.nameEn} (${bar.event.startDate} - ${bar.event.endDate})`}
+                      >
+                        <span className="truncate">
+                          {language === 'ja' ? bar.event.name : bar.event.nameEn}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {/* 日付グリッド */}
                 <div className="grid grid-cols-7">
                   {weekDays.map((day, dayIndex) => {
@@ -650,7 +684,7 @@ export default function CalendarPage() {
                         } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: '130px',
+                          minHeight: `${Math.max(100, 24 + barAreaHeight + 10)}px`,
                           ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
                         }}
                       >
@@ -670,8 +704,11 @@ export default function CalendarPage() {
                           )}
                         </div>
 
-                        {/* ユーザーイベント表示 - 日付のすぐ下に敷き詰め */}
-                        <div className="px-1 space-y-0.5" style={{ minHeight: `${userEventAreaHeight}px` }}>
+                        {/* ユーザーイベント表示 - Steamイベントバーに重ねてオーバーレイ */}
+                        <div
+                          className="px-1 space-y-0.5 relative"
+                          style={{ zIndex: 10 }}
+                        >
                           {day.events.map(event => (
                             <div
                               key={event.id}
@@ -704,43 +741,6 @@ export default function CalendarPage() {
                     );
                   })}
                 </div>
-
-                {/* Steamイベントバー（期間表示）- セルの下部に表示 */}
-                {bars.length > 0 && (
-                  <div
-                    className="absolute left-0 right-0 pointer-events-none"
-                    style={{
-                      bottom: '4px',
-                      height: `${barAreaHeight}px`,
-                    }}
-                  >
-                    {bars.map((bar, barIndex) => (
-                      <div
-                        key={`${bar.event.id}-${barIndex}`}
-                        className="absolute flex items-center text-[10px] font-bold truncate"
-                        style={{
-                          left: `calc(${(bar.startCol / 7) * 100}% + 4px)`,
-                          width: `calc(${(bar.span / 7) * 100}% - 8px)`,
-                          top: `${bar.row * 22}px`,
-                          height: '20px',
-                          backgroundColor: bar.event.color,
-                          opacity: 0.7,
-                          color: 'white',
-                          borderRadius: bar.isStart && bar.isEnd ? '4px' :
-                                        bar.isStart ? '4px 0 0 4px' :
-                                        bar.isEnd ? '0 4px 4px 0' : '0',
-                          paddingLeft: bar.isStart ? '6px' : '2px',
-                          paddingRight: bar.isEnd ? '6px' : '2px',
-                        }}
-                        title={`${language === 'ja' ? bar.event.name : bar.event.nameEn} (${bar.event.startDate} - ${bar.event.endDate})`}
-                      >
-                        <span className="truncate">
-                          {language === 'ja' ? bar.event.name : bar.event.nameEn}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
               </div>
             );
           })}
