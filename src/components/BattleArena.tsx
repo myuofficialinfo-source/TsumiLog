@@ -653,10 +653,54 @@ export default function BattleArena({
       const currentLog = serverLogsRef.current[currentIndex];
       const nextLog = serverLogsRef.current[currentIndex + 1];
 
-      // ログに基づいてUIを更新
-      if (currentLog.type === 'attack' || currentLog.type === 'damage') {
+      // ログに基づいてUIを更新（攻撃/ダメージ/クリティカルのいずれか）
+      const isDamageLog = currentLog.type === 'attack' || currentLog.type === 'damage' || currentLog.type === 'critical';
+      if (isDamageLog) {
         const isPlayerAttacking = currentLog.attackerId?.startsWith('player') ?? false;
         const targetSide: 'player' | 'opponent' = isPlayerAttacking ? 'opponent' : 'player';
+        const isCritical = currentLog.type === 'critical';
+
+        // 攻撃者のインデックスと位置を解析（例: "player_front_0" → { isPlayer: true, position: 'front', index: 0 }）
+        let attackerPosition: 'front' | 'back' = 'front';
+        let attackerIndex = 0;
+        let attackerName = '';
+        if (currentLog.attackerId) {
+          const parts = currentLog.attackerId.split('_');
+          if (parts.length >= 3) {
+            attackerPosition = parts[1] as 'front' | 'back';
+            attackerIndex = parseInt(parts[2], 10) || 0;
+          }
+          // 攻撃者のカード名を取得
+          const attackerCard = battleCards.find(c =>
+            c.isPlayer === isPlayerAttacking &&
+            c.position === attackerPosition &&
+            c.index === attackerIndex
+          );
+          attackerName = attackerCard?.name || '';
+        }
+
+        // currentActionを設定してカードをアクティブ状態にする
+        setCurrentAction({
+          attacker: attackerName,
+          attackerIndex,
+          attackerPosition,
+          attackerIsPlayer: isPlayerAttacking,
+          defender: '',
+          damage: currentLog.damage || 0,
+          isCritical,
+          isPlayerAttacking,
+          skill: currentLog.skill,
+        });
+
+        // 攻撃したカードのタイマーをリセット（ゲージが満タンから0に）
+        setBattleCards(prev => prev.map(card => {
+          if (card.isPlayer === isPlayerAttacking &&
+              card.position === attackerPosition &&
+              card.index === attackerIndex) {
+            return { ...card, currentTimer: 0 };
+          }
+          return card;
+        }));
 
         // HP更新
         if (currentLog.playerHp !== undefined) {
@@ -676,7 +720,7 @@ export default function BattleArena({
           setDamageDisplays(prev => [...prev, {
             target: targetSide,
             damage: currentLog.damage!,
-            isCritical: currentLog.type === 'critical',
+            isCritical,
             key: damageKey,
             offsetX,
             offsetY,
@@ -692,6 +736,7 @@ export default function BattleArena({
         setShakeTarget(targetSide);
         setTimeout(() => {
           setShakeTarget(null);
+          setCurrentAction(null); // アクティブ状態も解除
         }, 400 / speed);
 
         // 火花エフェクト
@@ -709,9 +754,16 @@ export default function BattleArena({
         }, 600 / speed);
 
         // バトルログ追加
-        if (currentLog.message) {
-          setBattleLog(prev => [currentLog.message!, ...prev.slice(0, 9)]);
-        }
+        // サーバーからのmessageがあればそれを使用、なければ生成
+        const playerLabel = personaName || (language === 'ja' ? 'あなた' : 'You');
+        const opponentLabel = opponentName || 'AI';
+        const ownerLabel = isPlayerAttacking ? playerLabel : opponentLabel;
+        const targetLabel = isPlayerAttacking ? opponentLabel : playerLabel;
+        const skillText = currentLog.skill ? ` [${currentLog.skill}]` : '';
+        const critText = isCritical ? ' CRIT!' : '';
+        const logMessage = currentLog.message ||
+          `${ownerLabel}の${attackerName}${skillText} → ${targetLabel} (-${currentLog.damage || 0}${critText})`;
+        setBattleLog(prev => [logMessage, ...prev.slice(0, 9)]);
       }
 
       // スキル発動表示
@@ -748,7 +800,34 @@ export default function BattleArena({
     return () => {
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [serverMode, serverBattleResult, battleState, speed]);
+  }, [serverMode, serverBattleResult, battleState, speed, language, opponentName, personaName]);
+
+  // サーバーモード：タイマーを徐々に増加させるアニメーションループ
+  useEffect(() => {
+    if (!serverMode || battleState !== 'fighting') return;
+
+    let animFrameId: number;
+    let lastTime = performance.now();
+
+    const updateTimers = (currentTime: number) => {
+      const deltaTime = (currentTime - lastTime) * speed;
+      lastTime = currentTime;
+
+      // 全カードのタイマーを増加（maxTimerを超えないように）
+      setBattleCards(prev => prev.map(card => ({
+        ...card,
+        currentTimer: Math.min(card.currentTimer + deltaTime, card.maxTimer),
+      })));
+
+      animFrameId = requestAnimationFrame(updateTimers);
+    };
+
+    animFrameId = requestAnimationFrame(updateTimers);
+
+    return () => {
+      cancelAnimationFrame(animFrameId);
+    };
+  }, [serverMode, battleState, speed]);
 
   // アクション処理用のref
   const pendingActionRef = useRef<{
