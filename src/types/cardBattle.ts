@@ -316,10 +316,10 @@ export const SUBLIMATION_BONUS: Record<Rarity, number> = {
 
 // トロコンボーナス設定（実績100%達成でさらにバフ）
 export const TROPHY_BONUS: Record<Rarity, number> = {
-  common: 3,       // +3%
-  rare: 5,         // +5%
-  superRare: 8,    // +8%
-  ultraRare: 12,   // +12%
+  common: 6,       // +6%
+  rare: 10,        // +10%
+  superRare: 16,   // +16%
+  ultraRare: 24,   // +24%
 };
 
 // 30分未満トロコンのボーナス減衰率（実績稼ぎゲー対策）

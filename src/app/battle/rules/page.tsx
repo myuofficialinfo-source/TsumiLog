@@ -239,18 +239,8 @@ export default function RulesPage() {
             </li>
             <li>
               {language === 'ja'
-                ? 'トロコン達成でさらにボーナス追加（Common +3%, Rare +5%, SR +8%, UR +12%）'
-                : 'Additional bonus for 100% achievements (Common +3%, Rare +5%, SR +8%, UR +12%)'}
-            </li>
-            <li className="text-sm opacity-75">
-              {language === 'ja'
-                ? '※30分未満でトロコンしたゲームはボーナスが1/10（実績稼ぎゲー対策）'
-                : '※Games with 100% achievements under 30min get 1/10 bonus (anti-farming measure)'}
-            </li>
-            <li className="text-sm opacity-75">
-              {language === 'ja'
-                ? '※レビュー100件以下のゲームはトロコンボーナスが半分（マイナーゲー対策）'
-                : '※Games with less than 100 reviews get half trophy bonus (anti-obscure game farming)'}
+                ? 'トロコン達成でさらにボーナス追加（Common +6%, Rare +10%, SR +16%, UR +24%）'
+                : 'Additional bonus for 100% achievements (Common +6%, Rare +10%, SR +16%, UR +24%)'}
             </li>
           </ul>
         </section>
@@ -307,25 +297,25 @@ export default function RulesPage() {
           </h2>
           <p className="text-gray-700 mb-4">
             {language === 'ja'
-              ? 'レアリティはSteamのレビュー数で決まり、マイナーゲームほどレア。成長上限に影響'
-              : 'Rarity is determined by Steam review count - more obscure games are rarer. Affects growth cap'}
+              ? 'レアリティはSteamのレビュー数で決まり、マイナーゲームほどレアで攻撃力に影響する'
+              : 'Rarity is determined by Steam review count - more obscure games are rarer and affect attack power'}
           </p>
           <div className="grid gap-2">
             <div className="flex items-center gap-3">
               <span className="w-12 font-bold text-center" style={{ color: '#FF6B6B' }}>UC</span>
-              <span className="text-gray-700">{language === 'ja' ? '500件未満（マイナー）- 成長2.5倍' : 'Under 500 reviews (obscure) - Growth x2.5'}</span>
+              <span className="text-gray-700">{language === 'ja' ? '500件未満 - 攻撃力×2.5' : 'Under 500 reviews - ATK x2.5'}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-12 font-bold text-center" style={{ color: '#FFD700' }}>SR</span>
-              <span className="text-gray-700">{language === 'ja' ? '500〜10,000件 - 成長2.0倍' : '500-10,000 reviews - Growth x2.0'}</span>
+              <span className="text-gray-700">{language === 'ja' ? '500〜1,000件 - 攻撃力×2.0' : '500-1,000 reviews - ATK x2.0'}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-12 font-bold text-center" style={{ color: '#3B82F6' }}>R</span>
-              <span className="text-gray-700">{language === 'ja' ? '1万〜5万件 - 成長1.5倍' : '10K-50K reviews - Growth x1.5'}</span>
+              <span className="text-gray-700">{language === 'ja' ? '1,000〜1万件 - 攻撃力×1.5' : '1K-10K reviews - ATK x1.5'}</span>
             </div>
             <div className="flex items-center gap-3">
               <span className="w-12 font-bold text-center" style={{ color: '#9CA3AF' }}>C</span>
-              <span className="text-gray-700">{language === 'ja' ? '5万件以上（有名）- 成長1.0倍' : '50K+ reviews (famous) - Growth x1.0'}</span>
+              <span className="text-gray-700">{language === 'ja' ? '1万件以上 - 攻撃力×1.0' : '10K+ reviews - ATK x1.0'}</span>
             </div>
           </div>
         </section>

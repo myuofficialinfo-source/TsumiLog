@@ -184,17 +184,40 @@ export default function DeckBuilder({
 }: DeckBuilderProps) {
   const { language } = useLanguage();
 
-  // ユーザーのランキング情報
+  // ユーザーのランキング情報（localStorageからキャッシュを読み込み）
   const [userStats, setUserStats] = useState<{
     sublimations: number;
     wins: number;
     score: number;
     rank: number | null;
-  } | null>(null);
+  } | null>(() => {
+    // 初期値としてキャッシュを読み込む
+    if (typeof window !== 'undefined' && steamId) {
+      const cached = localStorage.getItem(`userStats_${steamId}`);
+      if (cached) {
+        try {
+          return JSON.parse(cached);
+        } catch {
+          return null;
+        }
+      }
+    }
+    return null;
+  });
 
-  // ランキング情報を取得
+  // ランキング情報を取得（値が変わったらキャッシュ更新）
   useEffect(() => {
     if (!steamId) return;
+
+    // キャッシュから読み込み（初期state設定後の再読み込み用）
+    const cached = localStorage.getItem(`userStats_${steamId}`);
+    if (cached && !userStats) {
+      try {
+        setUserStats(JSON.parse(cached));
+      } catch {
+        // ignore
+      }
+    }
 
     const fetchUserStats = async () => {
       try {
@@ -205,12 +228,16 @@ export default function DeckBuilder({
         const response = await fetch(`/api/battle?${params.toString()}`);
         if (response.ok) {
           const data = await response.json();
-          setUserStats({
+          const newStats = {
             sublimations: data.sublimations || 0,
             wins: data.wins || 0,
             score: data.score || 0,
             rank: data.rank,
-          });
+          };
+
+          // キャッシュに保存
+          localStorage.setItem(`userStats_${steamId}`, JSON.stringify(newStats));
+          setUserStats(newStats);
         }
       } catch (error) {
         console.error('Failed to fetch user stats:', error);
@@ -241,15 +268,44 @@ export default function DeckBuilder({
       });
   }, [availableGames, gameDetails]);
 
-  // デッキ番号管理（1〜5）
-  const [currentDeckNumber, setCurrentDeckNumber] = useState(1);
+  // デッキ番号管理（1〜5）- キャッシュから初期値読み込み
+  const [currentDeckNumber, setCurrentDeckNumber] = useState(() => {
+    if (typeof window !== 'undefined' && steamId) {
+      const cached = localStorage.getItem(`activeDeckNumber_${steamId}`);
+      if (cached) return parseInt(cached, 10) || 1;
+    }
+    return 1;
+  });
   const [deckStates, setDeckStates] = useState<{
     [key: number]: {
       frontLine: (BattleCardType | null)[];
       backLine: (BattleCardType | null)[];
       isActive: boolean;
     };
-  }>({});
+  }>(() => {
+    // キャッシュからisActive情報のみ読み込み（カードデータはavailableCardsが必要なので後で復元）
+    if (typeof window !== 'undefined' && steamId) {
+      const cached = localStorage.getItem(`deckActiveStates_${steamId}`);
+      if (cached) {
+        try {
+          const parsed = JSON.parse(cached);
+          // isActiveのみの状態を作成
+          const states: { [key: number]: { frontLine: (BattleCardType | null)[]; backLine: (BattleCardType | null)[]; isActive: boolean } } = {};
+          Object.entries(parsed).forEach(([key, value]) => {
+            states[parseInt(key)] = {
+              frontLine: [null, null, null, null, null],
+              backLine: [null, null, null, null, null],
+              isActive: (value as { isActive: boolean }).isActive,
+            };
+          });
+          return states;
+        } catch {
+          return {};
+        }
+      }
+    }
+    return {};
+  });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingDecks, setIsLoadingDecks] = useState(true);
   const [isSavingDefenseDeck, setIsSavingDefenseDeck] = useState(false);
@@ -309,10 +365,19 @@ export default function DeckBuilder({
               setCurrentDeckNumber(deck.deckNumber);
               setFrontLine(restoredFront);
               setBackLine(restoredBack);
+              // キャッシュに保存
+              localStorage.setItem(`activeDeckNumber_${steamId}`, deck.deckNumber.toString());
             }
           }
 
           setDeckStates(newDeckStates);
+
+          // isActive状態をキャッシュに保存
+          const activeStates: { [key: number]: { isActive: boolean } } = {};
+          Object.entries(newDeckStates).forEach(([key, value]) => {
+            activeStates[parseInt(key)] = { isActive: value.isActive };
+          });
+          localStorage.setItem(`deckActiveStates_${steamId}`, JSON.stringify(activeStates));
         }
       } catch (error) {
         console.error('Failed to load decks:', error);
@@ -478,6 +543,15 @@ export default function DeckBuilder({
             isActive: true,
           };
         }
+
+        // キャッシュに保存
+        const activeStates: { [key: number]: { isActive: boolean } } = {};
+        Object.entries(newStates).forEach(([key, value]) => {
+          activeStates[parseInt(key)] = { isActive: value.isActive };
+        });
+        localStorage.setItem(`deckActiveStates_${steamId}`, JSON.stringify(activeStates));
+        localStorage.setItem(`activeDeckNumber_${steamId}`, deckNum.toString());
+
         return newStates;
       });
     } catch (error) {
