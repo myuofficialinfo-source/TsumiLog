@@ -709,7 +709,7 @@ export default function CalendarPage() {
             {/* 時間列のヘッダー */}
             <div
               className="py-2 text-center font-bold text-xs text-gray-500"
-              style={{ backgroundColor: 'var(--background-secondary)' }}
+              style={{ backgroundColor: 'var(--background-secondary)', width: '60px' }}
             >
               {language === 'ja' ? '時間' : 'Time'}
             </div>
@@ -747,76 +747,185 @@ export default function CalendarPage() {
             })}
           </div>
 
-          {/* タイムグリッド */}
-          <div className="max-h-[600px] overflow-y-auto">
-            {timeSlots.map(hour => (
-              <div key={hour} className="grid grid-cols-8 border-b border-[#E5E5E5]">
-                {/* 時間ラベル */}
-                <div
-                  className="py-2 px-2 text-right text-xs text-gray-500 border-r border-[#E5E5E5]"
-                  style={{ backgroundColor: 'var(--card-bg)' }}
-                >
-                  {hour}:00
-                </div>
-                {/* 各曜日のセル */}
-                {weekViewDays.map((day, dayIndex) => {
-                  const dayOfWeek = day.date.getDay();
-                  // この時間帯に該当するイベントを取得
-                  const hourEvents = day.events.filter(event => {
-                    if (!event.startTime) return false;
-                    const eventHour = parseInt(event.startTime.split(':')[0]);
-                    return eventHour === hour;
-                  });
-                  // 時間指定のないイベント（0時に表示）
-                  const noTimeEvents = hour === 0 ? day.events.filter(e => !e.startTime) : [];
-
-                  return (
-                    <div
-                      key={dayIndex}
-                      onClick={() => {
-                        setSelectedDate(day.dateStr);
-                        setShowAddModal(true);
-                      }}
-                      className={`min-h-[50px] p-1 border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50 transition-colors ${
-                        dayOfWeek === 0 || dayOfWeek === 6 ? 'bg-gray-50/50' : ''
-                      } ${day.isToday ? 'bg-blue-50/30' : ''}`}
-                      style={{ backgroundColor: day.isToday ? 'rgba(59, 130, 246, 0.05)' : 'var(--card-bg)' }}
-                    >
-                      {/* 時間指定のないイベント（終日イベント風に0時に表示） */}
-                      {noTimeEvents.map(event => (
-                        <div
-                          key={event.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedEvent(event);
-                          }}
-                          className="px-1 py-0.5 mb-0.5 rounded text-[10px] font-medium text-white truncate cursor-pointer hover:opacity-80"
-                          style={{ backgroundColor: getEventTypeColor(event.type) }}
-                          title={event.gameName}
-                        >
-                          {event.gameName}
-                        </div>
-                      ))}
-                      {/* 時間指定のあるイベント */}
-                      {hourEvents.map(event => (
-                        <div
-                          key={event.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedEvent(event);
-                          }}
-                          className="px-1 py-0.5 mb-0.5 rounded text-[10px] font-medium text-white truncate cursor-pointer hover:opacity-80"
-                          style={{ backgroundColor: getEventTypeColor(event.type) }}
-                          title={`${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''} ${event.gameName}`}
-                        >
-                          <span className="opacity-75">{event.startTime}</span> {event.gameName}
-                        </div>
-                      ))}
-                    </div>
-                  );
-                })}
+          {/* タイムグリッド（オーバーレイ対応） */}
+          <div className="max-h-[600px] overflow-y-auto relative">
+            <div className="flex">
+              {/* 時間ラベル列 */}
+              <div className="flex-shrink-0" style={{ width: '60px' }}>
+                {timeSlots.map(hour => (
+                  <div
+                    key={hour}
+                    className="h-[50px] px-2 text-right text-xs text-gray-500 border-b border-r border-[#E5E5E5] flex items-start justify-end pt-1"
+                    style={{ backgroundColor: 'var(--card-bg)' }}
+                  >
+                    {hour}:00
+                  </div>
+                ))}
               </div>
-            ))}
+
+              {/* 各曜日の列 */}
+              <div className="flex-grow grid grid-cols-7 relative">
+                {/* グリッド背景（クリック用） */}
+                {weekViewDays.map((day, dayIndex) => (
+                  <div key={dayIndex} className="relative">
+                    {timeSlots.map(hour => {
+                      const dayOfWeek = day.date.getDay();
+                      return (
+                        <div
+                          key={hour}
+                          onClick={() => {
+                            setSelectedDate(day.dateStr);
+                            setShowAddModal(true);
+                          }}
+                          className={`h-[50px] border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-100/50 transition-colors ${
+                            dayOfWeek === 0 || dayOfWeek === 6 ? 'bg-gray-50/30' : ''
+                          }`}
+                          style={{ backgroundColor: day.isToday ? 'rgba(59, 130, 246, 0.03)' : 'var(--card-bg)' }}
+                        />
+                      );
+                    })}
+
+                    {/* この日のイベントをオーバーレイ表示 */}
+                    {day.events.map(event => {
+                      // 時間からピクセル位置を計算
+                      const startHour = event.startTime ? parseInt(event.startTime.split(':')[0]) : 0;
+                      const startMin = event.startTime ? parseInt(event.startTime.split(':')[1]) : 0;
+                      const endHour = event.endTime ? parseInt(event.endTime.split(':')[0]) : startHour + 1;
+                      const endMin = event.endTime ? parseInt(event.endTime.split(':')[1]) : 0;
+
+                      const topPx = (startHour * 50) + (startMin / 60 * 50);
+                      const durationMinutes = (endHour * 60 + endMin) - (startHour * 60 + startMin);
+                      const heightPx = Math.max(25, (durationMinutes / 60) * 50);
+
+                      return (
+                        <div
+                          key={event.id}
+                          draggable
+                          onDragStart={(e) => {
+                            e.dataTransfer.setData('eventId', event.id);
+                            e.dataTransfer.setData('type', 'move');
+                            setDraggedEvent(event);
+                          }}
+                          onDragEnd={() => setDraggedEvent(null)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(event);
+                          }}
+                          className="absolute left-1 right-1 rounded-lg shadow-sm cursor-grab active:cursor-grabbing overflow-hidden group"
+                          style={{
+                            top: `${topPx}px`,
+                            height: `${heightPx}px`,
+                            backgroundColor: getEventTypeColor(event.type),
+                            zIndex: 10,
+                          }}
+                        >
+                          <div className="p-1 h-full flex flex-col">
+                            <div className="text-[10px] font-bold text-white truncate">
+                              {event.gameName}
+                            </div>
+                            {heightPx > 30 && (
+                              <div className="text-[9px] text-white/80">
+                                {event.startTime || '00:00'} - {event.endTime || '01:00'}
+                              </div>
+                            )}
+                          </div>
+                          {/* リサイズハンドル（下部） */}
+                          <div
+                            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
+                            draggable
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              e.dataTransfer.setData('eventId', event.id);
+                              e.dataTransfer.setData('type', 'resize');
+                              e.dataTransfer.setData('startY', e.clientY.toString());
+                              e.dataTransfer.setData('originalEndTime', event.endTime || `${String(startHour + 1).padStart(2, '0')}:00`);
+                            }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+
+                {/* ドロップターゲット（週表示での移動用） */}
+                {draggedEvent && weekViewDays.map((day, dayIndex) => (
+                  <div
+                    key={`drop-${dayIndex}`}
+                    className="absolute inset-0"
+                    style={{
+                      left: `${(dayIndex / 7) * 100}%`,
+                      width: `${100 / 7}%`,
+                      zIndex: 5,
+                      pointerEvents: 'auto',
+                    }}
+                    onDragOver={(e) => {
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = 'move';
+                    }}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      const eventId = e.dataTransfer.getData('eventId');
+                      const dragType = e.dataTransfer.getData('type');
+
+                      if (dragType === 'move' && draggedEvent) {
+                        // 移動処理
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const relativeY = e.clientY - rect.top;
+                        const hour = Math.floor(relativeY / 50);
+                        const minutes = Math.round((relativeY % 50) / 50 * 60 / 15) * 15;
+                        const newStartTime = `${String(Math.min(23, Math.max(0, hour))).padStart(2, '0')}:${String(minutes).padStart(2, '0')}`;
+
+                        // 元の時間差を維持
+                        const oldStartHour = draggedEvent.startTime ? parseInt(draggedEvent.startTime.split(':')[0]) : 0;
+                        const oldStartMin = draggedEvent.startTime ? parseInt(draggedEvent.startTime.split(':')[1]) : 0;
+                        const oldEndHour = draggedEvent.endTime ? parseInt(draggedEvent.endTime.split(':')[0]) : oldStartHour + 1;
+                        const oldEndMin = draggedEvent.endTime ? parseInt(draggedEvent.endTime.split(':')[1]) : 0;
+                        const durationMin = (oldEndHour * 60 + oldEndMin) - (oldStartHour * 60 + oldStartMin);
+
+                        const newEndTotalMin = hour * 60 + minutes + durationMin;
+                        const newEndHour = Math.min(23, Math.floor(newEndTotalMin / 60));
+                        const newEndMin = newEndTotalMin % 60;
+                        const newEndTime = `${String(newEndHour).padStart(2, '0')}:${String(newEndMin).padStart(2, '0')}`;
+
+                        const updatedEvent: GameEvent = {
+                          ...draggedEvent,
+                          date: day.dateStr,
+                          startTime: newStartTime,
+                          endTime: newEndTime,
+                        };
+                        setEvents(prev => prev.map(ev => ev.id === eventId ? updatedEvent : ev));
+                      } else if (dragType === 'resize') {
+                        // リサイズ処理
+                        const startY = parseFloat(e.dataTransfer.getData('startY'));
+                        const originalEndTime = e.dataTransfer.getData('originalEndTime');
+                        const deltaY = e.clientY - startY;
+                        const deltaMinutes = Math.round(deltaY / 50 * 60 / 15) * 15;
+
+                        const origEndHour = parseInt(originalEndTime.split(':')[0]);
+                        const origEndMin = parseInt(originalEndTime.split(':')[1]);
+                        const newEndTotalMin = Math.max(
+                          (draggedEvent.startTime ? parseInt(draggedEvent.startTime.split(':')[0]) * 60 + parseInt(draggedEvent.startTime.split(':')[1]) : 0) + 15,
+                          origEndHour * 60 + origEndMin + deltaMinutes
+                        );
+                        const newEndHour = Math.min(24, Math.floor(newEndTotalMin / 60));
+                        const newEndMin = newEndTotalMin % 60;
+                        const newEndTime = `${String(newEndHour).padStart(2, '0')}:${String(newEndMin).padStart(2, '0')}`;
+
+                        const targetEvent = events.find(ev => ev.id === eventId);
+                        if (targetEvent) {
+                          const updatedEvent: GameEvent = {
+                            ...targetEvent,
+                            endTime: newEndTime,
+                          };
+                          setEvents(prev => prev.map(ev => ev.id === eventId ? updatedEvent : ev));
+                        }
+                      }
+                      setDraggedEvent(null);
+                    }}
+                  />
+                ))}
+              </div>
+            </div>
           </div>
         </div>
         )}
