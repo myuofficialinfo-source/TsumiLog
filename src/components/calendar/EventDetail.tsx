@@ -16,6 +16,8 @@ export default function EventDetail({ event, onClose, onDelete, onUpdate, langua
   const [isEditing, setIsEditing] = useState(false);
   const [editedDate, setEditedDate] = useState(event.date);
   const [editedEndDate, setEditedEndDate] = useState(event.endDate || '');
+  const [editedStartTime, setEditedStartTime] = useState(event.startTime || '');
+  const [editedEndTime, setEditedEndTime] = useState(event.endTime || '');
   const [editedNote, setEditedNote] = useState(event.note || '');
   const [editedType, setEditedType] = useState(event.type);
 
@@ -58,6 +60,8 @@ export default function EventDetail({ event, onClose, onDelete, onUpdate, langua
       ...event,
       date: editedDate,
       endDate: editedEndDate || undefined,
+      startTime: editedStartTime || undefined,
+      endTime: editedEndTime || undefined,
       note: editedNote || undefined,
       type: editedType,
     };
@@ -132,6 +136,30 @@ export default function EventDetail({ event, onClose, onDelete, onUpdate, langua
                   />
                 </div>
 
+                {/* 時間入力 */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-500 mb-1">
+                    {language === 'ja' ? '時間（任意）' : 'Time (optional)'}
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="time"
+                      value={editedStartTime}
+                      onChange={(e) => setEditedStartTime(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-lg border-2 border-[#3D3D3D] text-sm"
+                      style={{ backgroundColor: 'var(--background)' }}
+                    />
+                    <span className="text-gray-400">〜</span>
+                    <input
+                      type="time"
+                      value={editedEndTime}
+                      onChange={(e) => setEditedEndTime(e.target.value)}
+                      className="flex-1 px-3 py-2 rounded-lg border-2 border-[#3D3D3D] text-sm"
+                      style={{ backgroundColor: 'var(--background)' }}
+                    />
+                  </div>
+                </div>
+
                 {/* タイプ選択 */}
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">
@@ -159,14 +187,23 @@ export default function EventDetail({ event, onClose, onDelete, onUpdate, langua
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-sm text-gray-500 mt-1">
-                <Calendar className="w-4 h-4" />
-                <span>{formatDate(event.date)}</span>
-                {event.endDate && (
-                  <>
+              <div className="mt-1 space-y-1">
+                <div className="flex items-center gap-2 text-sm text-gray-500">
+                  <Calendar className="w-4 h-4" />
+                  <span>{formatDate(event.date)}</span>
+                  {event.endDate && (
+                    <>
+                      <span>〜</span>
+                      <span>{formatDate(event.endDate)}</span>
+                    </>
+                  )}
+                </div>
+                {(event.startTime || event.endTime) && (
+                  <div className="flex items-center gap-2 text-sm text-gray-500 pl-6">
+                    <span>{event.startTime || '--:--'}</span>
                     <span>〜</span>
-                    <span>{formatDate(event.endDate)}</span>
-                  </>
+                    <span>{event.endTime || '--:--'}</span>
+                  </div>
                 )}
               </div>
             )}

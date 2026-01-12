@@ -4,6 +4,8 @@ export interface GameEvent {
   id: string;
   date: string; // YYYY-MM-DD形式（開始日）
   endDate?: string; // YYYY-MM-DD形式（終了日、期間イベント用）
+  startTime?: string; // HH:MM形式（週表示用の開始時間）
+  endTime?: string; // HH:MM形式（週表示用の終了時間）
   gameId: number; // Steam appid
   gameName: string;
   gameImage: string;

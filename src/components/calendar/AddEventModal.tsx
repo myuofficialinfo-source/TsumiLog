@@ -42,6 +42,8 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
   const [dbGames, setDbGames] = useState<SteamGame[]>([]);
   const [loading, setLoading] = useState(false);
   const [endDate, setEndDate] = useState('');
+  const [startTime, setStartTime] = useState('');
+  const [endTime, setEndTime] = useState('');
 
   // DBからゲーム情報を取得
   useEffect(() => {
@@ -118,6 +120,8 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
     onAdd({
       date,
       endDate: endDate || undefined,
+      startTime: startTime || undefined,
+      endTime: endTime || undefined,
       gameId: selectedGame.appid,
       gameName: selectedGame.name,
       gameImage: selectedGame.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/header.jpg`,
@@ -186,6 +190,39 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
                 </button>
               )}
             </div>
+
+            {/* 時間入力（週表示用） */}
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-500">
+                {language === 'ja' ? '時間:' : 'Time:'}
+              </span>
+              <input
+                type="time"
+                value={startTime}
+                onChange={(e) => setStartTime(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border-2 border-[#3D3D3D] text-sm"
+                style={{ backgroundColor: 'var(--background)' }}
+              />
+              <span className="text-gray-400">〜</span>
+              <input
+                type="time"
+                value={endTime}
+                onChange={(e) => setEndTime(e.target.value)}
+                className="px-3 py-1.5 rounded-lg border-2 border-[#3D3D3D] text-sm"
+                style={{ backgroundColor: 'var(--background)' }}
+              />
+              {(startTime || endTime) && (
+                <button
+                  onClick={() => { setStartTime(''); setEndTime(''); }}
+                  className="p-1 rounded hover:bg-gray-200"
+                >
+                  <X className="w-4 h-4 text-gray-400" />
+                </button>
+              )}
+            </div>
+            <p className="text-[10px] text-gray-400">
+              {language === 'ja' ? '※時間は週表示で詳細に表示されます' : '* Time is shown in detail in week view'}
+            </p>
           </div>
 
           {/* イベントタイプ */}

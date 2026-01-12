@@ -27,31 +27,6 @@ interface WishlistRelease {
   headerImage: string;
 }
 
-// フレンド情報の型
-interface FriendActivity {
-  friend: {
-    steamid: string;
-    personaname: string;
-    avatar: string;
-    avatarmedium: string;
-    gameextrainfo?: string;
-    gameid?: string;
-  };
-  recentGames: {
-    appid: number;
-    name: string;
-    playtime_2weeks: number;
-  }[];
-}
-
-// 自分の最近プレイしたゲーム
-interface MyRecentGame {
-  appid: number;
-  name: string;
-  playtime_2weeks: number;
-  playtime_forever: number;
-}
-
 interface CalendarDayExtended extends CalendarDay {
   holiday?: Holiday;
   dateStr: string;
@@ -80,8 +55,6 @@ export default function CalendarPage() {
   const [steamId, setSteamId] = useState<string | null>(null);
   const [wishlistReleases, setWishlistReleases] = useState<WishlistRelease[]>([]);
   const [draggedEvent, setDraggedEvent] = useState<GameEvent | null>(null);
-  const [friendsActivity, setFriendsActivity] = useState<FriendActivity[]>([]);
-  const [myRecentGames, setMyRecentGames] = useState<MyRecentGame[]>([]);
 
   // localStorageからsteamIdとイベントを復元
   useEffect(() => {
@@ -134,44 +107,6 @@ export default function CalendarPage() {
     };
 
     fetchWishlistReleases();
-  }, [steamId]);
-
-  // フレンドの最近のプレイ履歴を取得
-  useEffect(() => {
-    if (!steamId) return;
-
-    const fetchFriendsActivity = async () => {
-      try {
-        const response = await fetch(`/api/steam/friends-activity?steamId=${encodeURIComponent(steamId)}`);
-        const data = await response.json();
-        if (data.friendsActivity) {
-          setFriendsActivity(data.friendsActivity);
-        }
-      } catch (error) {
-        console.error('Failed to fetch friends activity:', error);
-      }
-    };
-
-    fetchFriendsActivity();
-  }, [steamId]);
-
-  // 自分の最近プレイしたゲームを取得
-  useEffect(() => {
-    if (!steamId) return;
-
-    const fetchMyRecentGames = async () => {
-      try {
-        const response = await fetch(`/api/steam/recent-games?steamId=${encodeURIComponent(steamId)}&count=20`);
-        const data = await response.json();
-        if (data.games) {
-          setMyRecentGames(data.games);
-        }
-      } catch (error) {
-        console.error('Failed to fetch recent games:', error);
-      }
-    };
-
-    fetchMyRecentGames();
   }, [steamId]);
 
   // イベントをlocalStorageに保存
@@ -348,9 +283,50 @@ export default function CalendarPage() {
     });
   };
 
+  const navigateWeek = (direction: number) => {
+    setCurrentDate(prev => {
+      const newDate = new Date(prev);
+      newDate.setDate(newDate.getDate() + direction * 7);
+      return newDate;
+    });
+  };
+
   const goToToday = () => {
     setCurrentDate(new Date());
   };
+
+  // 週表示用の日付配列を取得
+  const weekViewDays = useMemo(() => {
+    const startOfWeek = new Date(currentDate);
+    const day = startOfWeek.getDay();
+    startOfWeek.setDate(startOfWeek.getDate() - day); // 日曜始まり
+
+    const days: CalendarDayExtended[] = [];
+    for (let i = 0; i < 7; i++) {
+      const date = new Date(startOfWeek);
+      date.setDate(startOfWeek.getDate() + i);
+      const dateStr = formatDateKey(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+
+      days.push({
+        date,
+        isCurrentMonth: date.getMonth() === currentDate.getMonth(),
+        isToday: date.getTime() === today.getTime(),
+        events: events.filter(e => {
+          if (e.date === dateStr) return true;
+          if (e.endDate && dateStr > e.date && dateStr <= e.endDate) return true;
+          return false;
+        }),
+        holiday: getHoliday(dateStr),
+        dateStr,
+      });
+    }
+    return days;
+  }, [currentDate, events]);
+
+  // 時間スロット (0-23時)
+  const timeSlots = Array.from({ length: 24 }, (_, i) => i);
 
   const handleDateClick = (date: Date) => {
     setSelectedDate(formatDateKey(date));
@@ -527,17 +503,27 @@ export default function CalendarPage() {
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => navigateMonth(-1)}
+              onClick={() => view === 'month' ? navigateMonth(-1) : navigateWeek(-1)}
               className="p-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
             <h2 className="text-2xl font-black min-w-[200px] text-center">
-              {currentDate.getFullYear()}{language === 'ja' ? '年' : ''} {monthNames[currentDate.getMonth()]}
+              {view === 'month' ? (
+                <>{currentDate.getFullYear()}{language === 'ja' ? '年' : ''} {monthNames[currentDate.getMonth()]}</>
+              ) : (
+                <>
+                  {weekViewDays[0]?.date.getMonth() === weekViewDays[6]?.date.getMonth() ? (
+                    <>{currentDate.getFullYear()}{language === 'ja' ? '年' : ''} {monthNames[weekViewDays[0]?.date.getMonth() || 0]}</>
+                  ) : (
+                    <>{weekViewDays[0]?.date.getMonth() + 1}/{weekViewDays[0]?.date.getDate()} - {weekViewDays[6]?.date.getMonth() + 1}/{weekViewDays[6]?.date.getDate()}</>
+                  )}
+                </>
+              )}
             </h2>
             <button
-              onClick={() => navigateMonth(1)}
+              onClick={() => view === 'month' ? navigateMonth(1) : navigateWeek(1)}
               className="p-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
@@ -567,7 +553,8 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        {/* カレンダーグリッド */}
+        {/* 月表示 */}
+        {view === 'month' && (
         <div className="pop-card overflow-hidden">
           {/* 曜日ヘッダー */}
           <div className="grid grid-cols-7 border-b-2 border-[#3D3D3D]">
@@ -589,44 +576,10 @@ export default function CalendarPage() {
             const weekDays = calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7);
             const bars = weekEventBars[weekIndex] || [];
             const maxRow = Math.max(0, ...bars.map(b => b.row));
-            const barAreaHeight = bars.length > 0 ? (maxRow + 1) * 22 : 0; // イベントがある時のみバーエリアを確保
+            const barAreaHeight = bars.length > 0 ? (maxRow + 1) * 22 : 0;
 
             return (
               <div key={weekIndex} className="relative">
-                {/* Steamイベントバー（期間表示） */}
-                {bars.length > 0 && (
-                  <div
-                    className="absolute left-0 right-0 z-10 pointer-events-none"
-                    style={{ top: '28px', height: `${barAreaHeight}px` }}
-                  >
-                    {bars.map((bar, barIndex) => (
-                      <div
-                        key={`${bar.event.id}-${barIndex}`}
-                        className="absolute flex items-center text-[10px] font-bold truncate pointer-events-auto cursor-default"
-                        style={{
-                          left: `calc(${(bar.startCol / 7) * 100}% + 4px)`,
-                          width: `calc(${(bar.span / 7) * 100}% - 8px)`,
-                          top: `${bar.row * 22}px`,
-                          height: '20px',
-                          backgroundColor: bar.event.color,
-                          opacity: 0.6,
-                          color: 'white',
-                          borderRadius: bar.isStart && bar.isEnd ? '4px' :
-                                        bar.isStart ? '4px 0 0 4px' :
-                                        bar.isEnd ? '0 4px 4px 0' : '0',
-                          paddingLeft: bar.isStart ? '6px' : '2px',
-                          paddingRight: bar.isEnd ? '6px' : '2px',
-                        }}
-                        title={`${language === 'ja' ? bar.event.name : bar.event.nameEn} (${bar.event.startDate} - ${bar.event.endDate})`}
-                      >
-                        <span className="truncate">
-                          {language === 'ja' ? bar.event.name : bar.event.nameEn}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
                 {/* 日付グリッド */}
                 <div className="grid grid-cols-7">
                   {weekDays.map((day, dayIndex) => {
@@ -639,28 +592,21 @@ export default function CalendarPage() {
                         onClick={() => handleDateClick(day.date)}
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, day.dateStr)}
-                        className={`border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50 transition-colors ${
+                        className={`relative border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50 transition-colors ${
                           !day.isCurrentMonth ? 'opacity-40' : ''
                         } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: '130px', // 固定の高さで縦に伸ばす
-                          paddingTop: '28px', // 日付エリア分だけ確保
-                          paddingLeft: '8px',
-                          paddingRight: '8px',
-                          paddingBottom: '8px',
+                          minHeight: '130px',
+                          paddingTop: barAreaHeight > 0 ? `${28 + barAreaHeight + 4}px` : '28px',
+                          paddingLeft: '4px',
+                          paddingRight: '4px',
+                          paddingBottom: '4px',
                           ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
                         }}
                       >
                         {/* 日付と祝日名（固定位置） */}
-                        <div
-                          className="absolute flex items-start justify-between"
-                          style={{
-                            top: '4px',
-                            left: `calc(${(dayIndex / 7) * 100}% + 8px)`,
-                            right: `calc(${((6 - dayIndex) / 7) * 100}% + 8px)`,
-                          }}
-                        >
+                        <div className="absolute top-1 left-2 right-2 flex items-start justify-between">
                           <span className={`text-sm font-bold ${
                             hasHoliday || dayOfWeek === 0 ? 'text-red-500' :
                             dayOfWeek === 6 ? 'text-blue-500' :
@@ -675,8 +621,8 @@ export default function CalendarPage() {
                           )}
                         </div>
 
-                        {/* ユーザーイベント表示 - 自分の予定を先に表示 */}
-                        <div className="space-y-1">
+                        {/* ユーザーイベント表示 - Steamイベントバーの下に表示 */}
+                        <div className="space-y-1 relative z-20">
                           {/* ユーザーの予定（最大3件） */}
                           {day.events.slice(0, 3).map(event => (
                             <div
@@ -710,60 +656,170 @@ export default function CalendarPage() {
                               +{Math.max(0, day.events.length - 3) + (day.events.length === 0 ? Math.max(0, getWishlistReleasesForDate(day.dateStr).length - 2) : 0)} {language === 'ja' ? '件' : 'more'}
                             </span>
                           )}
-
-                          {/* 自分の最近プレイしたゲーム（今日のみ表示） */}
-                          {day.isToday && myRecentGames.length > 0 && (
-                            <div className="mt-1 pt-1 border-t border-gray-200">
-                              {myRecentGames.slice(0, 2).map(game => (
-                                <div
-                                  key={`my-${game.appid}`}
-                                  className="flex items-center gap-1 px-1 py-0.5 rounded text-[9px] text-gray-600 truncate"
-                                  style={{ backgroundColor: 'rgba(139, 92, 246, 0.15)' }}
-                                  title={`${game.name} - ${Math.round(game.playtime_2weeks / 60)}${language === 'ja' ? '時間' : 'h'}`}
-                                >
-                                  <span className="truncate">{game.name}</span>
-                                  <span className="text-purple-600 font-medium flex-shrink-0">
-                                    {Math.round(game.playtime_2weeks / 60)}{language === 'ja' ? 'h' : 'h'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* フレンドのプレイ履歴（今日のみ表示） */}
-                          {day.isToday && friendsActivity.length > 0 && (
-                            <div className="mt-1 flex flex-wrap gap-0.5">
-                              {friendsActivity.slice(0, 4).map(activity => (
-                                <div
-                                  key={activity.friend.steamid}
-                                  className="relative group"
-                                  title={`${activity.friend.personaname}: ${activity.recentGames[0]?.name || ''}`}
-                                >
-                                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                                  <img
-                                    src={activity.friend.avatar}
-                                    alt={activity.friend.personaname}
-                                    className="w-5 h-5 rounded-full border border-gray-300"
-                                  />
-                                  {activity.friend.gameextrainfo && (
-                                    <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border border-white" />
-                                  )}
-                                </div>
-                              ))}
-                              {friendsActivity.length > 4 && (
-                                <span className="text-[9px] text-gray-400">+{friendsActivity.length - 4}</span>
-                              )}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
+
+                {/* Steamイベントバー（期間表示）- 日付エリアの下に重ねて表示 */}
+                {bars.length > 0 && (
+                  <div
+                    className="absolute left-0 right-0 z-10 pointer-events-none"
+                    style={{ top: '24px', height: `${barAreaHeight}px` }}
+                  >
+                    {bars.map((bar, barIndex) => (
+                      <div
+                        key={`${bar.event.id}-${barIndex}`}
+                        className="absolute flex items-center text-[10px] font-bold truncate"
+                        style={{
+                          left: `calc(${(bar.startCol / 7) * 100}% + 4px)`,
+                          width: `calc(${(bar.span / 7) * 100}% - 8px)`,
+                          top: `${bar.row * 22}px`,
+                          height: '20px',
+                          backgroundColor: bar.event.color,
+                          opacity: 0.6,
+                          color: 'white',
+                          borderRadius: bar.isStart && bar.isEnd ? '4px' :
+                                        bar.isStart ? '4px 0 0 4px' :
+                                        bar.isEnd ? '0 4px 4px 0' : '0',
+                          paddingLeft: bar.isStart ? '6px' : '2px',
+                          paddingRight: bar.isEnd ? '6px' : '2px',
+                        }}
+                        title={`${language === 'ja' ? bar.event.name : bar.event.nameEn} (${bar.event.startDate} - ${bar.event.endDate})`}
+                      >
+                        <span className="truncate">
+                          {language === 'ja' ? bar.event.name : bar.event.nameEn}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
         </div>
+        )}
+
+        {/* 週表示 */}
+        {view === 'week' && (
+        <div className="pop-card overflow-hidden">
+          {/* 曜日と日付ヘッダー */}
+          <div className="grid grid-cols-8 border-b-2 border-[#3D3D3D]">
+            {/* 時間列のヘッダー */}
+            <div
+              className="py-2 text-center font-bold text-xs text-gray-500"
+              style={{ backgroundColor: 'var(--background-secondary)' }}
+            >
+              {language === 'ja' ? '時間' : 'Time'}
+            </div>
+            {weekViewDays.map((day, index) => {
+              const dayOfWeek = day.date.getDay();
+              const hasHoliday = !!day.holiday;
+              return (
+                <div
+                  key={index}
+                  className={`py-2 text-center ${day.isToday ? 'ring-2 ring-inset' : ''}`}
+                  style={{
+                    backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--background-secondary)',
+                    ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
+                  }}
+                >
+                  <div className={`text-xs font-medium ${
+                    hasHoliday || dayOfWeek === 0 ? 'text-red-500' :
+                    dayOfWeek === 6 ? 'text-blue-500' : 'text-gray-500'
+                  }`}>
+                    {weekDays[dayOfWeek]}
+                  </div>
+                  <div className={`text-lg font-black ${
+                    hasHoliday || dayOfWeek === 0 ? 'text-red-500' :
+                    dayOfWeek === 6 ? 'text-blue-500' : ''
+                  }`}>
+                    {day.date.getDate()}
+                  </div>
+                  {hasHoliday && (
+                    <div className="text-[9px] text-red-500 truncate px-1">
+                      {language === 'ja' ? day.holiday!.name : day.holiday!.nameEn}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* タイムグリッド */}
+          <div className="max-h-[600px] overflow-y-auto">
+            {timeSlots.map(hour => (
+              <div key={hour} className="grid grid-cols-8 border-b border-[#E5E5E5]">
+                {/* 時間ラベル */}
+                <div
+                  className="py-2 px-2 text-right text-xs text-gray-500 border-r border-[#E5E5E5]"
+                  style={{ backgroundColor: 'var(--card-bg)' }}
+                >
+                  {hour}:00
+                </div>
+                {/* 各曜日のセル */}
+                {weekViewDays.map((day, dayIndex) => {
+                  const dayOfWeek = day.date.getDay();
+                  // この時間帯に該当するイベントを取得
+                  const hourEvents = day.events.filter(event => {
+                    if (!event.startTime) return false;
+                    const eventHour = parseInt(event.startTime.split(':')[0]);
+                    return eventHour === hour;
+                  });
+                  // 時間指定のないイベント（0時に表示）
+                  const noTimeEvents = hour === 0 ? day.events.filter(e => !e.startTime) : [];
+
+                  return (
+                    <div
+                      key={dayIndex}
+                      onClick={() => {
+                        setSelectedDate(day.dateStr);
+                        setShowAddModal(true);
+                      }}
+                      className={`min-h-[50px] p-1 border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50 transition-colors ${
+                        dayOfWeek === 0 || dayOfWeek === 6 ? 'bg-gray-50/50' : ''
+                      } ${day.isToday ? 'bg-blue-50/30' : ''}`}
+                      style={{ backgroundColor: day.isToday ? 'rgba(59, 130, 246, 0.05)' : 'var(--card-bg)' }}
+                    >
+                      {/* 時間指定のないイベント（終日イベント風に0時に表示） */}
+                      {noTimeEvents.map(event => (
+                        <div
+                          key={event.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(event);
+                          }}
+                          className="px-1 py-0.5 mb-0.5 rounded text-[10px] font-medium text-white truncate cursor-pointer hover:opacity-80"
+                          style={{ backgroundColor: getEventTypeColor(event.type) }}
+                          title={event.gameName}
+                        >
+                          {event.gameName}
+                        </div>
+                      ))}
+                      {/* 時間指定のあるイベント */}
+                      {hourEvents.map(event => (
+                        <div
+                          key={event.id}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedEvent(event);
+                          }}
+                          className="px-1 py-0.5 mb-0.5 rounded text-[10px] font-medium text-white truncate cursor-pointer hover:opacity-80"
+                          style={{ backgroundColor: getEventTypeColor(event.type) }}
+                          title={`${event.startTime}${event.endTime ? ` - ${event.endTime}` : ''} ${event.gameName}`}
+                        >
+                          <span className="opacity-75">{event.startTime}</span> {event.gameName}
+                        </div>
+                      ))}
+                    </div>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+        </div>
+        )}
 
         {/* 凡例 */}
         <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
@@ -778,14 +834,6 @@ export default function CalendarPage() {
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: 'var(--pop-yellow)' }} />
             <span>{language === 'ja' ? '発売日 / WL発売' : 'Release / WL Release'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded" style={{ backgroundColor: 'rgba(139, 92, 246, 0.5)' }} />
-            <span>{language === 'ja' ? '最近プレイ' : 'Recently Played'}</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-gray-400" />
-            <span>{language === 'ja' ? 'フレンド' : 'Friends'}</span>
           </div>
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded bg-amber-500 opacity-60" />
