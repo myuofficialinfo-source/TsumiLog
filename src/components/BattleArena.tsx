@@ -297,6 +297,7 @@ interface BattleCardState extends BattleCardType {
   attackCount: number;  // 攻撃回数（studyスキル用）
   hitCount: number;     // 被ダメ回数（tutorialスキル用）
   skillBonus: number;   // シナジーによるスキル効果ボーナス（%）
+  isActive?: boolean;   // 攻撃アニメーション中かどうか
 }
 
 export default function BattleArena({
@@ -605,6 +606,11 @@ export default function BattleArena({
   // 各カードの攻撃タイミングを事前計算（cardId -> timestamp[]）
   const cardAttackTimesRef = useRef<Map<string, number[]>>(new Map());
 
+  // 各カードの最後の攻撃時間（cardId -> timestamp）- アクティブ表示用
+  const cardLastAttackTimeRef = useRef<Map<string, number>>(new Map());
+  // 現在のバトル時間（ref で管理してリアルタイム参照）
+  const currentBattleTimeRef = useRef(0);
+
   // サーバーモード：バトル結果を使ってログを再生
   useEffect(() => {
     if (!serverMode || !serverBattleResult || battleState !== 'fighting') return;
@@ -691,13 +697,12 @@ export default function BattleArena({
           attackerName = attackerCard?.name || '';
         }
 
+        // カードの最後の攻撃時間を記録（アクティブ表示用）
+        if (currentLog.attackerId) {
+          cardLastAttackTimeRef.current.set(currentLog.attackerId, currentLog.timestamp);
+        }
+
         // currentActionを設定してカードをアクティブ状態にする
-        console.log('Setting currentAction:', {
-          attackerIndex,
-          attackerPosition,
-          attackerIsPlayer: isPlayerAttacking,
-          attackerId: currentLog.attackerId,
-        });
         setCurrentAction({
           attacker: attackerName,
           attackerIndex,
@@ -740,20 +745,11 @@ export default function BattleArena({
           }, 2500 / speed);
         }
 
-        // シェイクエフェクト（一時的に無効化）
-        // setShakeTarget(targetSide);
+        // シェイクエフェクト（被ダメージ側が揺れる）
+        setShakeTarget(targetSide);
         setTimeout(() => {
-          // setShakeTarget(null);
-          // 同じ攻撃者の場合のみリセット（次の攻撃で上書きされていたらリセットしない）
-          setCurrentAction(prev => {
-            if (prev && prev.attackerIsPlayer === isPlayerAttacking &&
-                prev.attackerPosition === attackerPosition &&
-                prev.attackerIndex === attackerIndex) {
-              return null;
-            }
-            return prev;
-          });
-        }, 400 / speed);
+          setShakeTarget(null);
+        }, 300 / speed);
 
         // 火花エフェクト
         const newEffectKey = Date.now() + Math.random();
@@ -809,6 +805,9 @@ export default function BattleArena({
       const battleTimeElapsed = realTimeElapsed * speed;
       const currentBattleTime = lastLogTimestampRef.current + battleTimeElapsed;
 
+      // 現在のバトル時間を ref に保存（isCardActive で使用）
+      currentBattleTimeRef.current = currentBattleTime;
+
       // 処理すべきログがあるかチェック
       while (serverLogIndexRef.current < serverLogsRef.current.length) {
         const nextLog = serverLogsRef.current[serverLogIndexRef.current];
@@ -834,13 +833,16 @@ export default function BattleArena({
         return;
       }
 
-      // 各カードのゲージを計算
+      // アクティブ判定の閾値（この時間内なら光らせる）
+      const ACTIVE_DURATION = 400 / speed; // 速度に応じて調整
+
+      // 各カードのゲージとアクティブ状態を計算
       setBattleCards(prev => prev.map(card => {
         const cardId = `${card.isPlayer ? 'player' : 'opponent'}_${card.position}_${card.index}`;
         const attackTimes = cardAttackTimesRef.current.get(cardId) || [];
 
         if (attackTimes.length === 0) {
-          return { ...card, currentTimer: 0 };
+          return { ...card, currentTimer: 0, isActive: false };
         }
 
         // 現在の再生時刻より前の最後の攻撃と、次の攻撃を見つける
@@ -862,9 +864,15 @@ export default function BattleArena({
         const elapsed = currentBattleTime - lastAttackTime;
         const progress = totalInterval > 0 ? Math.min(1, elapsed / totalInterval) : 0;
 
+        // アクティブ状態の判定（最後の攻撃から一定時間内）
+        const cardLastAttack = cardLastAttackTimeRef.current.get(cardId) || 0;
+        const timeSinceLastAttack = currentBattleTime - cardLastAttack;
+        const isActive = cardLastAttack > 0 && timeSinceLastAttack >= 0 && timeSinceLastAttack < ACTIVE_DURATION;
+
         return {
           ...card,
           currentTimer: card.maxTimer * progress,
+          isActive,
         };
       }));
 
@@ -1194,29 +1202,6 @@ export default function BattleArena({
   const opponentFrontCards = battleCards.filter(c => !c.isPlayer && c.position === 'front');
   const opponentBackCards = battleCards.filter(c => !c.isPlayer && c.position === 'back');
 
-  // カードがアクティブ（攻撃/スキル発動中）かどうか
-  const isCardActive = (isPlayer: boolean, position: 'front' | 'back', index: number) => {
-    if (!currentAction) return false;
-    const isActive = (
-      currentAction.attackerIsPlayer === isPlayer &&
-      currentAction.attackerPosition === position &&
-      currentAction.attackerIndex === index
-    );
-    // デバッグ：全ての比較結果を表示
-    if (currentAction.attackerIsPlayer === isPlayer) {
-      console.log('isCardActive check:', {
-        isPlayer,
-        position,
-        index,
-        actionPosition: currentAction.attackerPosition,
-        actionIndex: currentAction.attackerIndex,
-        posMatch: currentAction.attackerPosition === position,
-        idxMatch: currentAction.attackerIndex === index,
-        isActive
-      });
-    }
-    return isActive;
-  };
 
   // チームのHP残りがあるかどうか
   const isPlayerTeamAlive = playerTotalHp > 0;
@@ -1313,11 +1298,10 @@ export default function BattleArena({
               <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '前衛' : 'Front'}</p>
               <div className="flex gap-1 justify-center relative flex-wrap">
                 {playerFrontCards.map((card, index) => {
-                  const active = isCardActive(true, 'front', card.index);
                   return (
                     <div
                       key={`player-front-${index}`}
-                      className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${active ? 'scale-105 z-10' : ''}`}
+                      className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${card.isActive ? 'scale-105 z-10' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1330,7 +1314,7 @@ export default function BattleArena({
                           <div className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75" style={{ height: `${getCardTimerPercent(card)}%` }} />
                         </div>
                       )}
-                      {active && (
+                      {card.isActive && (
                         <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 20px 5px rgba(59, 130, 246, 0.7)', animation: 'pulse 0.3s ease-in-out infinite' }} />
                       )}
                     </div>
@@ -1357,11 +1341,10 @@ export default function BattleArena({
               <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '後衛' : 'Back'}</p>
               <div className="flex gap-1 justify-center flex-wrap">
                 {playerBackCards.map((card, index) => {
-                  const active = isCardActive(true, 'back', card.index);
                   return (
                     <div
                       key={`player-back-${index}`}
-                      className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${active ? 'scale-105 z-10' : ''}`}
+                      className={`relative transition-transform duration-150 ${shakeTarget === 'player' ? 'animate-shake' : ''} ${card.isActive ? 'scale-105 z-10' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1374,7 +1357,7 @@ export default function BattleArena({
                           <div className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75" style={{ height: `${getCardTimerPercent(card)}%` }} />
                         </div>
                       )}
-                      {active && (
+                      {card.isActive && (
                         <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 20px 5px rgba(59, 130, 246, 0.7)', animation: 'pulse 0.3s ease-in-out infinite' }} />
                       )}
                     </div>
@@ -1477,11 +1460,10 @@ export default function BattleArena({
               <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '前衛' : 'Front'}</p>
               <div className="flex gap-1 justify-center relative flex-wrap">
                 {opponentFrontCards.map((card, index) => {
-                  const active = isCardActive(false, 'front', card.index);
                   return (
                     <div
                       key={`opponent-front-${index}`}
-                      className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${active ? 'scale-105 z-10' : ''}`}
+                      className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${card.isActive ? 'scale-105 z-10' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1494,7 +1476,7 @@ export default function BattleArena({
                           <div className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75" style={{ height: `${getCardTimerPercent(card)}%` }} />
                         </div>
                       )}
-                      {active && (
+                      {card.isActive && (
                         <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 20px 5px rgba(255, 165, 0, 0.7)', animation: 'pulse 0.3s ease-in-out infinite' }} />
                       )}
                     </div>
@@ -1521,11 +1503,10 @@ export default function BattleArena({
               <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '後衛' : 'Back'}</p>
               <div className="flex gap-1 justify-center flex-wrap">
                 {opponentBackCards.map((card, index) => {
-                  const active = isCardActive(false, 'back', card.index);
                   return (
                     <div
                       key={`opponent-back-${index}`}
-                      className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${active ? 'scale-105 z-10' : ''}`}
+                      className={`relative transition-transform duration-150 ${shakeTarget === 'opponent' ? 'animate-shake' : ''} ${card.isActive ? 'scale-105 z-10' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1538,7 +1519,7 @@ export default function BattleArena({
                           <div className="absolute bottom-0 left-0 right-0 bg-yellow-400/40 transition-all duration-75" style={{ height: `${getCardTimerPercent(card)}%` }} />
                         </div>
                       )}
-                      {active && (
+                      {card.isActive && (
                         <div className="absolute inset-0 rounded-xl pointer-events-none" style={{ boxShadow: '0 0 20px 5px rgba(255, 165, 0, 0.7)', animation: 'pulse 0.3s ease-in-out infinite' }} />
                       )}
                     </div>
