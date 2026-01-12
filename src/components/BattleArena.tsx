@@ -358,8 +358,6 @@ export default function BattleArena({
     offsetX: number; // ランダムX位置オフセット（px）
     offsetY: number; // ランダムY位置オフセット（px）
   }>>([]);
-  const [shakeTarget, setShakeTarget] = useState<'player' | 'opponent' | null>(null);
-  const [shakeKey, setShakeKey] = useState(0); // アニメーション再トリガー用
   // 複数の火花エフェクト（ランダム位置で最後まで再生）
   const [hitEffects, setHitEffects] = useState<Array<{
     target: 'player' | 'opponent';
@@ -380,6 +378,10 @@ export default function BattleArena({
   // HP用ref（リアルタイム更新用）
   const playerHpRef = useRef(0);
   const opponentHpRef = useRef(0);
+
+  // シェイクアニメーション用ref
+  const playerContainerRef = useRef<HTMLDivElement>(null);
+  const opponentContainerRef = useRef<HTMLDivElement>(null);
 
   // アニメーションフレーム用ref
   const animationRef = useRef<number | null>(null);
@@ -747,11 +749,7 @@ export default function BattleArena({
         }
 
         // シェイクエフェクト（被ダメージ側が揺れる）
-        setShakeTarget(targetSide);
-        setShakeKey(prev => prev + 1); // アニメーション再トリガー
-        setTimeout(() => {
-          setShakeTarget(null);
-        }, 500 / speed); // CSSアニメーションと同じ長さ
+        triggerShake(targetSide);
 
         // 火花エフェクト
         const newEffectKey = Date.now() + Math.random();
@@ -1074,7 +1072,7 @@ export default function BattleArena({
           offsetY,
         }]);
 
-        setShakeTarget(targetSide);
+        triggerShake(targetSide);
         // 火花エフェクト（デッキ全体にランダム位置）
         const newEffectKey = Date.now() + Math.random();
         const randomX = Math.random() * 80 + 10; // 10%〜90%
@@ -1120,7 +1118,6 @@ export default function BattleArena({
         // エフェクトクリア（その他は400ms）
         setTimeout(() => {
           setCurrentAction(null);
-          setShakeTarget(null);
         }, 400 / speed);
 
         // ダメージ表示は2.5秒後にフェードアウト（長めに表示）
@@ -1186,7 +1183,6 @@ export default function BattleArena({
 
     setCurrentAction(null);
     setDamageDisplays([]);
-    setShakeTarget(null);
     setHitEffects([]);
     setSkillDisplays([]);
     setBattleState('finished');
@@ -1197,6 +1193,19 @@ export default function BattleArena({
   const getCardTimerPercent = (card: BattleCardState) => {
     return Math.min(100, (card.currentTimer / card.maxTimer) * 100);
   };
+
+  // シェイクアニメーションをトリガー（refを使って再マウントなしでリスタート）
+  const triggerShake = useCallback((target: 'player' | 'opponent') => {
+    const ref = target === 'player' ? playerContainerRef : opponentContainerRef;
+    if (ref.current) {
+      // アニメーションを一旦削除
+      ref.current.style.animation = 'none';
+      // リフロー強制（アニメーションリセットに必要）
+      void ref.current.offsetWidth;
+      // アニメーションを再適用
+      ref.current.style.animation = `shake 0.5s ease-in-out`;
+    }
+  }, []);
 
   // 表示用カード取得
   const playerFrontCards = battleCards.filter(c => c.isPlayer && c.position === 'front');
@@ -1243,7 +1252,7 @@ export default function BattleArena({
         <div className="flex flex-col lg:flex-row lg:items-stretch gap-4">
 
           {/* プレイヤー側（PC: 左、スマホ: 下なのでorderで調整） */}
-          <div className="flex-1 space-y-2 order-2 lg:order-1 relative">
+          <div ref={playerContainerRef} className="flex-1 space-y-2 order-2 lg:order-1 relative">
             {/* ダメージ表示（プレイヤー側・複数スタック） */}
             {damageDisplays.filter(d => d.target === 'player').map((damageDisplay) => (
               <div
@@ -1302,8 +1311,8 @@ export default function BattleArena({
                 {playerFrontCards.map((card, index) => {
                   return (
                     <div
-                      key={`player-front-${index}-${shakeTarget === 'player' ? shakeKey : 0}`}
-                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''} ${shakeTarget === 'player' ? 'animate-shake' : ''}`}
+                      key={`player-front-${index}`}
+                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1345,8 +1354,8 @@ export default function BattleArena({
                 {playerBackCards.map((card, index) => {
                   return (
                     <div
-                      key={`player-back-${index}-${shakeTarget === 'player' ? shakeKey : 0}`}
-                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''} ${shakeTarget === 'player' ? 'animate-shake' : ''}`}
+                      key={`player-back-${index}`}
+                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1405,7 +1414,7 @@ export default function BattleArena({
           </div>
 
           {/* 相手側（PC: 右、スマホ: 上） */}
-          <div className="flex-1 space-y-2 order-0 lg:order-3 relative">
+          <div ref={opponentContainerRef} className="flex-1 space-y-2 order-0 lg:order-3 relative">
             {/* ダメージ表示（相手側・複数スタック） */}
             {damageDisplays.filter(d => d.target === 'opponent').map((damageDisplay) => (
               <div
@@ -1464,8 +1473,8 @@ export default function BattleArena({
                 {opponentFrontCards.map((card, index) => {
                   return (
                     <div
-                      key={`opponent-front-${index}-${shakeTarget === 'opponent' ? shakeKey : 0}`}
-                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''} ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}
+                      key={`opponent-front-${index}`}
+                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1507,8 +1516,8 @@ export default function BattleArena({
                 {opponentBackCards.map((card, index) => {
                   return (
                     <div
-                      key={`opponent-back-${index}-${shakeTarget === 'opponent' ? shakeKey : 0}`}
-                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''} ${shakeTarget === 'opponent' ? 'animate-shake' : ''}`}
+                      key={`opponent-back-${index}`}
+                      className={`relative transition-transform duration-150 ${card.isActive ? 'scale-105 z-10' : ''}`}
                     >
                       <BattleCard
                         card={card}
