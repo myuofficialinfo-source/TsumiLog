@@ -460,7 +460,7 @@ function BattleContent() {
               ? '※積みゲーの数が多いと読み込みに時間がかかる場合がございます。'
               : '※Loading may take longer if you have many backlog games.'}
           </p>
-          <div className="w-64 h-2 bg-gray-700 rounded-full mt-3 overflow-hidden">
+          <div className="w-64 h-2 bg-gray-700 rounded-full mt-3 overflow-hidden mx-auto">
             <div
               className="h-full rounded-full transition-all duration-300"
               style={{
