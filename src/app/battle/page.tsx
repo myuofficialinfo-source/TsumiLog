@@ -450,10 +450,15 @@ function BattleContent() {
         <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--pop-blue)' }} />
         <div className="text-center">
           <p className="text-lg font-medium" style={{ color: 'var(--foreground)' }}>
-            {language === 'ja' ? 'カードデータを読み込み中...' : 'Loading card data...'}
+            {language === 'ja' ? 'ゲームデータを読み込み中...' : 'Loading game data...'}
           </p>
           <p className="text-sm mt-2" style={{ color: 'var(--muted-foreground)' }}>
-            {loadingProgress.current} / {loadingProgress.total} ({progressPercent}%)
+            {progressPercent}%
+          </p>
+          <p className="text-xs mt-3 opacity-60" style={{ color: 'var(--muted-foreground)' }}>
+            {language === 'ja'
+              ? '※積みゲーの数が多いと読み込みに時間がかかる場合がございます。'
+              : '※Loading may take longer if you have many backlog games.'}
           </p>
           <div className="w-64 h-2 bg-gray-700 rounded-full mt-3 overflow-hidden">
             <div

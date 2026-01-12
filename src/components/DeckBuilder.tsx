@@ -1137,7 +1137,7 @@ export default function DeckBuilder({
           ) : (
             <div className="mb-4">
               <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'スキル' : 'Skills'}</p>
-              <p className="text-xs text-gray-400">{language === 'ja' ? 'カードを配置するとスキルが表示されます' : 'Place cards to see skills'}</p>
+              <p className="text-xs text-gray-400">{language === 'ja' ? 'ゲームを配置するとスキルが表示されます' : 'Place games to see skills'}</p>
             </div>
           )}
 
@@ -1171,7 +1171,7 @@ export default function DeckBuilder({
           ) : (
             <div className="mb-4">
               <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'シナジー' : 'Synergies'}</p>
-              <p className="text-xs text-gray-400">{language === 'ja' ? '同ジャンル3枚以上でシナジー発動' : '3+ same genre cards for synergy'}</p>
+              <p className="text-xs text-gray-400">{language === 'ja' ? '同ジャンル3本以上でシナジー発動' : '3+ same genre games for synergy'}</p>
             </div>
           )}
 
@@ -1229,7 +1229,7 @@ export default function DeckBuilder({
       <div className="pop-card p-4">
         <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h3 className="text-sm font-bold text-gray-600">
-            {language === 'ja' ? 'カードを選択' : 'Select Cards'}
+            {language === 'ja' ? 'ゲームを選択' : 'Select Games'}
           </h3>
           <div className="flex items-center gap-2">
             {/* ソートボタン */}
@@ -1277,7 +1277,7 @@ export default function DeckBuilder({
         </div>
         {!selectedSlot && !draggedCard && (
           <p className="text-sm text-gray-500 mb-3">
-            {language === 'ja' ? 'カードをドラッグしてスロットにドロップ' : 'Drag cards to slots'}
+            {language === 'ja' ? 'ゲームをドラッグしてスロットにドロップ' : 'Drag games to slots'}
           </p>
         )}
         {draggedCard && (

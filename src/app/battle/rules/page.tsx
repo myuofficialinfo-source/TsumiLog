@@ -75,12 +75,12 @@ export default function RulesPage() {
           <ul className="space-y-2 text-gray-700">
             <li>
               {language === 'ja'
-                ? '10枚のカード（前衛5枚 + 後衛5枚）でデッキを組む'
-                : 'Build a deck of 10 cards (5 front line + 5 back line)'}
+                ? '10本のゲーム（前衛5本 + 後衛5本）でデッキを組む'
+                : 'Build a deck of 10 games (5 front line + 5 back line)'}
             </li>
             <li>
               {language === 'ja'
-                ? 'バトルはリアルタイムで進行し、各カードが自動で攻撃'
+                ? 'バトルはリアルタイムで進行し、各ゲームが自動で攻撃'
                 : 'Battle progresses in real-time with auto-attacks'}
             </li>
             <li>
@@ -89,6 +89,75 @@ export default function RulesPage() {
                 : 'The team whose HP reaches 0 loses'}
             </li>
           </ul>
+        </section>
+
+        {/* ステータス算出 */}
+        <section className="pop-card p-6 mb-6">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <Heart className="w-5 h-5" style={{ color: 'var(--pop-red)' }} />
+            {language === 'ja' ? 'ステータス算出' : 'Stats Calculation'}
+          </h2>
+
+          {/* 攻撃力 */}
+          <div className="mb-6">
+            <h3 className="font-bold mb-3" style={{ color: 'var(--pop-red)' }}>
+              {language === 'ja' ? '攻撃力（ATK）' : 'Attack (ATK)'}
+            </h3>
+            <p className="text-gray-700 mb-3">
+              {language === 'ja'
+                ? 'プレイ時間（0〜30分）に応じて算出。30分に近いほど高い攻撃力'
+                : 'Based on playtime (0-30min). Closer to 30min = higher attack'}
+            </p>
+            <div className="p-3 rounded-lg text-sm" style={{ backgroundColor: 'var(--background-secondary)' }}>
+              <code>ATK = (プレイ時間 / 30) × 100 × レアリティ倍率</code>
+            </div>
+            <ul className="mt-3 space-y-1 text-sm text-gray-600">
+              <li>• C: ×1.0 / R: ×1.5 / SR: ×2.0 / UC: ×2.5</li>
+              <li>• {language === 'ja' ? '30分以上は積みゲーではないためデッキにセットできない' : '30min+ is not backlog, so cannot be added to deck'}</li>
+            </ul>
+          </div>
+
+          {/* HP */}
+          <div>
+            <h3 className="font-bold mb-3" style={{ color: 'var(--pop-blue)' }}>
+              {language === 'ja' ? 'HP' : 'HP'}
+            </h3>
+            <p className="text-gray-700 mb-3">
+              {language === 'ja'
+                ? 'Steamレビューの好評率で決定'
+                : 'Based on Steam review positive rate'}
+            </p>
+            <div className="grid gap-2 text-sm">
+              <div className="flex justify-between p-2 rounded" style={{ backgroundColor: 'var(--background-secondary)' }}>
+                <span>{language === 'ja' ? '圧倒的に好評（95%+）' : 'Overwhelmingly Positive (95%+)'}</span>
+                <span className="font-bold">950 HP</span>
+              </div>
+              <div className="flex justify-between p-2 rounded" style={{ backgroundColor: 'var(--background-secondary)' }}>
+                <span>{language === 'ja' ? '非常に好評（80%+）' : 'Very Positive (80%+)'}</span>
+                <span className="font-bold">800 HP</span>
+              </div>
+              <div className="flex justify-between p-2 rounded" style={{ backgroundColor: 'var(--background-secondary)' }}>
+                <span>{language === 'ja' ? '好評（70%+）' : 'Positive (70%+)'}</span>
+                <span className="font-bold">700 HP</span>
+              </div>
+              <div className="flex justify-between p-2 rounded" style={{ backgroundColor: 'var(--background-secondary)' }}>
+                <span>{language === 'ja' ? 'やや好評（40%+）' : 'Mostly Positive (40%+)'}</span>
+                <span className="font-bold">550 HP</span>
+              </div>
+              <div className="flex justify-between p-2 rounded" style={{ backgroundColor: 'var(--background-secondary)' }}>
+                <span>{language === 'ja' ? '賛否両論（35%+）' : 'Mixed (35%+)'}</span>
+                <span className="font-bold">400 HP</span>
+              </div>
+              <div className="flex justify-between p-2 rounded" style={{ backgroundColor: 'var(--background-secondary)' }}>
+                <span>{language === 'ja' ? 'やや不評（20%+）' : 'Mostly Negative (20%+)'}</span>
+                <span className="font-bold">300 HP</span>
+              </div>
+              <div className="flex justify-between p-2 rounded" style={{ backgroundColor: 'var(--background-secondary)' }}>
+                <span>{language === 'ja' ? '不評（20%未満）' : 'Negative (<20%)'}</span>
+                <span className="font-bold">200 HP</span>
+              </div>
+            </div>
+          </div>
         </section>
 
         {/* 前衛・後衛 */}
@@ -127,8 +196,8 @@ export default function RulesPage() {
           </h2>
           <p className="text-gray-700 mb-4">
             {language === 'ja'
-              ? '同じ属性のカードを3枚以上揃えるとボーナス発動'
-              : 'Bonuses activate when you have 3+ cards with the same attribute'}
+              ? '同じ属性のゲームを3本以上揃えるとボーナス発動'
+              : 'Bonuses activate when you have 3+ games with the same attribute'}
           </p>
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--background-secondary)' }}>
