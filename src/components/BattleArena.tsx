@@ -692,6 +692,12 @@ export default function BattleArena({
         }
 
         // currentActionを設定してカードをアクティブ状態にする
+        console.log('Setting currentAction:', {
+          attackerIndex,
+          attackerPosition,
+          attackerIsPlayer: isPlayerAttacking,
+          attackerId: currentLog.attackerId,
+        });
         setCurrentAction({
           attacker: attackerName,
           attackerIndex,
@@ -734,10 +740,10 @@ export default function BattleArena({
           }, 2500 / speed);
         }
 
-        // シェイクエフェクト
-        setShakeTarget(targetSide);
+        // シェイクエフェクト（一時的に無効化）
+        // setShakeTarget(targetSide);
         setTimeout(() => {
-          setShakeTarget(null);
+          // setShakeTarget(null);
           // 同じ攻撃者の場合のみリセット（次の攻撃で上書きされていたらリセットしない）
           setCurrentAction(prev => {
             if (prev && prev.attackerIsPlayer === isPlayerAttacking &&
@@ -1191,11 +1197,15 @@ export default function BattleArena({
   // カードがアクティブ（攻撃/スキル発動中）かどうか
   const isCardActive = (isPlayer: boolean, position: 'front' | 'back', index: number) => {
     if (!currentAction) return false;
-    return (
+    const isActive = (
       currentAction.attackerIsPlayer === isPlayer &&
       currentAction.attackerPosition === position &&
       currentAction.attackerIndex === index
     );
+    if (isActive) {
+      console.log('Card is active:', { isPlayer, position, index, currentAction });
+    }
+    return isActive;
   };
 
   // チームのHP残りがあるかどうか
