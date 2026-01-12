@@ -2,9 +2,8 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
-import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Plus, Home, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { Header } from '@/components/Layout';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { GameEvent, CalendarDay, CalendarView } from '@/types/calendar';
 import { getHoliday, Holiday } from '@/lib/holidays';
@@ -500,60 +499,8 @@ export default function CalendarPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {/* ヘッダー */}
-      <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-4">
-            {/* 戻るボタン（バトル画面と同じスタイル） */}
-            <Link
-              href="/"
-              className="flex items-center justify-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 font-bold transition-colors"
-              style={{ backgroundColor: 'var(--card-bg)' }}
-            >
-              <Home className="w-5 h-5" />
-              <span className="hidden sm:inline">{language === 'ja' ? '戻る' : 'Back'}</span>
-            </Link>
-            <div className="flex items-center gap-3">
-              <Image src="/icons/icom.png" alt="ツミナビ" width={40} height={40} />
-              <div>
-                <h1 className="text-xl font-black gradient-text flex items-center gap-2">
-                  <CalendarIcon className="w-5 h-5" />
-                  {language === 'ja' ? 'ゲームカレンダー' : 'Game Calendar'}
-                </h1>
-                <p className="text-xs text-gray-500">
-                  {language === 'ja' ? 'ゲームの予定を管理' : 'Manage your gaming schedule'}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* View切り替え */}
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setView('month')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
-                view === 'month' ? 'text-white' : ''
-              }`}
-              style={{
-                backgroundColor: view === 'month' ? 'var(--pop-blue)' : 'var(--card-bg)'
-              }}
-            >
-              {language === 'ja' ? '月' : 'Month'}
-            </button>
-            <button
-              onClick={() => setView('week')}
-              className={`px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
-                view === 'week' ? 'text-white' : ''
-              }`}
-              style={{
-                backgroundColor: view === 'week' ? 'var(--pop-blue)' : 'var(--card-bg)'
-              }}
-            >
-              {language === 'ja' ? '週' : 'Week'}
-            </button>
-          </div>
-        </div>
-      </header>
+      {/* ヘッダー（積みゲーバトルと同じスタイル） */}
+      <Header showBack backHref="/" />
 
       <main className="flex-grow max-w-7xl mx-auto px-4 py-6 w-full">
         {/* カレンダーナビゲーション */}
@@ -589,6 +536,31 @@ export default function CalendarPage() {
           </div>
 
           <div className="flex items-center gap-3">
+            {/* View切り替え */}
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setView('month')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
+                  view === 'month' ? 'text-white' : ''
+                }`}
+                style={{
+                  backgroundColor: view === 'month' ? 'var(--pop-blue)' : 'var(--card-bg)'
+                }}
+              >
+                {language === 'ja' ? '月' : 'Month'}
+              </button>
+              <button
+                onClick={() => setView('week')}
+                className={`px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
+                  view === 'week' ? 'text-white' : ''
+                }`}
+                style={{
+                  backgroundColor: view === 'week' ? 'var(--pop-blue)' : 'var(--card-bg)'
+                }}
+              >
+                {language === 'ja' ? '週' : 'Week'}
+              </button>
+            </div>
             <button
               onClick={goToToday}
               className="px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
