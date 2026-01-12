@@ -134,8 +134,8 @@ export default function CalendarPage() {
       });
     }
 
-    // 次月の日付を埋める（6週間分になるように）
-    const remainingDays = 42 - days.length;
+    // 次月の日付を埋める（5週間分になるように）
+    const remainingDays = 35 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
       const date = new Date(year, month + 1, i);
       const dateStr = formatDateKey(date);
@@ -156,7 +156,7 @@ export default function CalendarPage() {
   const weekEventBars = useMemo(() => {
     const weeks: WeekEventBar[][] = [];
 
-    for (let weekIndex = 0; weekIndex < 6; weekIndex++) {
+    for (let weekIndex = 0; weekIndex < 5; weekIndex++) {
       const weekStart = calendarDays[weekIndex * 7];
       const weekEnd = calendarDays[weekIndex * 7 + 6];
       if (!weekStart || !weekEnd) continue;
@@ -397,7 +397,7 @@ export default function CalendarPage() {
           </div>
 
           {/* 週ごとの表示 */}
-          {[0, 1, 2, 3, 4, 5].map(weekIndex => {
+          {[0, 1, 2, 3, 4].map(weekIndex => {
             const weekDays = calendarDays.slice(weekIndex * 7, weekIndex * 7 + 7);
             const bars = weekEventBars[weekIndex] || [];
             const maxRow = Math.max(0, ...bars.map(b => b.row));
@@ -429,11 +429,9 @@ export default function CalendarPage() {
                         }}
                         title={`${language === 'ja' ? bar.event.name : bar.event.nameEn} (${bar.event.startDate} - ${bar.event.endDate})`}
                       >
-                        {bar.isStart && (
-                          <span className="truncate">
-                            {language === 'ja' ? bar.event.name : bar.event.nameEn}
-                          </span>
-                        )}
+                        <span className="truncate">
+                          {language === 'ja' ? bar.event.name : bar.event.nameEn}
+                        </span>
                       </div>
                     ))}
                   </div>
