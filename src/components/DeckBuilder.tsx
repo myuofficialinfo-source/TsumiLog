@@ -19,7 +19,7 @@ import {
   calculateRarityFromReviews,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame, ArrowUp, ArrowDown } from 'lucide-react';
+import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 
 // ランクティア定義
@@ -885,6 +885,14 @@ export default function DeckBuilder({
             <Wand2 className="w-4 h-4" />
             {language === 'ja' ? 'おまかせ' : 'Auto Fill'}
           </button>
+          <Link
+            href="/battle/rules"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
+            style={{ backgroundColor: 'var(--card-bg)' }}
+          >
+            <HelpCircle className="w-4 h-4" />
+            {language === 'ja' ? 'ルール' : 'Rules'}
+          </Link>
         </div>
       </div>
 
@@ -978,7 +986,7 @@ export default function DeckBuilder({
                 {language === 'ja' ? '前衛' : 'Front Line'}
               </span>
               <span className="text-xs text-gray-500">
-                {language === 'ja' ? 'メインアタッカー' : 'Main Attacker'}
+                {language === 'ja' ? '攻撃+20% / スキル効果0.7倍' : 'ATK +20% / Skill x0.7'}
               </span>
             </h3>
             <div className="flex gap-3 justify-center flex-wrap">
@@ -1028,7 +1036,7 @@ export default function DeckBuilder({
                 {language === 'ja' ? '後衛' : 'Back Line'}
               </span>
               <span className="text-xs text-gray-500">
-                {language === 'ja' ? 'スキル効果1.5倍' : 'Skill x1.5'}
+                {language === 'ja' ? '攻撃-20% / スキル効果1.5倍' : 'ATK -20% / Skill x1.5'}
               </span>
             </h3>
             <div className="flex gap-3 justify-center flex-wrap">
