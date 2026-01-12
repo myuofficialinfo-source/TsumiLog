@@ -91,6 +91,10 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
   // フィルターとソート適用
   const filteredGames = games
     .filter(game => {
+      // nameがundefinedのゲームを除外
+      if (!game.name) {
+        return false;
+      }
       // 検索クエリでフィルター
       if (!game.name.toLowerCase().includes(searchQuery.toLowerCase())) {
         return false;
