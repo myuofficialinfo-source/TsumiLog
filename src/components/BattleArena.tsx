@@ -671,6 +671,9 @@ export default function BattleArena({
       const currentLog = serverLogsRef.current[currentIndex];
       const nextLog = serverLogsRef.current[currentIndex + 1];
 
+      // 現在の再生時刻をログのタイムスタンプに同期
+      serverCurrentTimeRef.current = currentLog.timestamp;
+
       // ログに基づいてUIを更新（攻撃/ダメージ/クリティカルのいずれか）
       const isDamageLog = currentLog.type === 'attack' || currentLog.type === 'damage' || currentLog.type === 'critical';
       if (isDamageLog) {
@@ -818,15 +821,11 @@ export default function BattleArena({
     if (!serverMode || battleState !== 'fighting') return;
 
     let animFrameId: number;
-    let lastRealTime = performance.now();
 
-    const updateTimers = (currentRealTime: number) => {
-      const deltaRealTime = currentRealTime - lastRealTime;
-      lastRealTime = currentRealTime;
-
-      // 再生時刻を更新（speed倍速で進む）
-      serverCurrentTimeRef.current += deltaRealTime * speed;
-      const currentPlaybackTime = serverCurrentTimeRef.current;
+    const updateTimers = () => {
+      // ログ再生で設定された時刻を使用
+      // serverCurrentTimeRef.currentはログ処理時に更新される
+      const baseTime = serverCurrentTimeRef.current;
 
       // 各カードのゲージを計算
       setBattleCards(prev => prev.map(card => {
@@ -843,7 +842,7 @@ export default function BattleArena({
         let nextAttackTime = attackTimes[0];
 
         for (let i = 0; i < attackTimes.length; i++) {
-          if (attackTimes[i] <= currentPlaybackTime) {
+          if (attackTimes[i] <= baseTime) {
             lastAttackTime = attackTimes[i];
             nextAttackTime = attackTimes[i + 1] ?? attackTimes[i] + card.maxTimer;
           } else {
@@ -852,14 +851,9 @@ export default function BattleArena({
           }
         }
 
-        // 最後の攻撃が現在時刻を超えている場合、バトル終了後
-        if (lastAttackTime >= currentPlaybackTime) {
-          return { ...card, currentTimer: card.maxTimer };
-        }
-
         // 進捗率を計算（lastAttackTimeからnextAttackTimeまでの間で現在どこにいるか）
         const totalInterval = nextAttackTime - lastAttackTime;
-        const elapsed = currentPlaybackTime - lastAttackTime;
+        const elapsed = baseTime - lastAttackTime;
         const progress = totalInterval > 0 ? Math.min(1, elapsed / totalInterval) : 0;
 
         return {
