@@ -598,8 +598,9 @@ export default function BattleArena({
   // サーバーモード：バトルログ再生用のstate
   const serverLogIndexRef = useRef(0);
   const serverLogsRef = useRef<BattleLogEntry[]>([]);
-  const serverPlaybackStartTimeRef = useRef(0); // 再生開始時刻
-  const serverCurrentTimeRef = useRef(0); // 現在の再生時刻（ログ上のtimestamp）
+  const serverPlaybackStartTimeRef = useRef(0); // 再生開始時刻（performance.now()）
+  const lastLogTimestampRef = useRef(0); // 最後に処理したログのtimestamp
+  const lastLogRealTimeRef = useRef(0); // 最後にログを処理した実時刻（performance.now()）
 
   // 各カードの攻撃タイミングを事前計算（cardId -> timestamp[]）
   const cardAttackTimesRef = useRef<Map<string, number[]>>(new Map());
@@ -612,7 +613,8 @@ export default function BattleArena({
     serverLogsRef.current = serverBattleResult.logs;
     serverLogIndexRef.current = 0;
     serverPlaybackStartTimeRef.current = performance.now();
-    serverCurrentTimeRef.current = 0;
+    lastLogTimestampRef.current = 0;
+    lastLogRealTimeRef.current = performance.now();
 
     // 各カードの攻撃タイミングを事前計算
     const attackTimes = new Map<string, number[]>();
@@ -671,8 +673,9 @@ export default function BattleArena({
       const currentLog = serverLogsRef.current[currentIndex];
       const nextLog = serverLogsRef.current[currentIndex + 1];
 
-      // 現在の再生時刻をログのタイムスタンプに同期
-      serverCurrentTimeRef.current = currentLog.timestamp;
+      // 現在の再生時刻を記録（補間計算用）
+      lastLogTimestampRef.current = currentLog.timestamp;
+      lastLogRealTimeRef.current = performance.now();
 
       // ログに基づいてUIを更新（攻撃/ダメージ/クリティカルのいずれか）
       const isDamageLog = currentLog.type === 'attack' || currentLog.type === 'damage' || currentLog.type === 'critical';
@@ -816,16 +819,19 @@ export default function BattleArena({
   }, [serverMode, serverBattleResult, battleState, speed, language, opponentName, personaName]);
 
   // サーバーモード：タイマーを徐々に増加させるアニメーションループ
-  // ログのタイムスタンプに基づいてゲージの進捗を計算
+  // リアルタイムの経過時間を使って、ログ間の時間を補間
   useEffect(() => {
     if (!serverMode || battleState !== 'fighting') return;
 
     let animFrameId: number;
 
     const updateTimers = () => {
-      // ログ再生で設定された時刻を使用
-      // serverCurrentTimeRef.currentはログ処理時に更新される
-      const baseTime = serverCurrentTimeRef.current;
+      // 実際の経過時間から現在の再生時刻を補間計算
+      const now = performance.now();
+      const realTimeElapsed = now - lastLogRealTimeRef.current;
+      // speed倍速を考慮してバトル内時間に変換
+      const battleTimeElapsed = realTimeElapsed * speed;
+      const currentBattleTime = lastLogTimestampRef.current + battleTimeElapsed;
 
       // 各カードのゲージを計算
       setBattleCards(prev => prev.map(card => {
@@ -842,7 +848,7 @@ export default function BattleArena({
         let nextAttackTime = attackTimes[0];
 
         for (let i = 0; i < attackTimes.length; i++) {
-          if (attackTimes[i] <= baseTime) {
+          if (attackTimes[i] <= currentBattleTime) {
             lastAttackTime = attackTimes[i];
             nextAttackTime = attackTimes[i + 1] ?? attackTimes[i] + card.maxTimer;
           } else {
@@ -853,7 +859,7 @@ export default function BattleArena({
 
         // 進捗率を計算（lastAttackTimeからnextAttackTimeまでの間で現在どこにいるか）
         const totalInterval = nextAttackTime - lastAttackTime;
-        const elapsed = baseTime - lastAttackTime;
+        const elapsed = currentBattleTime - lastAttackTime;
         const progress = totalInterval > 0 ? Math.min(1, elapsed / totalInterval) : 0;
 
         return {
