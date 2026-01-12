@@ -253,11 +253,11 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
                 style={{ backgroundColor: 'var(--background-secondary)' }}
               >
                 <Image
-                  src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/capsule_sm_120.jpg`}
+                  src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${selectedGame.appid}/header.jpg`}
                   alt={selectedGame.name}
-                  width={60}
-                  height={28}
-                  className="rounded border border-gray-300 flex-shrink-0"
+                  width={92}
+                  height={43}
+                  className="rounded border border-gray-300 flex-shrink-0 object-cover"
                 />
                 <div className="flex-grow min-w-0">
                   <p className="font-bold text-sm truncate">{selectedGame.name}</p>
@@ -313,11 +313,11 @@ export default function AddEventModal({ date, games: propGames, steamId, onAdd, 
                         className="w-full flex items-center gap-3 p-2 hover:bg-gray-100 transition-colors border-b border-gray-200 last:border-b-0"
                       >
                         <Image
-                          src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/capsule_sm_120.jpg`}
+                          src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`}
                           alt={game.name}
-                          width={40}
-                          height={18}
-                          className="rounded border border-gray-300 flex-shrink-0"
+                          width={69}
+                          height={32}
+                          className="rounded border border-gray-300 flex-shrink-0 object-cover"
                         />
                         <div className="flex-grow text-left min-w-0">
                           <span className="text-sm font-medium truncate block">{game.name}</span>
