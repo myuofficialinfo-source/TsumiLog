@@ -1202,8 +1202,18 @@ export default function BattleArena({
       currentAction.attackerPosition === position &&
       currentAction.attackerIndex === index
     );
-    if (isActive) {
-      console.log('Card is active:', { isPlayer, position, index, currentAction });
+    // デバッグ：全ての比較結果を表示
+    if (currentAction.attackerIsPlayer === isPlayer) {
+      console.log('isCardActive check:', {
+        isPlayer,
+        position,
+        index,
+        actionPosition: currentAction.attackerPosition,
+        actionIndex: currentAction.attackerIndex,
+        posMatch: currentAction.attackerPosition === position,
+        idxMatch: currentAction.attackerIndex === index,
+        isActive
+      });
     }
     return isActive;
   };
