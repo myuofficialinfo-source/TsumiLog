@@ -13,15 +13,6 @@ interface SteamGame {
   isCompleted?: boolean;
 }
 
-// DBから取得するゲーム情報の型
-interface DBGame {
-  appid: number;
-  name: string;
-  playtime: number;
-  is_backlog: boolean;
-  is_completed: boolean;
-}
-
 type GameFilter = 'all' | 'playing' | 'backlog';
 
 interface AddEventModalProps {
@@ -33,60 +24,41 @@ interface AddEventModalProps {
   language: string;
 }
 
-export default function AddEventModal({ date, games: propGames, steamId, onAdd, onClose, language }: AddEventModalProps) {
+export default function AddEventModal({ date, games: propGames, onAdd, onClose, language }: Omit<AddEventModalProps, 'steamId'> & { steamId?: string }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGame, setSelectedGame] = useState<SteamGame | null>(null);
   const [eventType, setEventType] = useState<GameEvent['type']>('planned');
   const [note, setNote] = useState('');
   const [gameFilter, setGameFilter] = useState<GameFilter>('all');
-  const [dbGames, setDbGames] = useState<SteamGame[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [games, setGames] = useState<SteamGame[]>([]);
+  const [loading, setLoading] = useState(true);
   const [endDate, setEndDate] = useState('');
   const [startTime, setStartTime] = useState('');
   const [endTime, setEndTime] = useState('');
 
-  // DBからゲーム情報を取得
+  // ゲームリストを取得（propGames優先、なければlocalStorageから）
   useEffect(() => {
-    if (!steamId) {
-      setDbGames(propGames);
+    // propGamesがあればそれを使う
+    if (propGames && propGames.length > 0) {
+      setGames(propGames);
+      setLoading(false);
       return;
     }
 
-    const fetchGames = async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/user-games?steamId=${steamId}`);
-        if (res.ok) {
-          const data = await res.json();
-          if (data.games && Array.isArray(data.games)) {
-            const converted: SteamGame[] = data.games.map((g: DBGame) => ({
-              appid: g.appid,
-              name: g.name,
-              playtime_forever: g.playtime,
-              headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${g.appid}/header.jpg`,
-              isBacklog: g.is_backlog,
-              isCompleted: g.is_completed,
-            }));
-            setDbGames(converted);
-          } else {
-            setDbGames(propGames);
-          }
-        } else {
-          setDbGames(propGames);
+    // なければlocalStorageから取得
+    try {
+      const cachedGames = localStorage.getItem('cachedGames');
+      if (cachedGames) {
+        const parsed = JSON.parse(cachedGames);
+        if (parsed && Array.isArray(parsed) && parsed.length > 0) {
+          setGames(parsed);
         }
-      } catch (error) {
-        console.error('Failed to fetch games:', error);
-        setDbGames(propGames);
-      } finally {
-        setLoading(false);
       }
-    };
-
-    fetchGames();
-  }, [steamId, propGames]);
-
-  // フィルター適用したゲームリスト
-  const games = dbGames.length > 0 ? dbGames : propGames;
+    } catch (error) {
+      console.error('Failed to load cached games:', error);
+    }
+    setLoading(false);
+  }, [propGames]);
 
   // フィルターとソート適用
   const filteredGames = games
