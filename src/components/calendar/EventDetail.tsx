@@ -1,7 +1,6 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
 import { X, Trash2, ExternalLink, Edit2, Save, Calendar } from 'lucide-react';
 import { GameEvent } from '@/types/calendar';
 
@@ -74,11 +73,10 @@ export default function EventDetail({ event, onClose, onDelete, onUpdate, langua
       >
         {/* ゲーム画像ヘッダー */}
         <div className="relative">
-          <Image
-            src={event.gameImage}
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${event.gameId}/header.jpg`}
             alt={event.gameName}
-            width={460}
-            height={215}
             className="w-full h-auto"
           />
           <button
