@@ -598,6 +598,11 @@ export default function BattleArena({
   // サーバーモード：バトルログ再生用のstate
   const serverLogIndexRef = useRef(0);
   const serverLogsRef = useRef<BattleLogEntry[]>([]);
+  const serverPlaybackStartTimeRef = useRef(0); // 再生開始時刻
+  const serverCurrentTimeRef = useRef(0); // 現在の再生時刻（ログ上のtimestamp）
+
+  // 各カードの攻撃タイミングを事前計算（cardId -> timestamp[]）
+  const cardAttackTimesRef = useRef<Map<string, number[]>>(new Map());
 
   // サーバーモード：バトル結果を使ってログを再生
   useEffect(() => {
@@ -606,6 +611,19 @@ export default function BattleArena({
     // サーバーのバトルログを設定
     serverLogsRef.current = serverBattleResult.logs;
     serverLogIndexRef.current = 0;
+    serverPlaybackStartTimeRef.current = performance.now();
+    serverCurrentTimeRef.current = 0;
+
+    // 各カードの攻撃タイミングを事前計算
+    const attackTimes = new Map<string, number[]>();
+    serverBattleResult.logs.forEach(log => {
+      if (log.attackerId && (log.type === 'attack' || log.type === 'damage' || log.type === 'critical')) {
+        const times = attackTimes.get(log.attackerId) || [];
+        times.push(log.timestamp);
+        attackTimes.set(log.attackerId, times);
+      }
+    });
+    cardAttackTimesRef.current = attackTimes;
 
     // 最大HPを計算（サーバー結果から逆算）
     // サーバーから最初のログのHPを取得してセット
@@ -692,15 +710,7 @@ export default function BattleArena({
           skill: currentLog.skill,
         });
 
-        // 攻撃したカードのタイマーをリセット（ゲージが満タンから0に）
-        setBattleCards(prev => prev.map(card => {
-          if (card.isPlayer === isPlayerAttacking &&
-              card.position === attackerPosition &&
-              card.index === attackerIndex) {
-            return { ...card, currentTimer: 0 };
-          }
-          return card;
-        }));
+        // タイマーはアニメーションループで自動計算されるため、ここでのリセットは不要
 
         // HP更新
         if (currentLog.playerHp !== undefined) {
@@ -803,21 +813,60 @@ export default function BattleArena({
   }, [serverMode, serverBattleResult, battleState, speed, language, opponentName, personaName]);
 
   // サーバーモード：タイマーを徐々に増加させるアニメーションループ
+  // ログのタイムスタンプに基づいてゲージの進捗を計算
   useEffect(() => {
     if (!serverMode || battleState !== 'fighting') return;
 
     let animFrameId: number;
-    let lastTime = performance.now();
+    let lastRealTime = performance.now();
 
-    const updateTimers = (currentTime: number) => {
-      const deltaTime = (currentTime - lastTime) * speed;
-      lastTime = currentTime;
+    const updateTimers = (currentRealTime: number) => {
+      const deltaRealTime = currentRealTime - lastRealTime;
+      lastRealTime = currentRealTime;
 
-      // 全カードのタイマーを増加（maxTimerを超えないように）
-      setBattleCards(prev => prev.map(card => ({
-        ...card,
-        currentTimer: Math.min(card.currentTimer + deltaTime, card.maxTimer),
-      })));
+      // 再生時刻を更新（speed倍速で進む）
+      serverCurrentTimeRef.current += deltaRealTime * speed;
+      const currentPlaybackTime = serverCurrentTimeRef.current;
+
+      // 各カードのゲージを計算
+      setBattleCards(prev => prev.map(card => {
+        const cardId = `${card.isPlayer ? 'player' : 'opponent'}_${card.position}_${card.index}`;
+        const attackTimes = cardAttackTimesRef.current.get(cardId) || [];
+
+        if (attackTimes.length === 0) {
+          // このカードは攻撃しない（またはデータがない）
+          return { ...card, currentTimer: 0 };
+        }
+
+        // 現在の再生時刻より前の最後の攻撃と、次の攻撃を見つける
+        let lastAttackTime = 0;
+        let nextAttackTime = attackTimes[0];
+
+        for (let i = 0; i < attackTimes.length; i++) {
+          if (attackTimes[i] <= currentPlaybackTime) {
+            lastAttackTime = attackTimes[i];
+            nextAttackTime = attackTimes[i + 1] ?? attackTimes[i] + card.maxTimer;
+          } else {
+            nextAttackTime = attackTimes[i];
+            break;
+          }
+        }
+
+        // 最後の攻撃が現在時刻を超えている場合、バトル終了後
+        if (lastAttackTime >= currentPlaybackTime) {
+          return { ...card, currentTimer: card.maxTimer };
+        }
+
+        // 進捗率を計算（lastAttackTimeからnextAttackTimeまでの間で現在どこにいるか）
+        const totalInterval = nextAttackTime - lastAttackTime;
+        const elapsed = currentPlaybackTime - lastAttackTime;
+        const progress = totalInterval > 0 ? Math.min(1, elapsed / totalInterval) : 0;
+
+        return {
+          ...card,
+          currentTimer: card.maxTimer * progress,
+        };
+      }));
 
       animFrameId = requestAnimationFrame(updateTimers);
     };
