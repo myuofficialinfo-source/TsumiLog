@@ -9,13 +9,11 @@ import {
   GENRE_SKILL_MAP,
   calculateAttack,
   calculateHP,
-  isBacklogGame,
   GenreSkill,
   RARITY_CONFIG,
   SKILL_DESCRIPTIONS,
   SublimatedGame,
   calculateSublimationBuff,
-  BACKLOG_THRESHOLD_MINUTES,
   calculateRarityFromReviews,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -205,7 +203,17 @@ export default function DeckBuilder({
     return null;
   });
 
-  // ランキング情報を取得（値が変わったらキャッシュ更新）
+  // DBから取得した昇華済みゲームリスト
+  const [dbGraduations, setDbGraduations] = useState<Array<{
+    appid: number;
+    gameName: string;
+    rarity: string;
+    isCompleted: boolean;
+    reviewCount: number;
+    graduatedAt: string;
+  }>>([]);
+
+  // ランキング情報と昇華リストを取得
   useEffect(() => {
     if (!steamId) return;
 
@@ -244,12 +252,27 @@ export default function DeckBuilder({
       }
     };
 
+    // 昇華済みゲームリストを取得
+    const fetchGraduations = async () => {
+      try {
+        const response = await fetch(`/api/sublimation?steamId=${steamId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setDbGraduations(data.graduations || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch graduations:', error);
+      }
+    };
+
     fetchUserStats();
+    fetchGraduations();
   }, [steamId, personaName, avatarUrl]);
 
-  // 積みゲー（30分未満）のみをフィルター
+  // 積みゲーのみをフィルター（30分未満 かつ トロコンしていない）
+  // ※game.isBacklogはSteam APIで判定済み（トロコン考慮済み）
   const availableGames = useMemo(() => {
-    return games.filter(game => isBacklogGame(game.playtime_forever));
+    return games.filter(game => game.isBacklog);
   }, [games]);
 
   // バトルカードに変換（重複除去）
@@ -612,26 +635,31 @@ export default function DeckBuilder({
     return calculateSynergies(allCards);
   }, [frontLine, backLine]);
 
-  // 昇華済みゲーム（30分以上プレイ）を計算
+  // 昇華済みゲーム（DBから取得したデータを使用）
   const sublimationBuff = useMemo(() => {
-    // 30分以上プレイしたゲーム = 昇華済み
+    // DBの昇華リストをMap化（トロコン状態も含む）
+    const graduationMap = new Map(dbGraduations.map(g => [g.appid, g]));
+
     const sublimatedGames: SublimatedGame[] = games
-      .filter(game => game.playtime_forever >= BACKLOG_THRESHOLD_MINUTES)
+      .filter(game => graduationMap.has(game.appid))
       .map(game => {
+        const graduation = graduationMap.get(game.appid)!;
         const details = gameDetails.get(game.appid);
-        const reviewCount = details?.recommendations?.total ?? 10000;
+        // DBに保存されたreviewCountを優先、なければAPIから取得
+        const reviewCount = graduation.reviewCount || details?.recommendations?.total || 10000;
         const rarity = calculateRarityFromReviews(reviewCount);
         return {
           appid: game.appid,
           name: game.name,
           rarity,
           playtimeMinutes: game.playtime_forever,
-          isCompleted: false, // TODO: 実績100%達成のチェックは将来実装
+          isCompleted: graduation.isCompleted, // DBから取得したトロコン状態を使用
+          reviewCount,
         };
       });
 
     return calculateSublimationBuff(sublimatedGames);
-  }, [games, gameDetails]);
+  }, [games, gameDetails, dbGraduations]);
 
   // デッキステータス計算
   const deckStats = useMemo(() => {

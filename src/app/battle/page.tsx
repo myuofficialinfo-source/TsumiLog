@@ -38,6 +38,11 @@ interface GameDetail {
   positiveRate?: number;
 }
 
+interface WishlistItem {
+  appid: number;
+  name: string;
+}
+
 interface SteamData {
   profile: {
     personaName: string;
@@ -51,6 +56,7 @@ interface SteamData {
     playedGames: number;
   };
   games: Game[];
+  wishlist?: WishlistItem[];
 }
 
 
@@ -232,7 +238,8 @@ function BattleContent() {
 
     const fetchData = async () => {
       try {
-        const response = await fetch(`/api/steam/games?steamId=${encodeURIComponent(savedSteamId)}`);
+        // wishlist=true でウィッシュリストも取得
+        const response = await fetch(`/api/steam/games?steamId=${encodeURIComponent(savedSteamId)}&wishlist=true`);
         const data = await response.json();
         if (response.ok) {
           setSteamData(data);
@@ -338,41 +345,59 @@ function BattleContent() {
     fetchScore();
   }, [steamId]);
 
-  // 昇華同期（スナップショットベース）
+  // 昇華同期（スナップショットベース）+ ゲーム情報同期
   // 初回：積みゲー（30分未満かつトロコンしていない）をスナップショットとして保存
   // 以降：スナップショット内のゲームで30分以上になったものを昇華としてカウント
   useEffect(() => {
     if (!steamId || steamId === 'dummy' || !steamData?.games) return;
 
-    const syncSublimations = async () => {
-      // 全ゲームリスト（playtime + isBacklog付き）を送信
+    const syncData = async () => {
+      // 全ゲームリスト（playtime + isBacklog + isCompleted付き）を送信
       // isBacklog = 30分未満 かつ トロコンしていない（Steam APIで判定済み）
+      // isCompleted = トロコン済み（実績100%）
       const allGames = steamData.games.map(g => ({
         appid: g.appid,
         name: g.name,
         playtime: g.playtime_forever,
         isBacklog: g.isBacklog, // トロコン判定含む
+        isCompleted: (g as any).isCompleted || false, // トロコン状態
       }));
 
       if (allGames.length === 0) return;
 
       try {
-        await fetch('/api/sublimation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            steamId,
-            personaName: steamData.profile?.personaName,
-            avatarUrl: steamData.profile?.avatarUrl,
-            allGames,
+        // 昇華同期と同時にゲーム情報も同期
+        await Promise.all([
+          // 昇華同期
+          fetch('/api/sublimation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              steamId,
+              personaName: steamData.profile?.personaName,
+              avatarUrl: steamData.profile?.avatarUrl,
+              allGames,
+            }),
           }),
-        });
+          // ゲーム情報同期（DB保存）- ウィッシュリストも含む
+          fetch('/api/user-games', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              steamId,
+              personaName: steamData.profile?.personaName,
+              avatarUrl: steamData.profile?.avatarUrl,
+              games: allGames,
+              wishlist: steamData.wishlist || [],
+            }),
+          }),
+        ]);
       } catch (error) {
-        console.error('Failed to sync sublimations:', error);
+        console.error('Failed to sync data:', error);
       }
     };
 
-    syncSublimations();
+    syncData();
   }, [steamId, steamData]);
 
   // デッキ完成時 - サーバーでバトルを実行

@@ -75,6 +75,7 @@ export async function GET(request: NextRequest) {
       games: ownedGames.map(game => ({
         ...game,
         isBacklog: game.playtime_forever < 30 && !completedGames.has(game.appid),
+        isCompleted: completedGames.has(game.appid),
         playtimeHours: Math.round(game.playtime_forever / 60 * 10) / 10,
         headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
       })),

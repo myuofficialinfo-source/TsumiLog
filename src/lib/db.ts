@@ -29,6 +29,9 @@ export async function initDatabase() {
       steam_id VARCHAR(20) NOT NULL,
       appid INTEGER NOT NULL,
       game_name VARCHAR(200),
+      rarity VARCHAR(20) DEFAULT 'common',
+      is_completed BOOLEAN DEFAULT FALSE,
+      review_count INTEGER DEFAULT 0,
       graduated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
       UNIQUE(steam_id, appid)
     )
@@ -66,17 +69,49 @@ export async function upsertUser(steamId: string, personaName?: string, avatarUr
 }
 
 // ゲーム卒業を記録
-export async function recordGraduation(steamId: string, appid: number, gameName: string) {
+export async function recordGraduation(
+  steamId: string,
+  appid: number,
+  gameName: string,
+  options?: {
+    rarity?: string;
+    isCompleted?: boolean;
+    reviewCount?: number;
+  }
+) {
   try {
+    const rarity = options?.rarity || 'common';
+    const isCompleted = options?.isCompleted || false;
+    const reviewCount = options?.reviewCount || 0;
+
     const result = await sql`
-      INSERT INTO graduations (steam_id, appid, game_name)
-      VALUES (${steamId}, ${appid}, ${gameName})
+      INSERT INTO graduations (steam_id, appid, game_name, rarity, is_completed, review_count)
+      VALUES (${steamId}, ${appid}, ${gameName}, ${rarity}, ${isCompleted}, ${reviewCount})
       ON CONFLICT (steam_id, appid) DO NOTHING
       RETURNING *
     `;
     return result[0] || null;
   } catch {
     return null;
+  }
+}
+
+// 卒業ゲームのトロコン状態を更新
+export async function updateGraduationCompletion(
+  steamId: string,
+  appid: number,
+  isCompleted: boolean
+): Promise<boolean> {
+  try {
+    const result = await sql`
+      UPDATE graduations
+      SET is_completed = ${isCompleted}
+      WHERE steam_id = ${steamId} AND appid = ${appid}
+      RETURNING *
+    `;
+    return result.length > 0;
+  } catch {
+    return false;
   }
 }
 
@@ -96,6 +131,31 @@ export async function getGraduationCount(steamId: string): Promise<number> {
     SELECT COUNT(*) as count FROM graduations WHERE steam_id = ${steamId}
   `;
   return parseInt(result[0]?.count || '0', 10);
+}
+
+// ユーザーの卒業ゲームリストを取得
+export async function getGraduations(steamId: string): Promise<Array<{
+  appid: number;
+  gameName: string;
+  rarity: string;
+  isCompleted: boolean;
+  reviewCount: number;
+  graduatedAt: string;
+}>> {
+  const result = await sql`
+    SELECT appid, game_name, rarity, is_completed, review_count, graduated_at
+    FROM graduations
+    WHERE steam_id = ${steamId}
+    ORDER BY graduated_at DESC
+  `;
+  return result.map(row => ({
+    appid: row.appid,
+    gameName: row.game_name,
+    rarity: row.rarity || 'common',
+    isCompleted: row.is_completed || false,
+    reviewCount: row.review_count || 0,
+    graduatedAt: row.graduated_at,
+  }));
 }
 
 // ユーザーの勝利数を取得
@@ -235,10 +295,11 @@ export async function getUserRank(steamId: string): Promise<number | null> {
 export async function getUserGraduations(steamId: string): Promise<Array<{
   appid: number;
   gameName: string;
+  isCompleted: boolean;
   graduatedAt: Date;
 }>> {
   const result = await sql`
-    SELECT appid, game_name, graduated_at
+    SELECT appid, game_name, is_completed, graduated_at
     FROM graduations
     WHERE steam_id = ${steamId}
     ORDER BY graduated_at DESC
@@ -247,6 +308,7 @@ export async function getUserGraduations(steamId: string): Promise<Array<{
   return result.map(row => ({
     appid: row.appid as number,
     gameName: row.game_name as string,
+    isCompleted: row.is_completed as boolean || false,
     graduatedAt: new Date(row.graduated_at as string),
   }));
 }
@@ -618,6 +680,212 @@ export async function migrateBattlesTable() {
   }
 }
 
+// graduationsテーブルにトロコン関連カラムを追加するマイグレーション
+export async function migrateGraduationsTable() {
+  try {
+    await sql`ALTER TABLE graduations ADD COLUMN IF NOT EXISTS rarity VARCHAR(20) DEFAULT 'common'`;
+    await sql`ALTER TABLE graduations ADD COLUMN IF NOT EXISTS is_completed BOOLEAN DEFAULT FALSE`;
+    await sql`ALTER TABLE graduations ADD COLUMN IF NOT EXISTS review_count INTEGER DEFAULT 0`;
+  } catch {
+    // カラムが既に存在する場合は無視
+  }
+}
+
+// ===== ユーザーゲーム情報テーブル =====
+// ユーザーの所持ゲーム情報を保存（Steam APIから取得したデータをキャッシュ）
+
+// ユーザーゲームテーブル初期化
+export async function initUserGamesTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_games (
+      id SERIAL PRIMARY KEY,
+      steam_id VARCHAR(20) NOT NULL,
+      appid INTEGER NOT NULL,
+      game_name VARCHAR(200),
+      playtime_forever INTEGER DEFAULT 0,
+      is_backlog BOOLEAN DEFAULT TRUE,
+      is_completed BOOLEAN DEFAULT FALSE,
+      last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(steam_id, appid)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_games_steam_id ON user_games(steam_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_games_appid ON user_games(appid)`;
+}
+
+// ユーザーのゲーム情報を一括保存/更新
+export async function syncUserGames(
+  steamId: string,
+  games: Array<{
+    appid: number;
+    name: string;
+    playtime: number;
+    isBacklog: boolean;
+    isCompleted: boolean;
+  }>
+): Promise<number> {
+  let syncedCount = 0;
+  for (const game of games) {
+    try {
+      await sql`
+        INSERT INTO user_games (steam_id, appid, game_name, playtime_forever, is_backlog, is_completed, last_synced_at)
+        VALUES (${steamId}, ${game.appid}, ${game.name}, ${game.playtime}, ${game.isBacklog}, ${game.isCompleted}, CURRENT_TIMESTAMP)
+        ON CONFLICT (steam_id, appid)
+        DO UPDATE SET
+          game_name = ${game.name},
+          playtime_forever = ${game.playtime},
+          is_backlog = ${game.isBacklog},
+          is_completed = ${game.isCompleted},
+          last_synced_at = CURRENT_TIMESTAMP
+      `;
+      syncedCount++;
+    } catch {
+      // エラーは無視
+    }
+  }
+  return syncedCount;
+}
+
+// ユーザーのゲーム情報を取得
+export async function getUserGames(steamId: string): Promise<Array<{
+  appid: number;
+  gameName: string;
+  playtimeForever: number;
+  isBacklog: boolean;
+  isCompleted: boolean;
+  lastSyncedAt: Date;
+}>> {
+  const result = await sql`
+    SELECT appid, game_name, playtime_forever, is_backlog, is_completed, last_synced_at
+    FROM user_games
+    WHERE steam_id = ${steamId}
+    ORDER BY playtime_forever DESC
+  `;
+
+  return result.map(row => ({
+    appid: row.appid as number,
+    gameName: row.game_name as string,
+    playtimeForever: row.playtime_forever as number,
+    isBacklog: row.is_backlog as boolean,
+    isCompleted: row.is_completed as boolean,
+    lastSyncedAt: new Date(row.last_synced_at as string),
+  }));
+}
+
+// ユーザーのゲーム統計を取得
+export async function getUserGameStats(steamId: string): Promise<{
+  totalGames: number;
+  backlogCount: number;
+  playedGames: number;
+  completedGames: number;
+  totalPlaytimeHours: number;
+}> {
+  const result = await sql`
+    SELECT
+      COUNT(*) as total_games,
+      SUM(CASE WHEN is_backlog THEN 1 ELSE 0 END) as backlog_count,
+      SUM(CASE WHEN NOT is_backlog THEN 1 ELSE 0 END) as played_games,
+      SUM(CASE WHEN is_completed THEN 1 ELSE 0 END) as completed_games,
+      COALESCE(SUM(playtime_forever), 0) as total_playtime
+    FROM user_games
+    WHERE steam_id = ${steamId}
+  `;
+
+  const row = result[0];
+  return {
+    totalGames: parseInt(row?.total_games as string || '0', 10),
+    backlogCount: parseInt(row?.backlog_count as string || '0', 10),
+    playedGames: parseInt(row?.played_games as string || '0', 10),
+    completedGames: parseInt(row?.completed_games as string || '0', 10),
+    totalPlaytimeHours: Math.round((parseInt(row?.total_playtime as string || '0', 10)) / 60),
+  };
+}
+
+// ユーザーの最終同期日時を取得
+export async function getUserGamesLastSynced(steamId: string): Promise<Date | null> {
+  const result = await sql`
+    SELECT MAX(last_synced_at) as last_synced
+    FROM user_games
+    WHERE steam_id = ${steamId}
+  `;
+
+  if (result[0]?.last_synced) {
+    return new Date(result[0].last_synced as string);
+  }
+  return null;
+}
+
+// ===== ウィッシュリストテーブル =====
+// ユーザーのウィッシュリスト情報を保存
+
+// ウィッシュリストテーブル初期化
+export async function initWishlistTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS user_wishlist (
+      id SERIAL PRIMARY KEY,
+      steam_id VARCHAR(20) NOT NULL,
+      appid INTEGER NOT NULL,
+      game_name VARCHAR(200),
+      added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      last_synced_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(steam_id, appid)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_user_wishlist_steam_id ON user_wishlist(steam_id)`;
+}
+
+// ユーザーのウィッシュリストを同期
+export async function syncUserWishlist(
+  steamId: string,
+  wishlist: Array<{ appid: number; name: string }>
+): Promise<number> {
+  let syncedCount = 0;
+  for (const game of wishlist) {
+    try {
+      await sql`
+        INSERT INTO user_wishlist (steam_id, appid, game_name, last_synced_at)
+        VALUES (${steamId}, ${game.appid}, ${game.name}, CURRENT_TIMESTAMP)
+        ON CONFLICT (steam_id, appid)
+        DO UPDATE SET
+          game_name = ${game.name},
+          last_synced_at = CURRENT_TIMESTAMP
+      `;
+      syncedCount++;
+    } catch {
+      // エラーは無視
+    }
+  }
+  return syncedCount;
+}
+
+// ユーザーのウィッシュリストを取得
+export async function getUserWishlist(steamId: string): Promise<Array<{
+  appid: number;
+  gameName: string;
+  addedAt: Date;
+}>> {
+  const result = await sql`
+    SELECT appid, game_name, added_at
+    FROM user_wishlist
+    WHERE steam_id = ${steamId}
+    ORDER BY added_at DESC
+  `;
+
+  return result.map(row => ({
+    appid: row.appid as number,
+    gameName: row.game_name as string,
+    addedAt: new Date(row.added_at as string),
+  }));
+}
+
+// ウィッシュリスト数を取得
+export async function getUserWishlistCount(steamId: string): Promise<number> {
+  const result = await sql`
+    SELECT COUNT(*) as count FROM user_wishlist WHERE steam_id = ${steamId}
+  `;
+  return parseInt(result[0]?.count || '0', 10);
+}
+
 // ===== 積みゲースナップショット機能 =====
 // ユーザーが初めてバトルに参加した時点での積みゲー（30分未満）を保存
 // この中から30分を超えたゲームのみが昇華としてカウントされる
@@ -693,10 +961,11 @@ export async function getBacklogSnapshot(steamId: string): Promise<Array<{
 // isBacklog=false の場合は昇華済み（30分以上 or トロコン済み）
 export async function filterSublimationCandidates(
   steamId: string,
-  currentGames: Array<{ appid: number; name: string; playtime: number; isBacklog: boolean }>
+  currentGames: Array<{ appid: number; name: string; playtime: number; isBacklog: boolean; isCompleted?: boolean }>
 ): Promise<{
-  sublimationCandidates: Array<{ appid: number; name: string }>;
+  sublimationCandidates: Array<{ appid: number; name: string; isCompleted: boolean }>;
   newGamesToSnapshot: Array<{ appid: number; name: string; playtime: number }>;
+  completionUpdates: Array<{ appid: number; isCompleted: boolean }>;
 }> {
   // スナップショットを取得
   const snapshot = await getBacklogSnapshot(steamId);
@@ -705,24 +974,35 @@ export async function filterSublimationCandidates(
   // 既に昇華済みのゲームを取得
   const graduations = await getUserGraduations(steamId);
   const graduatedAppids = new Set(graduations.map(g => g.appid));
+  const graduationMap = new Map(graduations.map(g => [g.appid, g]));
 
-  const sublimationCandidates: Array<{ appid: number; name: string }> = [];
+  const sublimationCandidates: Array<{ appid: number; name: string; isCompleted: boolean }> = [];
   const newGamesToSnapshot: Array<{ appid: number; name: string; playtime: number }> = [];
+  const completionUpdates: Array<{ appid: number; isCompleted: boolean }> = [];
 
   for (const game of currentGames) {
-    // 既に昇華済みならスキップ
-    if (graduatedAppids.has(game.appid)) continue;
+    const isCompleted = game.isCompleted || false;
+
+    // 既に昇華済みの場合
+    if (graduatedAppids.has(game.appid)) {
+      // トロコン状態が変わった場合は更新対象に追加
+      const existing = graduationMap.get(game.appid);
+      if (existing && existing.isCompleted !== isCompleted) {
+        completionUpdates.push({ appid: game.appid, isCompleted });
+      }
+      continue;
+    }
 
     if (snapshotAppids.has(game.appid)) {
       // スナップショット内のゲームで isBacklog=false（30分以上 or トロコン済み）→ 昇華対象
       if (!game.isBacklog) {
-        sublimationCandidates.push({ appid: game.appid, name: game.name });
+        sublimationCandidates.push({ appid: game.appid, name: game.name, isCompleted });
       }
     } else {
       // スナップショットにないゲーム = 新規購入
       if (!game.isBacklog) {
         // 30分以上 or トロコン済み → 昇華対象 + スナップショットに追加
-        sublimationCandidates.push({ appid: game.appid, name: game.name });
+        sublimationCandidates.push({ appid: game.appid, name: game.name, isCompleted });
         newGamesToSnapshot.push({ appid: game.appid, name: game.name, playtime: game.playtime });
       } else {
         // 積みゲー（30分未満かつトロコンしていない）→ スナップショットに追加
@@ -731,5 +1011,5 @@ export async function filterSublimationCandidates(
     }
   }
 
-  return { sublimationCandidates, newGamesToSnapshot };
+  return { sublimationCandidates, newGamesToSnapshot, completionUpdates };
 }

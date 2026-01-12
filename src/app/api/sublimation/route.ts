@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
   recordGraduation,
+  updateGraduationCompletion,
   upsertUser,
   getUserScore,
   getUserRank,
@@ -9,6 +10,8 @@ import {
   hasBacklogSnapshot,
   saveBacklogSnapshot,
   filterSublimationCandidates,
+  getGraduations,
+  migrateGraduationsTable,
 } from '@/lib/db';
 
 // DB初期化フラグ
@@ -18,6 +21,7 @@ async function ensureDbInitialized() {
   if (!dbInitialized) {
     await initDatabase();
     await initBacklogSnapshotTable();
+    await migrateGraduationsTable();
     dbInitialized = true;
   }
 }
@@ -71,14 +75,16 @@ export async function POST(request: NextRequest) {
       // 既存ユーザー：
       // 1. スナップショット内のゲームで30分以上になったものを昇華
       // 2. 新規購入ゲームをスナップショットに追加（30分以上なら昇華も）
-      const gamesWithPlaytime = allGames.map((g: { appid: number; name: string; playtime: number; isBacklog?: boolean }) => ({
+      // 3. 既存昇華ゲームのトロコン状態を更新
+      const gamesWithPlaytime = allGames.map((g: { appid: number; name: string; playtime: number; isBacklog?: boolean; isCompleted?: boolean }) => ({
         appid: g.appid,
         name: g.name,
         playtime: g.playtime,
         isBacklog: g.isBacklog ?? (g.playtime < 30), // isBacklogがない場合はplaytimeで判定
+        isCompleted: g.isCompleted || false,
       }));
 
-      const { sublimationCandidates, newGamesToSnapshot } = await filterSublimationCandidates(steamId, gamesWithPlaytime);
+      const { sublimationCandidates, newGamesToSnapshot, completionUpdates } = await filterSublimationCandidates(steamId, gamesWithPlaytime);
 
       // 新規ゲームをスナップショットに追加
       if (newGamesToSnapshot.length > 0) {
@@ -86,16 +92,26 @@ export async function POST(request: NextRequest) {
         console.log(`[${steamId}] Added ${newGamesToSnapshot.length} new games to snapshot`);
       }
 
-      // 昇華を記録
+      // 昇華を記録（トロコン状態も保存）
       for (const game of sublimationCandidates) {
-        const recorded = await recordGraduation(steamId, game.appid, game.name);
+        const recorded = await recordGraduation(steamId, game.appid, game.name, {
+          isCompleted: game.isCompleted,
+        });
         if (recorded) {
           newSublimations++;
         }
       }
 
+      // 既存昇華ゲームのトロコン状態を更新
+      for (const update of completionUpdates) {
+        await updateGraduationCompletion(steamId, update.appid, update.isCompleted);
+      }
+
       if (newSublimations > 0) {
         console.log(`[${steamId}] Recorded ${newSublimations} new sublimations`);
+      }
+      if (completionUpdates.length > 0) {
+        console.log(`[${steamId}] Updated ${completionUpdates.length} trophy completions`);
       }
     }
 
@@ -117,6 +133,45 @@ export async function POST(request: NextRequest) {
     console.error('Sublimation sync API error:', error);
     return NextResponse.json(
       { error: 'Failed to sync sublimations' },
+      { status: 500 }
+    );
+  }
+}
+
+// 昇華済みゲームリストを取得
+export async function GET(request: NextRequest) {
+  try {
+    await ensureDbInitialized();
+
+    const { searchParams } = new URL(request.url);
+    const steamId = searchParams.get('steamId');
+
+    if (!steamId) {
+      return NextResponse.json(
+        { error: 'steamId is required' },
+        { status: 400 }
+      );
+    }
+
+    // 昇華済みゲームリストを取得
+    const graduations = await getGraduations(steamId);
+
+    // ユーザースコアも取得
+    const userScore = await getUserScore(steamId);
+    const userRank = await getUserRank(steamId);
+
+    return NextResponse.json({
+      success: true,
+      graduations,
+      userStats: {
+        ...userScore,
+        rank: userRank,
+      },
+    });
+  } catch (error) {
+    console.error('Sublimation GET API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to get sublimations' },
       { status: 500 }
     );
   }
