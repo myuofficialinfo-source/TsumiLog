@@ -55,6 +55,11 @@ export default function CalendarPage() {
   const [steamId, setSteamId] = useState<string | null>(null);
   const [wishlistReleases, setWishlistReleases] = useState<WishlistRelease[]>([]);
   const [draggedEvent, setDraggedEvent] = useState<GameEvent | null>(null);
+  const [resizeInfo, setResizeInfo] = useState<{
+    eventId: string;
+    startY: number;
+    originalEndTime: string;
+  } | null>(null);
 
   // localStorageからsteamIdとイベントを復元
   useEffect(() => {
@@ -115,6 +120,50 @@ export default function CalendarPage() {
       localStorage.setItem('calendarEvents', JSON.stringify(events));
     }
   }, [events]);
+
+  // リサイズ用のグローバルマウスイベント
+  useEffect(() => {
+    if (!resizeInfo) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const deltaY = e.clientY - resizeInfo.startY;
+      const deltaMinutes = Math.round(deltaY / 50 * 60 / 15) * 15;
+
+      const origEndHour = parseInt(resizeInfo.originalEndTime.split(':')[0]);
+      const origEndMin = parseInt(resizeInfo.originalEndTime.split(':')[1]);
+
+      const targetEvent = events.find(ev => ev.id === resizeInfo.eventId);
+      if (!targetEvent) return;
+
+      const startTimeMin = targetEvent.startTime
+        ? parseInt(targetEvent.startTime.split(':')[0]) * 60 + parseInt(targetEvent.startTime.split(':')[1])
+        : 0;
+
+      const newEndTotalMin = Math.max(
+        startTimeMin + 15,
+        Math.min(24 * 60, origEndHour * 60 + origEndMin + deltaMinutes)
+      );
+      const newEndHour = Math.floor(newEndTotalMin / 60);
+      const newEndMin = newEndTotalMin % 60;
+      const newEndTime = `${String(newEndHour).padStart(2, '0')}:${String(newEndMin).padStart(2, '0')}`;
+
+      setEvents(prev => prev.map(ev =>
+        ev.id === resizeInfo.eventId ? { ...ev, endTime: newEndTime } : ev
+      ));
+    };
+
+    const handleMouseUp = () => {
+      setResizeInfo(null);
+    };
+
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizeInfo, events]);
 
   const formatDateKey = (date: Date): string => {
     const year = date.getFullYear();
@@ -580,93 +629,11 @@ export default function CalendarPage() {
 
             return (
               <div key={weekIndex} className="relative">
-                {/* 日付グリッド */}
-                <div className="grid grid-cols-7">
-                  {weekDays.map((day, dayIndex) => {
-                    const dayOfWeek = day.date.getDay();
-                    const hasHoliday = !!day.holiday;
-
-                    return (
-                      <div
-                        key={dayIndex}
-                        onClick={() => handleDateClick(day.date)}
-                        onDragOver={handleDragOver}
-                        onDrop={(e) => handleDrop(e, day.dateStr)}
-                        className={`relative border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50 transition-colors ${
-                          !day.isCurrentMonth ? 'opacity-40' : ''
-                        } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
-                        style={{
-                          backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: '130px',
-                          paddingTop: barAreaHeight > 0 ? `${28 + barAreaHeight + 4}px` : '28px',
-                          paddingLeft: '4px',
-                          paddingRight: '4px',
-                          paddingBottom: '4px',
-                          ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
-                        }}
-                      >
-                        {/* 日付と祝日名（固定位置） */}
-                        <div className="absolute top-1 left-2 right-2 flex items-start justify-between">
-                          <span className={`text-sm font-bold ${
-                            hasHoliday || dayOfWeek === 0 ? 'text-red-500' :
-                            dayOfWeek === 6 ? 'text-blue-500' :
-                            'text-gray-700'
-                          }`}>
-                            {day.date.getDate()}
-                          </span>
-                          {hasHoliday && (
-                            <span className="text-[10px] text-red-500 font-medium truncate max-w-[50px]">
-                              {language === 'ja' ? day.holiday!.name : day.holiday!.nameEn}
-                            </span>
-                          )}
-                        </div>
-
-                        {/* ユーザーイベント表示 - Steamイベントバーの下に表示 */}
-                        <div className="space-y-1 relative z-20">
-                          {/* ユーザーの予定（最大3件） */}
-                          {day.events.slice(0, 3).map(event => (
-                            <div
-                              key={event.id}
-                              draggable
-                              onDragStart={(e) => handleDragStart(e, event)}
-                              onDragEnd={() => setDraggedEvent(null)}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setSelectedEvent(event);
-                              }}
-                              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing"
-                              style={{ backgroundColor: getEventTypeColor(event.type) }}
-                            >
-                              {event.gameName}
-                            </div>
-                          ))}
-                          {/* ウィッシュリスト発売日（予定がない場合のみ表示） */}
-                          {day.events.length === 0 && getWishlistReleasesForDate(day.dateStr).slice(0, 2).map(release => (
-                            <div
-                              key={`wl-${release.appid}`}
-                              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white truncate"
-                              style={{ backgroundColor: 'var(--pop-yellow)' }}
-                              title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
-                            >
-                              {release.name}
-                            </div>
-                          ))}
-                          {(day.events.length > 3 || (day.events.length === 0 && getWishlistReleasesForDate(day.dateStr).length > 2)) && (
-                            <span className="text-[10px] text-gray-500 font-medium">
-                              +{Math.max(0, day.events.length - 3) + (day.events.length === 0 ? Math.max(0, getWishlistReleasesForDate(day.dateStr).length - 2) : 0)} {language === 'ja' ? '件' : 'more'}
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* Steamイベントバー（期間表示）- 日付エリアの下に重ねて表示 */}
+                {/* Steamイベントバー（期間表示）- 背景として日付グリッドの下に表示 */}
                 {bars.length > 0 && (
                   <div
-                    className="absolute left-0 right-0 z-10 pointer-events-none"
-                    style={{ top: '24px', height: `${barAreaHeight}px` }}
+                    className="absolute left-0 right-0 pointer-events-none"
+                    style={{ top: '24px', height: `${barAreaHeight}px`, zIndex: 0 }}
                   >
                     {bars.map((bar, barIndex) => (
                       <div
@@ -695,6 +662,89 @@ export default function CalendarPage() {
                     ))}
                   </div>
                 )}
+
+                {/* 日付グリッド */}
+                <div className="grid grid-cols-7">
+                  {weekDays.map((day, dayIndex) => {
+                    const dayOfWeek = day.date.getDay();
+                    const hasHoliday = !!day.holiday;
+
+                    return (
+                      <div
+                        key={dayIndex}
+                        onClick={() => handleDateClick(day.date)}
+                        onDragOver={handleDragOver}
+                        onDrop={(e) => handleDrop(e, day.dateStr)}
+                        className={`relative border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50/50 transition-colors ${
+                          !day.isCurrentMonth ? 'opacity-40' : ''
+                        } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
+                        style={{
+                          backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
+                          minHeight: '130px',
+                          paddingTop: barAreaHeight > 0 ? `${28 + barAreaHeight + 4}px` : '28px',
+                          paddingLeft: '4px',
+                          paddingRight: '4px',
+                          paddingBottom: '4px',
+                          zIndex: 1,
+                          ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
+                        }}
+                      >
+                        {/* 日付と祝日名（固定位置） */}
+                        <div className="absolute top-1 left-2 right-2 flex items-start justify-between" style={{ zIndex: 2 }}>
+                          <span className={`text-sm font-bold ${
+                            hasHoliday || dayOfWeek === 0 ? 'text-red-500' :
+                            dayOfWeek === 6 ? 'text-blue-500' :
+                            'text-gray-700'
+                          }`}>
+                            {day.date.getDate()}
+                          </span>
+                          {hasHoliday && (
+                            <span className="text-[10px] text-red-500 font-medium truncate max-w-[50px]">
+                              {language === 'ja' ? day.holiday!.name : day.holiday!.nameEn}
+                            </span>
+                          )}
+                        </div>
+
+                        {/* ユーザーイベント表示 - Steamイベントバーの上にオーバーレイ */}
+                        <div className="space-y-1 relative" style={{ zIndex: 10 }}>
+                          {/* ユーザーの予定（最大3件） */}
+                          {day.events.slice(0, 3).map(event => (
+                            <div
+                              key={event.id}
+                              draggable
+                              onDragStart={(e) => handleDragStart(e, event)}
+                              onDragEnd={() => setDraggedEvent(null)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedEvent(event);
+                              }}
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing shadow-sm"
+                              style={{ backgroundColor: getEventTypeColor(event.type) }}
+                            >
+                              {event.gameName}
+                            </div>
+                          ))}
+                          {/* ウィッシュリスト発売日（予定がない場合のみ表示） */}
+                          {day.events.length === 0 && getWishlistReleasesForDate(day.dateStr).slice(0, 2).map(release => (
+                            <div
+                              key={`wl-${release.appid}`}
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white truncate"
+                              style={{ backgroundColor: 'var(--pop-yellow)' }}
+                              title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
+                            >
+                              {release.name}
+                            </div>
+                          ))}
+                          {(day.events.length > 3 || (day.events.length === 0 && getWishlistReleasesForDate(day.dateStr).length > 2)) && (
+                            <span className="text-[10px] text-gray-500 font-medium">
+                              +{Math.max(0, day.events.length - 3) + (day.events.length === 0 ? Math.max(0, getWishlistReleasesForDate(day.dateStr).length - 2) : 0)} {language === 'ja' ? '件' : 'more'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}
@@ -800,8 +850,12 @@ export default function CalendarPage() {
                       return (
                         <div
                           key={event.id}
-                          draggable
+                          draggable={!resizeInfo}
                           onDragStart={(e) => {
+                            if (resizeInfo) {
+                              e.preventDefault();
+                              return;
+                            }
                             e.dataTransfer.setData('eventId', event.id);
                             e.dataTransfer.setData('type', 'move');
                             setDraggedEvent(event);
@@ -809,17 +863,19 @@ export default function CalendarPage() {
                           onDragEnd={() => setDraggedEvent(null)}
                           onClick={(e) => {
                             e.stopPropagation();
-                            setSelectedEvent(event);
+                            if (!resizeInfo) {
+                              setSelectedEvent(event);
+                            }
                           }}
                           className="absolute left-1 right-1 rounded-lg shadow-sm cursor-grab active:cursor-grabbing overflow-hidden group"
                           style={{
                             top: `${topPx}px`,
                             height: `${heightPx}px`,
                             backgroundColor: getEventTypeColor(event.type),
-                            zIndex: 10,
+                            zIndex: resizeInfo?.eventId === event.id ? 20 : 10,
                           }}
                         >
-                          <div className="p-1 h-full flex flex-col">
+                          <div className="p-1 h-full flex flex-col pointer-events-none">
                             <div className="text-[10px] font-bold text-white truncate">
                               {event.gameName}
                             </div>
@@ -829,16 +885,18 @@ export default function CalendarPage() {
                               </div>
                             )}
                           </div>
-                          {/* リサイズハンドル（下部） */}
+                          {/* リサイズハンドル（下部）- マウスイベントで処理 */}
                           <div
-                            className="absolute bottom-0 left-0 right-0 h-2 cursor-ns-resize bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity"
-                            draggable
-                            onDragStart={(e) => {
+                            className="absolute bottom-0 left-0 right-0 h-3 cursor-ns-resize bg-black/30 opacity-0 group-hover:opacity-100 hover:!opacity-100 transition-opacity"
+                            onMouseDown={(e) => {
                               e.stopPropagation();
-                              e.dataTransfer.setData('eventId', event.id);
-                              e.dataTransfer.setData('type', 'resize');
-                              e.dataTransfer.setData('startY', e.clientY.toString());
-                              e.dataTransfer.setData('originalEndTime', event.endTime || `${String(startHour + 1).padStart(2, '0')}:00`);
+                              e.preventDefault();
+                              const originalEndTime = event.endTime || `${String(startHour + 1).padStart(2, '0')}:00`;
+                              setResizeInfo({
+                                eventId: event.id,
+                                startY: e.clientY,
+                                originalEndTime,
+                              });
                             }}
                           />
                         </div>
@@ -894,31 +952,6 @@ export default function CalendarPage() {
                           endTime: newEndTime,
                         };
                         setEvents(prev => prev.map(ev => ev.id === eventId ? updatedEvent : ev));
-                      } else if (dragType === 'resize') {
-                        // リサイズ処理
-                        const startY = parseFloat(e.dataTransfer.getData('startY'));
-                        const originalEndTime = e.dataTransfer.getData('originalEndTime');
-                        const deltaY = e.clientY - startY;
-                        const deltaMinutes = Math.round(deltaY / 50 * 60 / 15) * 15;
-
-                        const origEndHour = parseInt(originalEndTime.split(':')[0]);
-                        const origEndMin = parseInt(originalEndTime.split(':')[1]);
-                        const newEndTotalMin = Math.max(
-                          (draggedEvent.startTime ? parseInt(draggedEvent.startTime.split(':')[0]) * 60 + parseInt(draggedEvent.startTime.split(':')[1]) : 0) + 15,
-                          origEndHour * 60 + origEndMin + deltaMinutes
-                        );
-                        const newEndHour = Math.min(24, Math.floor(newEndTotalMin / 60));
-                        const newEndMin = newEndTotalMin % 60;
-                        const newEndTime = `${String(newEndHour).padStart(2, '0')}:${String(newEndMin).padStart(2, '0')}`;
-
-                        const targetEvent = events.find(ev => ev.id === eventId);
-                        if (targetEvent) {
-                          const updatedEvent: GameEvent = {
-                            ...targetEvent,
-                            endTime: newEndTime,
-                          };
-                          setEvents(prev => prev.map(ev => ev.id === eventId ? updatedEvent : ev));
-                        }
                       }
                       setDraggedEvent(null);
                     }}
