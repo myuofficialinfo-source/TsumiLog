@@ -1469,6 +1469,8 @@ export default function BattleArena({
               </div>
             </div>
 
+            {/* 相手カードエリア（シェイク対象） */}
+            <div ref={opponentContainerRef} className="space-y-2">
             {/* 相手前衛 */}
             <div>
               <p className="text-xs text-center text-gray-400 mb-1">{language === 'ja' ? '前衛' : 'Front'}</p>
@@ -1540,6 +1542,7 @@ export default function BattleArena({
                   );
                 })}
               </div>
+            </div>
             </div>
           </div>
         </div>
