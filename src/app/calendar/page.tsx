@@ -4,9 +4,11 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, ArrowLeft, Calendar as CalendarIcon, Tag } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { GameEvent, CalendarDay, CalendarView } from '@/types/calendar';
+import { getHoliday, Holiday } from '@/lib/holidays';
+import { getEventsForDate as getSteamEventsForDate, SteamEvent } from '@/lib/steamEvents';
 import AddEventModal from '@/components/calendar/AddEventModal';
 import EventDetail from '@/components/calendar/EventDetail';
 
@@ -15,6 +17,11 @@ interface SteamGame {
   name: string;
   playtime_forever: number;
   headerImage: string;
+}
+
+interface CalendarDayExtended extends CalendarDay {
+  holiday?: Holiday;
+  steamEvents: SteamEvent[];
 }
 
 export default function CalendarPage() {
@@ -72,7 +79,7 @@ export default function CalendarPage() {
   }, [events]);
 
   // カレンダーの日付を生成
-  const generateCalendarDays = (): CalendarDay[] => {
+  const generateCalendarDays = (): CalendarDayExtended[] => {
     const year = currentDate.getFullYear();
     const month = currentDate.getMonth();
     const firstDay = new Date(year, month, 1);
@@ -80,28 +87,34 @@ export default function CalendarPage() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
 
-    const days: CalendarDay[] = [];
+    const days: CalendarDayExtended[] = [];
 
     // 前月の日付を埋める
     const startDayOfWeek = firstDay.getDay();
     for (let i = startDayOfWeek - 1; i >= 0; i--) {
       const date = new Date(year, month, -i);
+      const dateStr = formatDateKey(date);
       days.push({
         date,
         isCurrentMonth: false,
         isToday: false,
         events: getEventsForDate(date),
+        holiday: getHoliday(dateStr),
+        steamEvents: getSteamEventsForDate(dateStr),
       });
     }
 
     // 当月の日付
     for (let day = 1; day <= lastDay.getDate(); day++) {
       const date = new Date(year, month, day);
+      const dateStr = formatDateKey(date);
       days.push({
         date,
         isCurrentMonth: true,
         isToday: date.getTime() === today.getTime(),
         events: getEventsForDate(date),
+        holiday: getHoliday(dateStr),
+        steamEvents: getSteamEventsForDate(dateStr),
       });
     }
 
@@ -109,11 +122,14 @@ export default function CalendarPage() {
     const remainingDays = 42 - days.length;
     for (let i = 1; i <= remainingDays; i++) {
       const date = new Date(year, month + 1, i);
+      const dateStr = formatDateKey(date);
       days.push({
         date,
         isCurrentMonth: false,
         isToday: false,
         events: getEventsForDate(date),
+        holiday: getHoliday(dateStr),
+        steamEvents: getSteamEventsForDate(dateStr),
       });
     }
 
@@ -299,7 +315,8 @@ export default function CalendarPage() {
           <div className="grid grid-cols-7">
             {calendarDays.map((day, index) => {
               const dayOfWeek = day.date.getDay();
-              const isWeekend = dayOfWeek === 0 || dayOfWeek === 6;
+              const hasHoliday = !!day.holiday;
+              const hasSteamEvent = day.steamEvents.length > 0;
 
               return (
                 <div
@@ -313,17 +330,48 @@ export default function CalendarPage() {
                     ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
                   }}
                 >
-                  <span className={`text-sm font-bold ${
-                    dayOfWeek === 0 ? 'text-red-500' :
-                    dayOfWeek === 6 ? 'text-blue-500' :
-                    'text-gray-700'
-                  }`}>
-                    {day.date.getDate()}
-                  </span>
+                  {/* 日付と祝日名 */}
+                  <div className="flex items-start justify-between">
+                    <span className={`text-sm font-bold ${
+                      hasHoliday || dayOfWeek === 0 ? 'text-red-500' :
+                      dayOfWeek === 6 ? 'text-blue-500' :
+                      'text-gray-700'
+                    }`}>
+                      {day.date.getDate()}
+                    </span>
+                    {hasHoliday && (
+                      <span className="text-[10px] text-red-500 font-medium truncate max-w-[60px]">
+                        {language === 'ja' ? day.holiday!.name : day.holiday!.nameEn}
+                      </span>
+                    )}
+                  </div>
 
-                  {/* イベント表示 */}
+                  {/* Steamイベント表示 */}
+                  {hasSteamEvent && (
+                    <div className="mt-1 space-y-0.5">
+                      {day.steamEvents.slice(0, 1).map(steamEvent => (
+                        <div
+                          key={steamEvent.id}
+                          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-white truncate"
+                          style={{ backgroundColor: steamEvent.color }}
+                        >
+                          <Tag className="w-2.5 h-2.5 flex-shrink-0" />
+                          <span className="truncate">
+                            {language === 'ja' ? steamEvent.name : steamEvent.nameEn}
+                          </span>
+                        </div>
+                      ))}
+                      {day.steamEvents.length > 1 && (
+                        <span className="text-[10px] text-purple-600 font-medium">
+                          +{day.steamEvents.length - 1}
+                        </span>
+                      )}
+                    </div>
+                  )}
+
+                  {/* ユーザーイベント表示 */}
                   <div className="mt-1 space-y-1">
-                    {day.events.slice(0, 3).map(event => (
+                    {day.events.slice(0, hasSteamEvent ? 2 : 3).map(event => (
                       <div
                         key={event.id}
                         onClick={(e) => {
@@ -343,9 +391,9 @@ export default function CalendarPage() {
                         <span className="truncate">{event.gameName}</span>
                       </div>
                     ))}
-                    {day.events.length > 3 && (
+                    {day.events.length > (hasSteamEvent ? 2 : 3) && (
                       <span className="text-xs text-gray-500 font-medium">
-                        +{day.events.length - 3} {language === 'ja' ? '件' : 'more'}
+                        +{day.events.length - (hasSteamEvent ? 2 : 3)} {language === 'ja' ? '件' : 'more'}
                       </span>
                     )}
                   </div>
@@ -356,7 +404,7 @@ export default function CalendarPage() {
         </div>
 
         {/* 凡例 */}
-        <div className="mt-4 flex items-center gap-6 text-sm">
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: 'var(--pop-blue)' }} />
             <span>{language === 'ja' ? '予定' : 'Planned'}</span>
@@ -368,6 +416,18 @@ export default function CalendarPage() {
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: 'var(--pop-yellow)' }} />
             <span>{language === 'ja' ? '発売日' : 'Release'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-amber-500" />
+            <span>{language === 'ja' ? 'Steamセール' : 'Steam Sale'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-purple-600" />
+            <span>{language === 'ja' ? 'Steamフェス' : 'Steam Fest'}</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-red-500 font-bold text-xs">●</span>
+            <span>{language === 'ja' ? '祝日' : 'Holiday'}</span>
           </div>
         </div>
       </main>
