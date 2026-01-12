@@ -537,13 +537,15 @@ export default function CalendarPage() {
                     {bars.map((bar, barIndex) => (
                       <div
                         key={`${bar.event.id}-${barIndex}`}
-                        className="absolute flex items-center text-[10px] font-bold text-white truncate pointer-events-auto cursor-default"
+                        className="absolute flex items-center text-[10px] font-bold truncate pointer-events-auto cursor-default"
                         style={{
                           left: `calc(${(bar.startCol / 7) * 100}% + 4px)`,
                           width: `calc(${(bar.span / 7) * 100}% - 8px)`,
                           top: `${bar.row * 22}px`,
                           height: '20px',
                           backgroundColor: bar.event.color,
+                          opacity: 0.6,
+                          color: 'white',
                           borderRadius: bar.isStart && bar.isEnd ? '4px' :
                                         bar.isStart ? '4px 0 0 4px' :
                                         bar.isEnd ? '0 4px 4px 0' : '0',
@@ -578,7 +580,7 @@ export default function CalendarPage() {
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
                           minHeight: '130px', // 固定の高さで縦に伸ばす
-                          paddingTop: `${28 + barAreaHeight + 4}px`,
+                          paddingTop: '28px', // 日付エリア分だけ確保
                           paddingLeft: '8px',
                           paddingRight: '8px',
                           paddingBottom: '8px',
@@ -621,35 +623,21 @@ export default function CalendarPage() {
                                 e.stopPropagation();
                                 setSelectedEvent(event);
                               }}
-                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing"
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing"
                               style={{ backgroundColor: getEventTypeColor(event.type) }}
                             >
-                              <Image
-                                src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${event.gameId}/capsule_sm_120.jpg`}
-                                alt={event.gameName}
-                                width={20}
-                                height={9}
-                                className="rounded-sm flex-shrink-0"
-                              />
-                              <span className="truncate text-[10px]">{event.gameName}</span>
+                              {event.gameName}
                             </div>
                           ))}
                           {/* ウィッシュリスト発売日（予定がない場合のみ表示） */}
                           {day.events.length === 0 && getWishlistReleasesForDate(day.dateStr).slice(0, 2).map(release => (
                             <div
                               key={`wl-${release.appid}`}
-                              className="flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium text-white truncate"
+                              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white truncate"
                               style={{ backgroundColor: 'var(--pop-yellow)' }}
                               title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
                             >
-                              <Image
-                                src={`https://cdn.cloudflare.steamstatic.com/steam/apps/${release.appid}/capsule_sm_120.jpg`}
-                                alt={release.name}
-                                width={20}
-                                height={9}
-                                className="rounded-sm flex-shrink-0"
-                              />
-                              <span className="truncate text-[10px]">🎮 {release.name}</span>
+                              {release.name}
                             </div>
                           ))}
                           {(day.events.length > 3 || (day.events.length === 0 && getWishlistReleasesForDate(day.dateStr).length > 2)) && (
