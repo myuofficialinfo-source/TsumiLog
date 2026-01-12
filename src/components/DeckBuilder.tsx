@@ -116,7 +116,7 @@ function createBattleCard(
 function calculateSynergies(cards: BattleCardType[]): SynergyBonus[] {
   const synergies: SynergyBonus[] = [];
 
-  // ジャンルシナジー
+  // ジャンルシナジー（同ジャンル3枚以上で攻撃力+3%）
   const genreCount = new Map<string, number>();
   cards.forEach(card => {
     card.genres.forEach(genre => {
@@ -129,12 +129,12 @@ function calculateSynergies(cards: BattleCardType[]): SynergyBonus[] {
         type: 'genre',
         name: genre,
         count,
-        effect: { attackBonus: 10 },
+        effect: { attackBonus: 3 },
       });
     }
   });
 
-  // 開発元シナジー
+  // 開発元シナジー（同開発元3枚以上でスキル効果+3%）
   const devCount = new Map<string, number>();
   cards.forEach(card => {
     if (card.developer) {
@@ -142,17 +142,17 @@ function calculateSynergies(cards: BattleCardType[]): SynergyBonus[] {
     }
   });
   devCount.forEach((count, dev) => {
-    if (count >= 2) {
+    if (count >= 3) {
       synergies.push({
         type: 'developer',
         name: dev,
         count,
-        effect: { attackBonus: 15, specialEffect: 'combo' },
+        effect: { skillBonus: 3 },
       });
     }
   });
 
-  // タグシナジー
+  // タグシナジー（同タグ3枚以上でHP+3%）
   const tagCount = new Map<string, number>();
   cards.forEach(card => {
     card.tags?.forEach(tag => {
@@ -165,7 +165,7 @@ function calculateSynergies(cards: BattleCardType[]): SynergyBonus[] {
         type: 'tag',
         name: tag,
         count,
-        effect: { hpBonus: 10 },
+        effect: { hpBonus: 3 },
       });
     }
   });

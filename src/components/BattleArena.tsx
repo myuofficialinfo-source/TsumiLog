@@ -32,61 +32,243 @@ function calculateInterval(card: BattleCardType): number {
   const attackPenalty = Math.min(500, Math.floor(card.attack / 10) * 100);
   const hpBonus = Math.min(300, Math.floor(card.hp / 100) * 50);
   const firstStrikeBonus = card.skills.includes('firstStrike') ? -500 : 0;
-  return Math.max(800, baseInterval + attackPenalty - hpBonus + firstStrikeBonus);
+  const speedBonus = card.skills.includes('speed') ? -300 : 0;  // Racing: 加速
+  const earlybirdBonus = card.skills.includes('earlybird') ? -800 : 0;  // Early Access: 先制確定
+  return Math.max(600, baseInterval + attackPenalty - hpBonus + firstStrikeBonus + speedBonus + earlybirdBonus);
 }
+
+// 前衛/後衛の位置補正
+// 前衛: 攻撃+20%、スキル効果0.7倍
+// 後衛: 攻撃-20%、スキル効果1.5倍
+const POSITION_MODIFIERS = {
+  front: { attackMultiplier: 1.2, skillMultiplier: 0.7 },
+  back: { attackMultiplier: 0.8, skillMultiplier: 1.5 },
+};
 
 // スキル効果の適用
 function applySkillEffect(
-  attacker: BattleCardType,
-  defender: BattleCardType,
-  baseDamage: number
+  attacker: BattleCardType & { position?: 'front' | 'back'; attackCount?: number; skillBonus?: number },
+  defender: BattleCardType & { position?: 'front' | 'back'; hitCount?: number; skillBonus?: number },
+  baseDamage: number,
+  allyCount: number = 1,
+  defenderHpPercent: number = 100
 ): {
   damage: number;
   healAmount: number;
+  allyHealAmount: number;
   isReflected: boolean;
   isCritical: boolean;
+  isDodged: boolean;
   skillUsed?: GenreSkill;
 } {
-  let damage = baseDamage;
+  // 攻撃者の位置補正を適用
+  const attackerPosition = attacker.position || 'front';
+  const defenderPosition = defender.position || 'front';
+  const attackerMod = POSITION_MODIFIERS[attackerPosition];
+  const defenderMod = POSITION_MODIFIERS[defenderPosition];
+
+  // シナジーによるスキルボーナス（%）を倍率に変換
+  const attackerSkillBonus = 1 + ((attacker.skillBonus || 0) / 100);
+  const defenderSkillBonus = 1 + ((defender.skillBonus || 0) / 100);
+
+  // 基礎ダメージに攻撃者の位置補正を適用
+  let damage = Math.floor(baseDamage * attackerMod.attackMultiplier);
   let healAmount = 0;
+  let allyHealAmount = 0;
   let isReflected = false;
   let isCritical = false;
+  let isDodged = false;
   let skillUsed: GenreSkill | undefined;
 
+  // 防御側の追加防御倍率
+  let defenseMultiplier = 1.0;
+
+  // チュートリアル（初回被ダメ無効）チェック
+  const isFirstHit = (defender.hitCount || 0) === 0;
+
+  // 攻撃者スキル（スキル倍率は攻撃者の位置で決まる）
   attacker.skills.forEach(skill => {
     switch (skill) {
       case 'absorb':
-        healAmount = Math.floor(damage * 0.3);
+        // 吸収: 与ダメの30%回復（スキル倍率適用）
+        healAmount = Math.floor(damage * 0.3 * attackerMod.skillMultiplier * attackerSkillBonus);
         skillUsed = skill;
         break;
       case 'ambush':
-        if (Math.random() < 0.25) {
+        // 奇襲: 25%で2倍ダメージ（スキル倍率で確率UP、最大50%）
+        const ambushCrit = Math.min(0.5, 0.25 * attackerMod.skillMultiplier * attackerSkillBonus);
+        if (Math.random() < ambushCrit) {
           damage *= 2;
           isCritical = true;
           skillUsed = skill;
         }
         break;
+      case 'buff':
+        // バフ: 自攻撃+15%（スキル倍率適用）
+        const buffBonus = 0.15 * attackerMod.skillMultiplier * attackerSkillBonus;
+        damage = Math.floor(damage * (1 + buffBonus));
+        skillUsed = skill;
+        break;
+      case 'lucky':
+        // 幸運: 20%で1.5倍ダメージ
+        if (Math.random() < 0.2 * attackerMod.skillMultiplier * attackerSkillBonus) {
+          damage = Math.floor(damage * 1.5);
+          skillUsed = skill;
+        }
+        break;
+      case 'teamwork':
+        // 連携: 攻撃時味方HP+5%回復
+        allyHealAmount = Math.floor(damage * 0.05 * attackerMod.skillMultiplier * attackerSkillBonus);
+        skillUsed = skill;
+        break;
+      case 'explore':
+        // 探索: 敵防御無視20%
+        defenseMultiplier *= (1 - 0.2 * attackerMod.skillMultiplier * attackerSkillBonus);
+        skillUsed = skill;
+        break;
+      case 'party':
+        // パーティ: 味方多いほど攻撃UP（味方1人につき+5%）
+        const partyBonus = allyCount * 0.05 * attackerMod.skillMultiplier * attackerSkillBonus;
+        damage = Math.floor(damage * (1 + partyBonus));
+        skillUsed = skill;
+        break;
+      case 'calculate':
+        // 計算: クリティカル率+10%
+        if (Math.random() < 0.1 * attackerMod.skillMultiplier * attackerSkillBonus) {
+          damage = Math.floor(damage * 1.5);
+          isCritical = true;
+          skillUsed = skill;
+        }
+        break;
+      case 'soundwave':
+        // 音波: 全体攻撃、威力50%（AOE効果はバトルループ側で処理）
+        // ここでは威力調整のみ
+        skillUsed = skill;
+        break;
+      case 'design':
+        // デザイン: スキル効果+10%（他スキルの効果が強化される）
+        // 実装は他スキルの計算に影響するため、マルチプライヤーとして処理
+        skillUsed = skill;
+        break;
+      case 'study':
+        // 学習: 戦闘中攻撃力徐々にUP（攻撃回数に応じて+2%）
+        const studyBonus = (attacker.attackCount || 0) * 0.02 * attackerMod.skillMultiplier * attackerSkillBonus;
+        damage = Math.floor(damage * (1 + Math.min(0.5, studyBonus)));
+        skillUsed = skill;
+        break;
+      case 'training':
+        // トレーニング: 最初の攻撃2倍
+        if ((attacker.attackCount || 0) === 0) {
+          damage *= 2;
+          skillUsed = skill;
+        }
+        break;
+      case 'produce':
+        // プロデュース: 味方スキル発動率UP（実装は確率計算に影響）
+        skillUsed = skill;
+        break;
+      case 'publish':
+        // パブリッシュ: 敵情報公開、弱点+10%ダメージ
+        damage = Math.floor(damage * (1 + 0.1 * attackerMod.skillMultiplier * attackerSkillBonus));
+        skillUsed = skill;
+        break;
+      case 'develop':
+        // 開発: ランダムスキル追加発動（10%確率で追加クリティカル）
+        if (Math.random() < 0.1) {
+          damage = Math.floor(damage * 1.3);
+          skillUsed = skill;
+        }
+        break;
+      case 'mature':
+        // マチュア: 攻撃+20%、防御-10%
+        damage = Math.floor(damage * (1 + 0.2 * attackerMod.skillMultiplier * attackerSkillBonus));
+        skillUsed = skill;
+        break;
+      case 'expose':
+        // エクスポーズ: 敵防御-20%
+        defenseMultiplier *= (1 - 0.2 * attackerMod.skillMultiplier * attackerSkillBonus);
+        skillUsed = skill;
+        break;
+      case 'brutal':
+        // ブルータル: 与ダメ+25%
+        damage = Math.floor(damage * (1 + 0.25 * attackerMod.skillMultiplier * attackerSkillBonus));
+        skillUsed = skill;
+        break;
+      case 'gore':
+        // ゴア: 敵HP低いほどダメージUP（HP50%以下で最大+50%）
+        const goreBonus = Math.max(0, (50 - defenderHpPercent) / 50) * 0.5 * attackerMod.skillMultiplier * attackerSkillBonus;
+        damage = Math.floor(damage * (1 + goreBonus));
+        if (goreBonus > 0) skillUsed = skill;
+        break;
     }
   });
 
+  // 防御者スキル（スキル倍率は防御者の位置で決まる）
   defender.skills.forEach(skill => {
     switch (skill) {
       case 'defense':
-        damage = Math.floor(damage * 0.7);
+        // 防御: 被ダメ-30%（スキル倍率で軽減量UP）
+        const defenseReduction = 0.3 * defenderMod.skillMultiplier * defenderSkillBonus * defenseMultiplier;
+        damage = Math.floor(damage * (1 - Math.min(0.5, defenseReduction)));
         skillUsed = skill;
         break;
       case 'reflect':
+        // 反射: 被ダメの20%返し
         isReflected = true;
         skillUsed = skill;
         break;
       case 'fear':
-        damage = Math.floor(damage * 0.8);
+        // 恐怖: 敵攻撃-20%（スキル倍率適用）
+        const fearReduction = 0.2 * defenderMod.skillMultiplier * defenderSkillBonus;
+        damage = Math.floor(damage * (1 - Math.min(0.4, fearReduction)));
         skillUsed = skill;
+        break;
+      case 'freebie':
+        // フリービー: 被ダメ時10%で無効化
+        if (Math.random() < 0.1 * defenderMod.skillMultiplier * defenderSkillBonus) {
+          isDodged = true;
+          damage = 0;
+          skillUsed = skill;
+        }
+        break;
+      case 'retouch':
+        // レタッチ: HP20%以下で防御2倍
+        if (defenderHpPercent <= 20) {
+          damage = Math.floor(damage * 0.5);
+          skillUsed = skill;
+        }
+        break;
+      case 'utility':
+        // ユーティリティ: 状態異常耐性（反射などの追加効果を軽減）
+        // 実装は状態異常システムがある場合に効果発揮
+        skillUsed = skill;
+        break;
+      case 'tutorial':
+        // チュートリアル: 初回被ダメ無効
+        if (isFirstHit) {
+          isDodged = true;
+          damage = 0;
+          skillUsed = skill;
+        }
+        break;
+      case 'docu':
+        // ドキュメント: 敵スキル効果-20%
+        // 攻撃者のスキル効果を弱体化（ダメージを少し軽減で表現）
+        damage = Math.floor(damage * (1 - 0.1 * defenderMod.skillMultiplier * defenderSkillBonus));
+        skillUsed = skill;
+        break;
+      case 'mature':
+        // マチュア（防御側）: 攻撃+20%、防御-10%
+        damage = Math.floor(damage * 1.1); // 被ダメ+10%
+        break;
+      case 'brutal':
+        // ブルータル（防御側）: 被ダメ+15%
+        damage = Math.floor(damage * 1.15);
         break;
     }
   });
 
-  return { damage, healAmount, isReflected, isCritical, skillUsed };
+  return { damage, healAmount, allyHealAmount, isReflected, isCritical, isDodged, skillUsed };
 }
 
 // リアルタイムバトル用カード型（チーム共有HP、個別HPなし）
@@ -96,6 +278,9 @@ interface BattleCardState extends BattleCardType {
   isPlayer: boolean;
   position: 'front' | 'back';
   index: number;
+  attackCount: number;  // 攻撃回数（studyスキル用）
+  hitCount: number;     // 被ダメ回数（tutorialスキル用）
+  skillBonus: number;   // シナジーによるスキル効果ボーナス（%）
 }
 
 export default function BattleArena({
@@ -207,12 +392,12 @@ export default function BattleArena({
 
     const reportBattle = async () => {
       try {
-        // 卒業済みカード（10時間以上プレイ）を抽出
+        // 昇華済みカード（30分以上プレイ）を抽出
         const allCards = [...playerDeck.frontLine, ...playerDeck.backLine].filter(
           (c): c is BattleCardType => c !== null
         );
         const graduatedGames = allCards
-          .filter(c => c.playtimeMinutes >= 600) // 10時間 = 600分
+          .filter(c => c.playtimeMinutes >= 30) // 30分以上 = 昇華
           .map(c => ({ appid: c.appid, name: c.name }));
 
         // デッキで使用したゲーム一覧
@@ -264,6 +449,14 @@ export default function BattleArena({
     let totalPlayerHp = 0;
     let totalOpponentHp = 0;
 
+    // シナジーからスキルボーナスを計算
+    const playerSkillBonus = playerDeck.synergies.reduce((acc, synergy) => {
+      return acc + (synergy.effect.skillBonus || 0);
+    }, 0);
+    const opponentSkillBonus = opponentDeck.synergies.reduce((acc, synergy) => {
+      return acc + (synergy.effect.skillBonus || 0);
+    }, 0);
+
     // プレイヤーカード初期化
     playerDeck.frontLine.forEach((card, index) => {
       if (card) {
@@ -286,6 +479,9 @@ export default function BattleArena({
           isPlayer: true,
           position: 'front',
           index,
+          attackCount: 0,
+          hitCount: 0,
+          skillBonus: playerSkillBonus,
         });
       }
     });
@@ -309,6 +505,9 @@ export default function BattleArena({
           isPlayer: true,
           position: 'back',
           index,
+          attackCount: 0,
+          hitCount: 0,
+          skillBonus: playerSkillBonus,
         });
       }
     });
@@ -334,6 +533,9 @@ export default function BattleArena({
           isPlayer: false,
           position: 'front',
           index,
+          attackCount: 0,
+          hitCount: 0,
+          skillBonus: opponentSkillBonus,
         });
       }
     });
@@ -357,6 +559,9 @@ export default function BattleArena({
           isPlayer: false,
           position: 'back',
           index,
+          attackCount: 0,
+          hitCount: 0,
+          skillBonus: opponentSkillBonus,
         });
       }
     });
@@ -429,10 +634,50 @@ export default function BattleArena({
 
             // ターゲット選択（敵チームからランダム）
             const enemies = card.isPlayer ? opponentCards : playerCards;
+            const allies = card.isPlayer ? playerCards : opponentCards;
             const target = enemies[Math.floor(Math.random() * enemies.length)];
 
             if (target) {
-              const result = applySkillEffect(card, target, card.attack);
+              // HP％を計算（goreスキル用）
+              const targetTeamHp = card.isPlayer ? opponentHpRef.current : playerHpRef.current;
+              const targetTeamMaxHp = card.isPlayer ? opponentMaxHp : playerMaxHp;
+              const defenderHpPercent = targetTeamMaxHp > 0 ? (targetTeamHp / targetTeamMaxHp) * 100 : 100;
+
+              const result = applySkillEffect(
+                card,
+                target,
+                card.attack,
+                allies.length,
+                defenderHpPercent
+              );
+
+              // 攻撃回数をインクリメント（studyスキル用）
+              card.attackCount++;
+              // 被ダメ回数をインクリメント（tutorialスキル用）
+              target.hitCount++;
+
+              // 回避された場合はダメージなし
+              if (result.isDodged) {
+                pendingActionRef.current = {
+                  attacker: card.name,
+                  attackerIndex: card.index,
+                  attackerPosition: card.position,
+                  attackerIsPlayer: card.isPlayer,
+                  defender: target.name,
+                  damage: 0,
+                  isCritical: false,
+                  isPlayerAttacking: card.isPlayer,
+                  skill: result.skillUsed,
+                  healAmount: 0,
+                  reflectDamage: 0,
+                };
+                actionOccurred = true;
+                return;
+              }
+
+              // 反射ダメージ計算（防御者の位置でスキル倍率適用）
+              const targetMod = POSITION_MODIFIERS[target.position];
+              const reflectMultiplier = 0.2 * targetMod.skillMultiplier; // 基本20%、後衛なら30%
 
               // チーム共有HPにダメージ
               let reflectDamage = 0;
@@ -440,20 +685,27 @@ export default function BattleArena({
                 opponentHpRef.current = Math.max(0, opponentHpRef.current - result.damage);
                 // 吸収で自チーム回復
                 if (result.healAmount > 0) {
-                  playerHpRef.current = Math.min(playerHpRef.current + result.healAmount, playerHpRef.current);
+                  playerHpRef.current = Math.min(playerMaxHp, playerHpRef.current + result.healAmount);
                 }
-                // 反射ダメージ
+                // 連携で味方HP回復
+                if (result.allyHealAmount > 0) {
+                  playerHpRef.current = Math.min(playerMaxHp, playerHpRef.current + result.allyHealAmount);
+                }
+                // 反射ダメージ（位置補正適用）
                 if (result.isReflected) {
-                  reflectDamage = Math.floor(result.damage * 0.2);
+                  reflectDamage = Math.floor(result.damage * reflectMultiplier);
                   playerHpRef.current = Math.max(0, playerHpRef.current - reflectDamage);
                 }
               } else {
                 playerHpRef.current = Math.max(0, playerHpRef.current - result.damage);
                 if (result.healAmount > 0) {
-                  opponentHpRef.current = Math.min(opponentHpRef.current + result.healAmount, opponentHpRef.current);
+                  opponentHpRef.current = Math.min(opponentMaxHp, opponentHpRef.current + result.healAmount);
+                }
+                if (result.allyHealAmount > 0) {
+                  opponentHpRef.current = Math.min(opponentMaxHp, opponentHpRef.current + result.allyHealAmount);
                 }
                 if (result.isReflected) {
-                  reflectDamage = Math.floor(result.damage * 0.2);
+                  reflectDamage = Math.floor(result.damage * reflectMultiplier);
                   opponentHpRef.current = Math.max(0, opponentHpRef.current - reflectDamage);
                 }
               }

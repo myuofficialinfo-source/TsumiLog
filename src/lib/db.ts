@@ -617,3 +617,119 @@ export async function migrateBattlesTable() {
     // カラムが既に存在する場合は無視
   }
 }
+
+// ===== 積みゲースナップショット機能 =====
+// ユーザーが初めてバトルに参加した時点での積みゲー（30分未満）を保存
+// この中から30分を超えたゲームのみが昇華としてカウントされる
+
+// 積みゲースナップショットテーブル初期化
+export async function initBacklogSnapshotTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS backlog_snapshot (
+      id SERIAL PRIMARY KEY,
+      steam_id VARCHAR(20) NOT NULL,
+      appid INTEGER NOT NULL,
+      game_name VARCHAR(200),
+      initial_playtime INTEGER DEFAULT 0,
+      snapshot_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      UNIQUE(steam_id, appid)
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_backlog_snapshot_steam_id ON backlog_snapshot(steam_id)`;
+}
+
+// ユーザーの積みゲースナップショットが存在するか確認
+export async function hasBacklogSnapshot(steamId: string): Promise<boolean> {
+  const result = await sql`
+    SELECT COUNT(*) as count FROM backlog_snapshot WHERE steam_id = ${steamId}
+  `;
+  return parseInt(result[0]?.count || '0', 10) > 0;
+}
+
+// 積みゲースナップショットを保存（初回のみ）
+// games: 30分未満のゲームリスト
+export async function saveBacklogSnapshot(
+  steamId: string,
+  games: Array<{ appid: number; name: string; playtime: number }>
+): Promise<number> {
+  let savedCount = 0;
+  for (const game of games) {
+    try {
+      await sql`
+        INSERT INTO backlog_snapshot (steam_id, appid, game_name, initial_playtime)
+        VALUES (${steamId}, ${game.appid}, ${game.name}, ${game.playtime})
+        ON CONFLICT (steam_id, appid) DO NOTHING
+      `;
+      savedCount++;
+    } catch {
+      // エラーは無視
+    }
+  }
+  return savedCount;
+}
+
+// 積みゲースナップショットを取得
+export async function getBacklogSnapshot(steamId: string): Promise<Array<{
+  appid: number;
+  gameName: string;
+  initialPlaytime: number;
+}>> {
+  const result = await sql`
+    SELECT appid, game_name, initial_playtime
+    FROM backlog_snapshot
+    WHERE steam_id = ${steamId}
+  `;
+
+  return result.map(row => ({
+    appid: row.appid as number,
+    gameName: row.game_name as string,
+    initialPlaytime: row.initial_playtime as number,
+  }));
+}
+
+// 昇華対象のゲームをフィルタ
+// 昇華条件：スナップショット内のゲームで「30分以上」または「トロコン済み」
+// isBacklog: 30分未満かつトロコンしていない場合true
+// isBacklog=false の場合は昇華済み（30分以上 or トロコン済み）
+export async function filterSublimationCandidates(
+  steamId: string,
+  currentGames: Array<{ appid: number; name: string; playtime: number; isBacklog: boolean }>
+): Promise<{
+  sublimationCandidates: Array<{ appid: number; name: string }>;
+  newGamesToSnapshot: Array<{ appid: number; name: string; playtime: number }>;
+}> {
+  // スナップショットを取得
+  const snapshot = await getBacklogSnapshot(steamId);
+  const snapshotAppids = new Set(snapshot.map(g => g.appid));
+
+  // 既に昇華済みのゲームを取得
+  const graduations = await getUserGraduations(steamId);
+  const graduatedAppids = new Set(graduations.map(g => g.appid));
+
+  const sublimationCandidates: Array<{ appid: number; name: string }> = [];
+  const newGamesToSnapshot: Array<{ appid: number; name: string; playtime: number }> = [];
+
+  for (const game of currentGames) {
+    // 既に昇華済みならスキップ
+    if (graduatedAppids.has(game.appid)) continue;
+
+    if (snapshotAppids.has(game.appid)) {
+      // スナップショット内のゲームで isBacklog=false（30分以上 or トロコン済み）→ 昇華対象
+      if (!game.isBacklog) {
+        sublimationCandidates.push({ appid: game.appid, name: game.name });
+      }
+    } else {
+      // スナップショットにないゲーム = 新規購入
+      if (!game.isBacklog) {
+        // 30分以上 or トロコン済み → 昇華対象 + スナップショットに追加
+        sublimationCandidates.push({ appid: game.appid, name: game.name });
+        newGamesToSnapshot.push({ appid: game.appid, name: game.name, playtime: game.playtime });
+      } else {
+        // 積みゲー（30分未満かつトロコンしていない）→ スナップショットに追加
+        newGamesToSnapshot.push({ appid: game.appid, name: game.name, playtime: game.playtime });
+      }
+    }
+  }
+
+  return { sublimationCandidates, newGamesToSnapshot };
+}

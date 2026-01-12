@@ -4,44 +4,152 @@
 // C(コモン), R(レア), SR(スーパーレア), UC(ウルトラレア)
 export type Rarity = 'common' | 'rare' | 'superRare' | 'ultraRare';
 
-// ジャンルスキル
+// ジャンルスキル（Steam全29ジャンル対応）
 export type GenreSkill =
-  | 'firstStrike'   // Action: 先制攻撃
-  | 'absorb'        // RPG: 吸収
-  | 'fear'          // Horror: 恐怖（敵攻撃力ダウン）
-  | 'defense'       // Strategy: 防御
+  // === ゲーム用ジャンル（ID 1-37） ===
+  | 'firstStrike'   // Action (1): 先制攻撃
+  | 'defense'       // Strategy (2): 防御
+  | 'absorb'        // RPG (3): 吸収
+  | 'lucky'         // Casual (4): 幸運
+  | 'speed'         // Racing (9): 加速
+  | 'teamwork'      // Sports (18): 連携
+  | 'ambush'        // Indie (23): 奇襲
+  | 'explore'       // Adventure (25): 探索
+  | 'buff'          // Simulation (28): バフ
+  | 'party'         // Massively Multiplayer (29): パーティ
+  | 'freebie'       // Free to Play (37): フリービー
+  // === ユーザータグ系（公式IDなし） ===
+  | 'fear'          // Horror: 恐怖
   | 'reflect'       // Puzzle: 反射
-  | 'buff'          // Simulation: バフ
-  | 'ambush';       // Indie: 奇襲（2倍ダメージ確率）
+  // === ソフトウェア用ジャンル（ID 50-60） ===
+  | 'calculate'     // Accounting (50): 計算
+  | 'animate'       // Animation & Modeling (51): アニメート
+  | 'soundwave'     // Audio Production (52): 音波
+  | 'design'        // Design & Illustration (53): デザイン
+  | 'study'         // Education (54): 学習
+  | 'retouch'       // Photo Editing (55): レタッチ
+  | 'training'      // Software Training (56): トレーニング
+  | 'utility'       // Utilities (57): ユーティリティ
+  | 'produce'       // Video Production (58): プロデュース
+  | 'publish'       // Web Publishing (59): パブリッシュ
+  | 'develop'       // Game Development (60): 開発
+  // === タグ/コンテンツ系（ID 70-84） ===
+  | 'earlybird'     // Early Access (70): アーリーバード
+  | 'mature'        // Sexual Content (71): マチュア
+  | 'expose'        // Nudity (72): エクスポーズ
+  | 'brutal'        // Violent (73): ブルータル
+  | 'gore'          // Gore (74): ゴア
+  | 'docu'          // Documentary (81): ドキュメント
+  | 'tutorial';     // Tutorial (84): チュートリアル
 
-// ジャンルとスキルのマッピング
+// ジャンルとスキルのマッピング（Steam全ジャンル対応）
 export const GENRE_SKILL_MAP: Record<string, GenreSkill> = {
+  // === ゲーム用ジャンル ===
   'Action': 'firstStrike',
-  'RPG': 'absorb',
-  'Horror': 'fear',
   'Strategy': 'defense',
-  'Puzzle': 'reflect',
-  'Simulation': 'buff',
+  'RPG': 'absorb',
+  'Casual': 'lucky',
+  'Racing': 'speed',
+  'Sports': 'teamwork',
   'Indie': 'ambush',
-  // 日本語対応
+  'Adventure': 'explore',
+  'Simulation': 'buff',
+  'Massively Multiplayer': 'party',
+  'Free to Play': 'freebie',
+  // === ユーザータグ系 ===
+  'Horror': 'fear',
+  'Puzzle': 'reflect',
+  // === ソフトウェア用ジャンル ===
+  'Accounting': 'calculate',
+  'Animation & Modeling': 'animate',
+  'Audio Production': 'soundwave',
+  'Design & Illustration': 'design',
+  'Education': 'study',
+  'Photo Editing': 'retouch',
+  'Software Training': 'training',
+  'Utilities': 'utility',
+  'Video Production': 'produce',
+  'Web Publishing': 'publish',
+  'Game Development': 'develop',
+  // === タグ/コンテンツ系 ===
+  'Early Access': 'earlybird',
+  'Sexual Content': 'mature',
+  'Nudity': 'expose',
+  'Violent': 'brutal',
+  'Gore': 'gore',
+  'Documentary': 'docu',
+  'Tutorial': 'tutorial',
+  // === 日本語対応 ===
   'アクション': 'firstStrike',
-  'ロールプレイング': 'absorb',
-  'ホラー': 'fear',
   'ストラテジー': 'defense',
-  'パズル': 'reflect',
-  'シミュレーション': 'buff',
+  'ロールプレイング': 'absorb',
+  'カジュアル': 'lucky',
+  'レース': 'speed',
+  'スポーツ': 'teamwork',
   'インディー': 'ambush',
+  'アドベンチャー': 'explore',
+  'シミュレーション': 'buff',
+  'MMO': 'party',
+  '基本無料': 'freebie',
+  'ホラー': 'fear',
+  'パズル': 'reflect',
+  '会計': 'calculate',
+  'アニメーション': 'animate',
+  '音声制作': 'soundwave',
+  'デザイン': 'design',
+  '教育': 'study',
+  '写真編集': 'retouch',
+  'トレーニング': 'training',
+  'ユーティリティ': 'utility',
+  '動画制作': 'produce',
+  'Web': 'publish',
+  'ゲーム開発': 'develop',
+  '早期アクセス': 'earlybird',
+  '性的コンテンツ': 'mature',
+  '裸体': 'expose',
+  '暴力': 'brutal',
+  'ゴア': 'gore',
+  'ドキュメンタリー': 'docu',
+  'チュートリアル': 'tutorial',
 };
 
-// スキル効果の説明
+// スキル効果の説明（全29スキル）
 export const SKILL_DESCRIPTIONS: Record<GenreSkill, { ja: string; en: string }> = {
-  firstStrike: { ja: '先制攻撃', en: 'First Strike' },
-  absorb: { ja: '吸収（与ダメの30%回復）', en: 'Absorb (Heal 30% of damage)' },
-  fear: { ja: '恐怖（敵攻撃-20%）', en: 'Fear (Enemy ATK -20%)' },
+  // === ゲーム用 ===
+  firstStrike: { ja: '先制攻撃（インターバル-500ms）', en: 'First Strike (Interval -500ms)' },
   defense: { ja: '防御（被ダメ-30%）', en: 'Defense (DMG taken -30%)' },
-  reflect: { ja: '反射（被ダメの20%返し）', en: 'Reflect (Return 20% DMG)' },
-  buff: { ja: 'バフ（味方攻撃+15%）', en: 'Buff (Ally ATK +15%)' },
+  absorb: { ja: '吸収（与ダメの30%回復）', en: 'Absorb (Heal 30% of damage)' },
+  lucky: { ja: '幸運（20%でダメージ1.5倍）', en: 'Lucky (20% chance 1.5x DMG)' },
+  speed: { ja: '加速（インターバル-300ms）', en: 'Speed (Interval -300ms)' },
+  teamwork: { ja: '連携（攻撃時味方HP+5%回復）', en: 'Teamwork (Heal ally 5% on attack)' },
   ambush: { ja: '奇襲（25%で2倍ダメージ）', en: 'Ambush (25% chance 2x DMG)' },
+  explore: { ja: '探索（敵防御無視20%）', en: 'Explore (Ignore 20% DEF)' },
+  buff: { ja: 'バフ（自攻撃+15%）', en: 'Buff (Self ATK +15%)' },
+  party: { ja: 'パーティ（味方多いほど攻撃UP）', en: 'Party (ATK+ per ally)' },
+  freebie: { ja: 'フリービー（被ダメ時10%で無効化）', en: 'Freebie (10% dodge)' },
+  // === タグ系 ===
+  fear: { ja: '恐怖（敵攻撃-20%）', en: 'Fear (Enemy ATK -20%)' },
+  reflect: { ja: '反射（被ダメの20%返し）', en: 'Reflect (Return 20% DMG)' },
+  // === ソフトウェア用 ===
+  calculate: { ja: '計算（クリティカル率+10%）', en: 'Calculate (Crit +10%)' },
+  animate: { ja: 'アニメート（攻撃エフェクト強化）', en: 'Animate (Enhanced effects)' },
+  soundwave: { ja: '音波（全体攻撃、威力50%）', en: 'Soundwave (AoE 50% DMG)' },
+  design: { ja: 'デザイン（スキル効果+10%）', en: 'Design (Skill effect +10%)' },
+  study: { ja: '学習（戦闘中攻撃力徐々にUP）', en: 'Study (ATK grows in battle)' },
+  retouch: { ja: 'レタッチ（HP20%以下で防御2倍）', en: 'Retouch (2x DEF when HP<20%)' },
+  training: { ja: 'トレーニング（最初の攻撃2倍）', en: 'Training (First attack 2x)' },
+  utility: { ja: 'ユーティリティ（状態異常耐性）', en: 'Utility (Status resist)' },
+  produce: { ja: 'プロデュース（味方スキル発動率UP）', en: 'Produce (Ally skill rate +)' },
+  publish: { ja: 'パブリッシュ（敵情報公開、弱点+10%）', en: 'Publish (Expose weakness +10%)' },
+  develop: { ja: '開発（ランダムスキル追加発動）', en: 'Develop (Random bonus skill)' },
+  // === コンテンツ系 ===
+  earlybird: { ja: 'アーリーバード（先制攻撃確定）', en: 'Early Bird (Always first)' },
+  mature: { ja: 'マチュア（攻撃+20%、防御-10%）', en: 'Mature (ATK+20%, DEF-10%)' },
+  expose: { ja: 'エクスポーズ（敵防御-20%）', en: 'Expose (Enemy DEF -20%)' },
+  brutal: { ja: 'ブルータル（与ダメ+25%、被ダメ+15%）', en: 'Brutal (DMG+25%, taken+15%)' },
+  gore: { ja: 'ゴア（敵HP低いほどダメージUP）', en: 'Gore (More DMG vs low HP)' },
+  docu: { ja: 'ドキュメント（敵スキル効果-20%）', en: 'Document (Enemy skill -20%)' },
+  tutorial: { ja: 'チュートリアル（初回被ダメ無効）', en: 'Tutorial (Block first hit)' },
 };
 
 // レアリティ設定
@@ -122,6 +230,7 @@ export interface SynergyBonus {
   effect: {
     attackBonus?: number;  // 攻撃力ボーナス（%）
     hpBonus?: number;      // HPボーナス（%）
+    skillBonus?: number;   // スキル効果ボーナス（%）
     specialEffect?: string;
   };
 }
@@ -197,21 +306,32 @@ export function calculateHP(positiveRate: number | null | undefined): number {
   return 200;                               // 不評
 }
 
-// 昇華ボーナス設定（30分以上プレイしたゲームがデッキ全体にバフ）
+// 昇華ボーナス設定（30分以上プレイしたゲームがデッキ全体にバフ、上限なし）
 export const SUBLIMATION_BONUS: Record<Rarity, number> = {
-  common: 1,      // +1%
-  rare: 2,        // +2%
-  superRare: 3,   // +3%
-  ultraRare: 5,   // +5%
+  common: 5,       // +5%
+  rare: 7,         // +7%
+  superRare: 10,   // +10%
+  ultraRare: 15,   // +15%
 };
 
 // トロコンボーナス設定（実績100%達成でさらにバフ）
 export const TROPHY_BONUS: Record<Rarity, number> = {
-  common: 2,      // +2%
-  rare: 4,        // +4%
-  superRare: 6,   // +6%
-  ultraRare: 10,  // +10%
+  common: 3,       // +3%
+  rare: 5,         // +5%
+  superRare: 8,    // +8%
+  ultraRare: 12,   // +12%
 };
+
+// 30分未満トロコンのボーナス減衰率（実績稼ぎゲー対策）
+// 30分未満でトロコンしたゲームは昇華+トロコンボーナスが1/10になる
+export const QUICK_TROPHY_PENALTY = 0.1;
+
+// レビュー100件以下のトロコンボーナス減衰率（マイナーゲー実績稼ぎ対策）
+// 30分以上でもレビュー100件以下のゲームはトロコンボーナスが半分
+export const LOW_REVIEW_TROPHY_PENALTY = 0.5;
+
+// レビュー数の閾値（これ以下だとトロコンボーナス減衰）
+export const LOW_REVIEW_THRESHOLD = 100;
 
 // 昇華済みゲームの情報
 export interface SublimatedGame {
@@ -220,6 +340,7 @@ export interface SublimatedGame {
   rarity: Rarity;
   playtimeMinutes: number;
   isCompleted: boolean;  // トロコン済みかどうか
+  reviewCount?: number;  // レビュー数（トロコンボーナス減衰判定用）
 }
 
 // 昇華バフの計算結果
@@ -253,15 +374,31 @@ export function calculateSublimationBuff(
   };
 
   for (const game of sublimatedGames) {
-    // 昇華ボーナス
-    const subBonus = SUBLIMATION_BONUS[game.rarity];
+    // 30分未満でトロコンしたゲームはペナルティ（実績稼ぎゲー対策）
+    const isQuickTrophy = game.isCompleted && game.playtimeMinutes < BACKLOG_THRESHOLD_MINUTES;
+    const penaltyMultiplier = isQuickTrophy ? QUICK_TROPHY_PENALTY : 1;
+
+    // 昇華ボーナス（30分未満トロコンは1/10）
+    const subBonus = SUBLIMATION_BONUS[game.rarity] * penaltyMultiplier;
     sublimationBonus += subBonus;
     breakdownMap[game.rarity].sublimationCount++;
     breakdownMap[game.rarity].bonus += subBonus;
 
     // トロコンボーナス
     if (game.isCompleted) {
-      const tropBonus = TROPHY_BONUS[game.rarity];
+      let trophyMultiplier = 1;
+
+      if (isQuickTrophy) {
+        // 30分未満トロコンは一律1/10（レビュー数関係なし）
+        trophyMultiplier = QUICK_TROPHY_PENALTY;
+      } else {
+        // 30分以上の場合のみレビュー数をチェック
+        // レビュー100件以下のゲームはトロコンボーナス半分（マイナーゲー対策）
+        const isLowReview = game.reviewCount !== undefined && game.reviewCount < LOW_REVIEW_THRESHOLD;
+        trophyMultiplier = isLowReview ? LOW_REVIEW_TROPHY_PENALTY : 1;
+      }
+
+      const tropBonus = TROPHY_BONUS[game.rarity] * trophyMultiplier;
       trophyBonus += tropBonus;
       completedCount++;
       breakdownMap[game.rarity].trophyCount++;
@@ -411,15 +548,27 @@ export const ENEMY_RANK_CONFIG = {
 
 export type EnemyRank = keyof typeof ENEMY_RANK_CONFIG;
 
+// ランク情報（名称・必要スコア・アイコン）
+export const RANK_INFO: Record<EnemyRank, { ja: string; en: string; icon: string; minScore: number }> = {
+  rookie:   { ja: '積みゲー入門生', en: 'Backlog Beginner', icon: '🌱', minScore: 0 },
+  bronze:   { ja: '積みゲー初心者', en: 'Backlog Novice', icon: '🥉', minScore: 100 },
+  silver:   { ja: '積みゲー消化中級者', en: 'Backlog Intermediate', icon: '🥈', minScore: 500 },
+  gold:     { ja: '積みゲー消化上級者', en: 'Backlog Advanced', icon: '🥇', minScore: 800 },
+  platinum: { ja: '積みゲー消化熟練者', en: 'Backlog Expert', icon: '💎', minScore: 1200 },
+  diamond:  { ja: '積みゲーの達人', en: 'Backlog Master', icon: '💠', minScore: 2000 },
+  master:   { ja: '積みゲーマスター', en: 'Backlog Grandmaster', icon: '👑', minScore: 4000 },
+  legend:   { ja: '積みゲーゴッド', en: 'Backlog God', icon: '🐲', minScore: 8000 },
+};
+
 // スコアからエネミーランクを取得
 export function getEnemyRankFromScore(score: number): EnemyRank {
-  if (score >= 5000) return 'legend';
-  if (score >= 2500) return 'master';
-  if (score >= 1000) return 'diamond';
-  if (score >= 400) return 'platinum';
-  if (score >= 150) return 'gold';
-  if (score >= 50) return 'silver';
-  if (score >= 10) return 'bronze';
+  if (score >= 8000) return 'legend';
+  if (score >= 4000) return 'master';
+  if (score >= 2000) return 'diamond';
+  if (score >= 1200) return 'platinum';
+  if (score >= 800) return 'gold';
+  if (score >= 500) return 'silver';
+  if (score >= 100) return 'bronze';
   return 'rookie';
 }
 
@@ -502,20 +651,11 @@ export function generateEnemyDeck(playerScore: number): { deck: Deck; enemyName:
   while (frontLine.length < 5) frontLine.push(null);
   while (backLine.length < 5) backLine.push(null);
 
-  // エネミー名をランクに応じて設定
-  const enemyNames: Record<EnemyRank, string[]> = {
-    rookie: ['見習いゲーマー', 'Rookie Gamer'],
-    bronze: ['ブロンズ戦士', 'Bronze Warrior'],
-    silver: ['シルバーハンター', 'Silver Hunter'],
-    gold: ['ゴールドチャンピオン', 'Gold Champion'],
-    platinum: ['プラチナマスター', 'Platinum Master'],
-    diamond: ['ダイヤモンドエース', 'Diamond Ace'],
-    master: ['マスターオブゲーム', 'Master of Games'],
-    legend: ['伝説の積みゲーマー', 'Legendary Backlogger'],
-  };
+  // エネミー名をランクに応じて設定（RANK_INFOを使用）
+  const rankInfo = RANK_INFO[rank];
 
   return {
     deck: { frontLine, backLine, synergies: [] },
-    enemyName: enemyNames[rank][0], // 日本語名を使用（言語対応は呼び出し側で）
+    enemyName: rankInfo.ja, // 日本語名を使用（言語対応は呼び出し側で）
   };
 }

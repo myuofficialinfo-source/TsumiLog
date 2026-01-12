@@ -336,6 +336,43 @@ function BattleContent() {
     fetchScore();
   }, [steamId]);
 
+  // 昇華同期（スナップショットベース）
+  // 初回：積みゲー（30分未満かつトロコンしていない）をスナップショットとして保存
+  // 以降：スナップショット内のゲームで30分以上になったものを昇華としてカウント
+  useEffect(() => {
+    if (!steamId || steamId === 'dummy' || !steamData?.games) return;
+
+    const syncSublimations = async () => {
+      // 全ゲームリスト（playtime + isBacklog付き）を送信
+      // isBacklog = 30分未満 かつ トロコンしていない（Steam APIで判定済み）
+      const allGames = steamData.games.map(g => ({
+        appid: g.appid,
+        name: g.name,
+        playtime: g.playtime_forever,
+        isBacklog: g.isBacklog, // トロコン判定含む
+      }));
+
+      if (allGames.length === 0) return;
+
+      try {
+        await fetch('/api/sublimation', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            steamId,
+            personaName: steamData.profile?.personaName,
+            avatarUrl: steamData.profile?.avatarUrl,
+            allGames,
+          }),
+        });
+      } catch (error) {
+        console.error('Failed to sync sublimations:', error);
+      }
+    };
+
+    syncSublimations();
+  }, [steamId, steamData]);
+
   // デッキ完成時 - 対戦相手を検索してバトル開始
   const handleDeckComplete = async (deck: Deck) => {
     setPlayerDeck(deck);

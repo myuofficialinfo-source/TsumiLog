@@ -3,7 +3,7 @@
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Header, Footer } from '@/components/Layout';
 import Link from 'next/link';
-import { ArrowLeft, Swords, Shield, Zap, Heart, Users, Star, Layers } from 'lucide-react';
+import { Swords, Zap, Heart, Users, Star, Layers } from 'lucide-react';
 
 export default function RulesPage() {
   const { language } = useLanguage();
@@ -59,17 +59,9 @@ export default function RulesPage() {
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      <Header />
+      <Header showBack backHref="/battle" />
 
       <main className="flex-1 container mx-auto px-4 py-8 max-w-4xl">
-        <Link
-          href="/battle"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          {language === 'ja' ? 'バトルに戻る' : 'Back to Battle'}
-        </Link>
-
         <h1 className="text-3xl font-bold mb-8" style={{ color: 'var(--foreground)' }}>
           {language === 'ja' ? 'バトルルール' : 'Battle Rules'}
         </h1>
@@ -141,15 +133,15 @@ export default function RulesPage() {
           <div className="space-y-3">
             <div className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--background-secondary)' }}>
               <span className="font-bold text-sm w-20">{language === 'ja' ? 'ジャンル' : 'Genre'}</span>
-              <span className="text-gray-700">{language === 'ja' ? '攻撃力 +10%' : 'Attack +10%'}</span>
+              <span className="text-gray-700">{language === 'ja' ? '攻撃力 +3%' : 'Attack +3%'}</span>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--background-secondary)' }}>
               <span className="font-bold text-sm w-20">{language === 'ja' ? '開発元' : 'Developer'}</span>
-              <span className="text-gray-700">{language === 'ja' ? '攻撃力 +15%' : 'Attack +15%'}</span>
+              <span className="text-gray-700">{language === 'ja' ? 'スキル効果 +3%' : 'Skill effects +3%'}</span>
             </div>
             <div className="flex items-center gap-3 p-3 rounded-lg" style={{ backgroundColor: 'var(--background-secondary)' }}>
               <span className="font-bold text-sm w-20">{language === 'ja' ? 'タグ' : 'Tag'}</span>
-              <span className="text-gray-700">{language === 'ja' ? 'HP +10%' : 'HP +10%'}</span>
+              <span className="text-gray-700">{language === 'ja' ? 'HP +3%' : 'HP +3%'}</span>
             </div>
           </div>
         </section>
@@ -168,13 +160,28 @@ export default function RulesPage() {
           <ul className="space-y-2 text-gray-700">
             <li>
               {language === 'ja'
-                ? '昇華1枚につき攻撃力 +3%'
-                : '+3% attack per sublimated card'}
+                ? 'レアリティに応じて攻撃力ボーナス（Common +5%, Rare +7%, SR +10%, UR +15%）'
+                : 'Attack bonus by rarity (Common +5%, Rare +7%, SR +10%, UR +15%)'}
             </li>
             <li>
               {language === 'ja'
-                ? '最大10枚で +30%'
-                : 'Max +30% with 10 cards'}
+                ? '昇華数に上限なし - 積みゲーを消化するほど強くなる！'
+                : 'No limit on sublimations - the more you clear your backlog, the stronger you get!'}
+            </li>
+            <li>
+              {language === 'ja'
+                ? 'トロコン達成でさらにボーナス追加（Common +3%, Rare +5%, SR +8%, UR +12%）'
+                : 'Additional bonus for 100% achievements (Common +3%, Rare +5%, SR +8%, UR +12%)'}
+            </li>
+            <li className="text-sm opacity-75">
+              {language === 'ja'
+                ? '※30分未満でトロコンしたゲームはボーナスが1/10（実績稼ぎゲー対策）'
+                : '※Games with 100% achievements under 30min get 1/10 bonus (anti-farming measure)'}
+            </li>
+            <li className="text-sm opacity-75">
+              {language === 'ja'
+                ? '※レビュー100件以下のゲームはトロコンボーナスが半分（マイナーゲー対策）'
+                : '※Games with less than 100 reviews get half trophy bonus (anti-obscure game farming)'}
             </li>
           </ul>
         </section>
@@ -231,29 +238,25 @@ export default function RulesPage() {
           </h2>
           <p className="text-gray-700 mb-4">
             {language === 'ja'
-              ? 'レアリティはSteamのレビュー数で決まり、ステータスに影響'
-              : 'Rarity is determined by Steam review count and affects stats'}
+              ? 'レアリティはSteamのレビュー数で決まり、マイナーゲームほどレア。成長上限に影響'
+              : 'Rarity is determined by Steam review count - more obscure games are rarer. Affects growth cap'}
           </p>
           <div className="grid gap-2">
             <div className="flex items-center gap-3">
-              <span className="w-20 font-bold" style={{ color: '#9CA3AF' }}>Common</span>
-              <span className="text-gray-700">{language === 'ja' ? '1,000未満' : 'Under 1,000 reviews'}</span>
+              <span className="w-12 font-bold text-center" style={{ color: '#FF6B6B' }}>UC</span>
+              <span className="text-gray-700">{language === 'ja' ? '500件未満（マイナー）- 成長2.5倍' : 'Under 500 reviews (obscure) - Growth x2.5'}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="w-20 font-bold" style={{ color: '#22C55E' }}>Uncommon</span>
-              <span className="text-gray-700">{language === 'ja' ? '1,000〜5,000' : '1,000-5,000 reviews'}</span>
+              <span className="w-12 font-bold text-center" style={{ color: '#FFD700' }}>SR</span>
+              <span className="text-gray-700">{language === 'ja' ? '500〜10,000件 - 成長2.0倍' : '500-10,000 reviews - Growth x2.0'}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="w-20 font-bold" style={{ color: '#3B82F6' }}>Rare</span>
-              <span className="text-gray-700">{language === 'ja' ? '5,000〜20,000' : '5,000-20,000 reviews'}</span>
+              <span className="w-12 font-bold text-center" style={{ color: '#3B82F6' }}>R</span>
+              <span className="text-gray-700">{language === 'ja' ? '1万〜5万件 - 成長1.5倍' : '10K-50K reviews - Growth x1.5'}</span>
             </div>
             <div className="flex items-center gap-3">
-              <span className="w-20 font-bold" style={{ color: '#A855F7' }}>Epic</span>
-              <span className="text-gray-700">{language === 'ja' ? '20,000〜100,000' : '20,000-100,000 reviews'}</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="w-20 font-bold" style={{ color: '#F59E0B' }}>Legendary</span>
-              <span className="text-gray-700">{language === 'ja' ? '100,000以上' : '100,000+ reviews'}</span>
+              <span className="w-12 font-bold text-center" style={{ color: '#9CA3AF' }}>C</span>
+              <span className="text-gray-700">{language === 'ja' ? '5万件以上（有名）- 成長1.0倍' : '50K+ reviews (famous) - Growth x1.0'}</span>
             </div>
           </div>
         </section>
