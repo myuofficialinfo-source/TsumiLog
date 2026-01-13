@@ -9,11 +9,20 @@ import {
 
 // DB初期化フラグ
 let dbInitialized = false;
+let dbInitError: Error | null = null;
 
 async function ensureDbInitialized() {
+  if (dbInitError) {
+    throw dbInitError;
+  }
   if (!dbInitialized) {
-    await initCalendarEventsTable();
-    dbInitialized = true;
+    try {
+      await initCalendarEventsTable();
+      dbInitialized = true;
+    } catch (error) {
+      dbInitError = error instanceof Error ? error : new Error(String(error));
+      throw dbInitError;
+    }
   }
 }
 

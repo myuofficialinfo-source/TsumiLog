@@ -1019,25 +1019,32 @@ export async function filterSublimationCandidates(
 
 // カレンダーイベントテーブル初期化
 export async function initCalendarEventsTable() {
-  await sql`
-    CREATE TABLE IF NOT EXISTS calendar_events (
-      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-      steam_id VARCHAR(20) NOT NULL,
-      date DATE NOT NULL,
-      end_date DATE,
-      start_time VARCHAR(5),
-      end_time VARCHAR(5),
-      game_id INTEGER NOT NULL,
-      game_name VARCHAR(200) NOT NULL,
-      game_image TEXT,
-      type VARCHAR(20) NOT NULL CHECK (type IN ('planned', 'played', 'release')),
-      note TEXT,
-      playtime_minutes INTEGER,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    )
-  `;
-  await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_steam_id ON calendar_events(steam_id)`;
-  await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date)`;
+  try {
+    // pgcrypto拡張を有効化（gen_random_uuid()に必要）
+    await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
+    await sql`
+      CREATE TABLE IF NOT EXISTS calendar_events (
+        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+        steam_id VARCHAR(20) NOT NULL,
+        date DATE NOT NULL,
+        end_date DATE,
+        start_time VARCHAR(5),
+        end_time VARCHAR(5),
+        game_id INTEGER NOT NULL,
+        game_name VARCHAR(200) NOT NULL,
+        game_image TEXT,
+        type VARCHAR(20) NOT NULL CHECK (type IN ('planned', 'played', 'release')),
+        note TEXT,
+        playtime_minutes INTEGER,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      )
+    `;
+    await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_steam_id ON calendar_events(steam_id)`;
+    await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date)`;
+  } catch (error) {
+    console.error('Failed to init calendar_events table:', error);
+    throw error; // エラーを上位に伝播して詳細を確認できるようにする
+  }
 }
 
 // カレンダーイベント型
