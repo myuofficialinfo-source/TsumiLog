@@ -70,6 +70,26 @@ export async function getSteamSpyData(appId: number): Promise<{
   }
 }
 
+// Steam Reviews APIからレビュー数を取得（フォールバック用）
+async function getReviewCount(appId: number): Promise<{ total: number } | undefined> {
+  try {
+    const response = await fetch(
+      `https://store.steampowered.com/appreviews/${appId}?json=1&num_per_page=0`
+    );
+    if (!response.ok) return undefined;
+    const data = await response.json();
+    if (data.success === 1 && data.query_summary) {
+      const total = data.query_summary.total_reviews || 0;
+      if (total > 0) {
+        return { total };
+      }
+    }
+    return undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'): Promise<SteamGameDetails | null> {
   try {
     const steamLang = language === 'ja' ? 'japanese' : 'english';
@@ -85,6 +105,12 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
     // SteamSpyからタグと高評価率を取得
     const steamSpyData = await getSteamSpyData(appId);
 
+    // recommendationsフィールドがない場合はReviews APIから取得
+    let recommendations = gameData.recommendations;
+    if (!recommendations) {
+      recommendations = await getReviewCount(appId);
+    }
+
     return {
       appid: gameData.steam_appid,
       name: gameData.name,
@@ -95,7 +121,7 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
       header_image: gameData.header_image,
       release_date: gameData.release_date,
       price_overview: gameData.price_overview,
-      recommendations: gameData.recommendations,  // レビュー数
+      recommendations,  // レビュー数（Store APIまたはReviews APIから）
       metacritic: gameData.metacritic,
       positiveRate: steamSpyData?.positiveRate,  // 高評価率
       userTags: steamSpyData?.tags,  // ユーザータグ（別名保存）
