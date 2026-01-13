@@ -69,6 +69,7 @@ interface DeckBuilderProps {
   steamId?: string;
   personaName?: string;
   avatarUrl?: string;
+  preloadedDeckData?: { decks: any[] } | null;
 }
 
 // ゲームからバトルカードを生成
@@ -180,6 +181,7 @@ export default function DeckBuilder({
   steamId,
   personaName,
   avatarUrl,
+  preloadedDeckData,
 }: DeckBuilderProps) {
   const { language } = useLanguage();
 
@@ -345,76 +347,93 @@ export default function DeckBuilder({
   const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'hp'>('rarity');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
-  // 保存されたデッキをロード
+  // 保存されたデッキをロード（プリロードデータがあればそれを使用）
   useEffect(() => {
     if (!steamId) {
       setIsLoadingDecks(false);
       return;
     }
 
+    // availableCardsがロードされてから実行
+    if (availableCards.length === 0) {
+      return;
+    }
+
+    const restoreDecksFromData = (data: { decks: any[] }) => {
+      const newDeckStates: typeof deckStates = {};
+
+      // 保存されたデッキをappidからBattleCardに復元
+      for (const deck of data.decks || []) {
+        const restoredFront: (BattleCardType | null)[] = [null, null, null, null, null];
+        const restoredBack: (BattleCardType | null)[] = [null, null, null, null, null];
+
+        deck.frontLine.forEach((saved: { appid: number }, idx: number) => {
+          if (idx < 5) {
+            const card = availableCards.find(c => c.appid === saved.appid);
+            if (card) restoredFront[idx] = card;
+          }
+        });
+
+        deck.backLine.forEach((saved: { appid: number }, idx: number) => {
+          if (idx < 5) {
+            const card = availableCards.find(c => c.appid === saved.appid);
+            if (card) restoredBack[idx] = card;
+          }
+        });
+
+        newDeckStates[deck.deckNumber] = {
+          frontLine: restoredFront,
+          backLine: restoredBack,
+          isActive: deck.isActive,
+        };
+
+        // アクティブデッキを現在のデッキとして設定
+        if (deck.isActive) {
+          setCurrentDeckNumber(deck.deckNumber);
+          setFrontLine(restoredFront);
+          setBackLine(restoredBack);
+          // キャッシュに保存
+          localStorage.setItem(`activeDeckNumber_${steamId}`, deck.deckNumber.toString());
+        }
+      }
+
+      setDeckStates(newDeckStates);
+
+      // isActive状態をキャッシュに保存
+      const activeStates: { [key: number]: { isActive: boolean } } = {};
+      Object.entries(newDeckStates).forEach(([key, value]) => {
+        activeStates[parseInt(key)] = { isActive: value.isActive };
+      });
+      localStorage.setItem(`deckActiveStates_${steamId}`, JSON.stringify(activeStates));
+      setIsLoadingDecks(false);
+    };
+
+    // プリロードデータがあればそれを使用（APIコールをスキップ）
+    if (preloadedDeckData) {
+      restoreDecksFromData(preloadedDeckData);
+      return;
+    }
+
+    // プリロードデータがない場合はAPIから取得
     const loadDecks = async () => {
       try {
         const response = await fetch(`/api/deck?steamId=${steamId}`);
         if (response.ok) {
           const data = await response.json();
-          const newDeckStates: typeof deckStates = {};
-
-          // 保存されたデッキをappidからBattleCardに復元
-          for (const deck of data.decks || []) {
-            const restoredFront: (BattleCardType | null)[] = [null, null, null, null, null];
-            const restoredBack: (BattleCardType | null)[] = [null, null, null, null, null];
-
-            deck.frontLine.forEach((saved: { appid: number }, idx: number) => {
-              if (idx < 5) {
-                const card = availableCards.find(c => c.appid === saved.appid);
-                if (card) restoredFront[idx] = card;
-              }
-            });
-
-            deck.backLine.forEach((saved: { appid: number }, idx: number) => {
-              if (idx < 5) {
-                const card = availableCards.find(c => c.appid === saved.appid);
-                if (card) restoredBack[idx] = card;
-              }
-            });
-
-            newDeckStates[deck.deckNumber] = {
-              frontLine: restoredFront,
-              backLine: restoredBack,
-              isActive: deck.isActive,
-            };
-
-            // アクティブデッキを現在のデッキとして設定
-            if (deck.isActive) {
-              setCurrentDeckNumber(deck.deckNumber);
-              setFrontLine(restoredFront);
-              setBackLine(restoredBack);
-              // キャッシュに保存
-              localStorage.setItem(`activeDeckNumber_${steamId}`, deck.deckNumber.toString());
-            }
-          }
-
-          setDeckStates(newDeckStates);
-
-          // isActive状態をキャッシュに保存
-          const activeStates: { [key: number]: { isActive: boolean } } = {};
-          Object.entries(newDeckStates).forEach(([key, value]) => {
-            activeStates[parseInt(key)] = { isActive: value.isActive };
-          });
-          localStorage.setItem(`deckActiveStates_${steamId}`, JSON.stringify(activeStates));
+          restoreDecksFromData(data);
+          // キャッシュに保存
+          localStorage.setItem(`deckData_${steamId}`, JSON.stringify(data));
+        } else {
+          setIsLoadingDecks(false);
         }
       } catch (error) {
         console.error('Failed to load decks:', error);
-      } finally {
         setIsLoadingDecks(false);
       }
     };
 
-    // availableCardsがロードされてから実行
-    if (availableCards.length > 0) {
-      loadDecks();
-    }
-  }, [steamId, availableCards]);
+    loadDecks();
+  }, [steamId, availableCards, preloadedDeckData]);
 
   // デッキを保存
   const saveDeckToServer = useCallback(async (deckNum: number, front: (BattleCardType | null)[], back: (BattleCardType | null)[]) => {

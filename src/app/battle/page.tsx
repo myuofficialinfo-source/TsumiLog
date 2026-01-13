@@ -225,6 +225,17 @@ function BattleContent() {
     }
     return false;
   });
+  // デッキデータがプリロード済みかどうか
+  const [deckDataPreloaded, setDeckDataPreloaded] = useState<boolean>(() => {
+    // 初期化時にキャッシュがあればプリロード済みとする
+    if (typeof window !== 'undefined' && initialData.steamId) {
+      const cached = localStorage.getItem(`deckData_${initialData.steamId}`);
+      return cached !== null;
+    }
+    return false;
+  });
+  // プリロードしたデッキデータ
+  const [preloadedDeckData, setPreloadedDeckData] = useState<any>(null);
   // サーバーサイドバトル結果
   const [serverBattleResult, setServerBattleResult] = useState<any>(null);
 
@@ -437,6 +448,44 @@ function BattleContent() {
     };
 
     fetchScore();
+  }, [steamId]);
+
+  // デッキデータをプリフェッチ
+  useEffect(() => {
+    if (!steamId || steamId === 'dummy') {
+      setDeckDataPreloaded(true); // ダミーモードではプリロード完了とする
+      return;
+    }
+
+    // キャッシュがあればそれを使用
+    const cached = localStorage.getItem(`deckData_${steamId}`);
+    if (cached) {
+      try {
+        setPreloadedDeckData(JSON.parse(cached));
+        setDeckDataPreloaded(true);
+        return;
+      } catch {
+        localStorage.removeItem(`deckData_${steamId}`);
+      }
+    }
+
+    const fetchDeckData = async () => {
+      try {
+        const response = await fetch(`/api/deck?steamId=${steamId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPreloadedDeckData(data);
+          // キャッシュに保存
+          localStorage.setItem(`deckData_${steamId}`, JSON.stringify(data));
+        }
+      } catch (error) {
+        console.error('Failed to fetch deck data:', error);
+      } finally {
+        setDeckDataPreloaded(true);
+      }
+    };
+
+    fetchDeckData();
   }, [steamId]);
 
   // 昇華同期（スナップショットベース）+ ゲーム情報同期
@@ -664,8 +713,8 @@ function BattleContent() {
     return null;
   }
 
-  // ゲーム詳細読み込み中、またはユーザースタッツのプリロード中
-  if ((isLoadingDetails || !userStatsPreloaded) && phase === 'deck') {
+  // ゲーム詳細読み込み中、またはユーザースタッツ/デッキデータのプリロード中
+  if ((isLoadingDetails || !userStatsPreloaded || !deckDataPreloaded) && phase === 'deck') {
     const progressPercent = loadingProgress.total > 0
       ? Math.round((loadingProgress.current / loadingProgress.total) * 100)
       : 0;
@@ -714,6 +763,7 @@ function BattleContent() {
             steamId={steamId || undefined}
             personaName={steamData?.profile?.personaName}
             avatarUrl={steamData?.profile?.avatarUrl}
+            preloadedDeckData={preloadedDeckData}
           />
         )}
 
