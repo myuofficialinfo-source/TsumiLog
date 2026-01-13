@@ -778,7 +778,7 @@ export default function CalendarPage() {
 
         {/* 月表示 */}
         {view === 'month' && (
-        <div className="pop-card overflow-hidden">
+        <div className="pop-card overflow-hidden min-h-[1200px]">
           {/* 曜日ヘッダー */}
           <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
             {/* 左側の空白セル */}
