@@ -2,9 +2,40 @@ import { NextRequest, NextResponse } from 'next/server';
 import sql, { initDatabase, upsertUser, getUserRank } from '@/lib/db';
 
 // テーブルをリセット（POSTでアクセス）
-export async function POST() {
+export async function POST(request: NextRequest) {
+  const { searchParams } = new URL(request.url);
+  const action = searchParams.get('action');
+
   try {
-    // 既存テーブルを削除
+    // テストデータ削除
+    if (action === 'cleanup') {
+      // dummyユーザーと関連データを削除
+      const deletedUsers = await sql`DELETE FROM users WHERE steam_id = 'dummy' RETURNING steam_id`;
+      const deletedBattles = await sql`DELETE FROM battles WHERE steam_id = 'dummy' RETURNING id`;
+      const deletedGraduations = await sql`DELETE FROM graduations WHERE steam_id = 'dummy' RETURNING id`;
+      const deletedDecks = await sql`DELETE FROM user_decks WHERE steam_id = 'dummy' RETURNING id`;
+      const deletedDefenseDecks = await sql`DELETE FROM defense_decks WHERE steam_id = 'dummy' RETURNING id`;
+      const deletedGameUsage = await sql`DELETE FROM game_usage WHERE steam_id = 'dummy' RETURNING id`;
+      const deletedBacklogSnapshot = await sql`DELETE FROM backlog_snapshot WHERE steam_id = 'dummy' RETURNING id`;
+      const deletedUserGames = await sql`DELETE FROM user_games WHERE steam_id = 'dummy' RETURNING id`;
+
+      return NextResponse.json({
+        success: true,
+        message: 'Test data cleaned up',
+        deleted: {
+          users: deletedUsers.length,
+          battles: deletedBattles.length,
+          graduations: deletedGraduations.length,
+          decks: deletedDecks.length,
+          defenseDecks: deletedDefenseDecks.length,
+          gameUsage: deletedGameUsage.length,
+          backlogSnapshot: deletedBacklogSnapshot.length,
+          userGames: deletedUserGames.length,
+        },
+      });
+    }
+
+    // 既存テーブルを削除（フルリセット）
     await sql`DROP TABLE IF EXISTS game_usage`;
     await sql`DROP TABLE IF EXISTS battles`;
     await sql`DROP TABLE IF EXISTS graduations`;

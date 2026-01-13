@@ -202,7 +202,7 @@ function BattleContent() {
 
   const [isLoading, setIsLoading] = useState(!hasCachedData);
   const [isLoadingDetails, setIsLoadingDetails] = useState(!hasCachedData);
-  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
+  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0, stage: 'steam' as 'steam' | 'details' | 'deck' });
   const [steamId, setSteamId] = useState<string | null>(initialData.steamId);
   const [steamData, setSteamData] = useState<SteamData | null>(initialData.steamData);
   const [gameDetails, setGameDetails] = useState<Map<number, GameDetail>>(initialData.gameDetails);
@@ -342,7 +342,7 @@ function BattleContent() {
       const backlogGames = steamData.games.filter(g => g.isBacklog);
       const gamesToFetch = backlogGames;
       const batchSize = 10; // バッチサイズを増やして高速化
-      setLoadingProgress({ current: 0, total: gamesToFetch.length });
+      setLoadingProgress({ current: 0, total: gamesToFetch.length, stage: 'details' });
 
       const allDetails = new Map<number, GameDetail>();
 
@@ -364,7 +364,7 @@ function BattleContent() {
         }
 
         // 進捗を更新
-        setLoadingProgress({ current: Math.min(i + batchSize, gamesToFetch.length), total: gamesToFetch.length });
+        setLoadingProgress({ current: Math.min(i + batchSize, gamesToFetch.length), total: gamesToFetch.length, stage: 'details' });
 
         // 最後のバッチ以外は遅延（レート制限対策）
         if (i + batchSize < gamesToFetch.length) {
@@ -617,51 +617,59 @@ function BattleContent() {
     router.push('/');
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
-        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--pop-blue)' }} />
-      </div>
-    );
-  }
+  // 統一ローディング画面（Steam/ゲーム詳細）
+  const isAnyLoading = isLoading || isLoadingDetails;
 
-  if (!steamData) {
-    return null;
-  }
-
-  // ゲーム詳細読み込み中
-  if (isLoadingDetails && phase === 'deck') {
+  if (isAnyLoading && phase === 'deck') {
     const progressPercent = loadingProgress.total > 0
       ? Math.round((loadingProgress.current / loadingProgress.total) * 100)
       : 0;
+
+    const getLoadingMessage = () => {
+      if (isLoading) {
+        return language === 'ja' ? 'Steamデータを取得中...' : 'Fetching Steam data...';
+      }
+      if (isLoadingDetails) {
+        return language === 'ja' ? 'ゲームデータを読み込み中...' : 'Loading game data...';
+      }
+      return '';
+    };
 
     return (
       <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'var(--background)' }}>
         <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--pop-blue)' }} />
         <div className="text-center">
           <p className="text-lg font-medium" style={{ color: 'var(--foreground)' }}>
-            {language === 'ja' ? 'ゲームデータを読み込み中...' : 'Loading game data...'}
+            {getLoadingMessage()}
           </p>
-          <p className="text-sm mt-2" style={{ color: 'var(--muted-foreground)' }}>
-            {progressPercent}%
-          </p>
+          {isLoadingDetails && loadingProgress.total > 0 && (
+            <>
+              <p className="text-sm mt-2" style={{ color: 'var(--muted-foreground)' }}>
+                {progressPercent}%
+              </p>
+              <div className="w-64 h-2 bg-gray-700 rounded-full mt-3 overflow-hidden mx-auto">
+                <div
+                  className="h-full rounded-full transition-all duration-300"
+                  style={{
+                    width: `${progressPercent}%`,
+                    backgroundColor: 'var(--pop-blue)'
+                  }}
+                />
+              </div>
+            </>
+          )}
           <p className="text-xs mt-3 opacity-60" style={{ color: 'var(--muted-foreground)' }}>
             {language === 'ja'
               ? '※積みゲーの数が多いと読み込みに時間がかかる場合がございます。'
               : '※Loading may take longer if you have many backlog games.'}
           </p>
-          <div className="w-64 h-2 bg-gray-700 rounded-full mt-3 overflow-hidden mx-auto">
-            <div
-              className="h-full rounded-full transition-all duration-300"
-              style={{
-                width: `${progressPercent}%`,
-                backgroundColor: 'var(--pop-blue)'
-              }}
-            />
-          </div>
         </div>
       </div>
     );
+  }
+
+  if (!steamData) {
+    return null;
   }
 
   return (
