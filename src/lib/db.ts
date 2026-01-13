@@ -115,6 +115,26 @@ export async function updateGraduationCompletion(
   }
 }
 
+// ユーザーの昇華データとスナップショットをリセット（再計算用）
+export async function resetSublimationData(steamId: string): Promise<{ graduationsDeleted: number; snapshotDeleted: number }> {
+  // 昇華データを削除
+  const graduationsResult = await sql`
+    DELETE FROM graduations WHERE steam_id = ${steamId}
+    RETURNING *
+  `;
+
+  // スナップショットを削除
+  const snapshotResult = await sql`
+    DELETE FROM backlog_snapshots WHERE steam_id = ${steamId}
+    RETURNING *
+  `;
+
+  return {
+    graduationsDeleted: graduationsResult.length,
+    snapshotDeleted: snapshotResult.length,
+  };
+}
+
 // バトル結果を記録
 export async function recordBattle(steamId: string, result: 'win' | 'lose' | 'draw') {
   const battleResult = await sql`
@@ -999,15 +1019,10 @@ export async function filterSublimationCandidates(
         sublimationCandidates.push({ appid: game.appid, name: game.name, isCompleted });
       }
     } else {
-      // スナップショットにないゲーム = 新規購入
-      if (!game.isBacklog) {
-        // 30分以上 or トロコン済み → 昇華対象 + スナップショットに追加
-        sublimationCandidates.push({ appid: game.appid, name: game.name, isCompleted });
-        newGamesToSnapshot.push({ appid: game.appid, name: game.name, playtime: game.playtime });
-      } else {
-        // 積みゲー（30分未満かつトロコンしていない）→ スナップショットに追加
-        newGamesToSnapshot.push({ appid: game.appid, name: game.name, playtime: game.playtime });
-      }
+      // スナップショットにないゲーム = 新規購入 or 初回アクセス前から所有
+      // 昇華は「スナップショット登録後に30分以上プレイした」ゲームのみ対象
+      // なので、ここでは昇華対象にせず、スナップショットに追加するだけ
+      newGamesToSnapshot.push({ appid: game.appid, name: game.name, playtime: game.playtime });
     }
   }
 

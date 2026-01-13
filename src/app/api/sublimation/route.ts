@@ -12,6 +12,7 @@ import {
   filterSublimationCandidates,
   getGraduations,
   migrateGraduationsTable,
+  resetSublimationData,
 } from '@/lib/db';
 
 // DB初期化フラグ
@@ -172,6 +173,38 @@ export async function GET(request: NextRequest) {
     console.error('Sublimation GET API error:', error);
     return NextResponse.json(
       { error: 'Failed to get sublimations' },
+      { status: 500 }
+    );
+  }
+}
+
+// 昇華データをリセット（再計算用）
+export async function DELETE(request: NextRequest) {
+  try {
+    await ensureDbInitialized();
+
+    const { searchParams } = new URL(request.url);
+    const steamId = searchParams.get('steamId');
+
+    if (!steamId) {
+      return NextResponse.json(
+        { error: 'steamId is required' },
+        { status: 400 }
+      );
+    }
+
+    // 昇華データとスナップショットをリセット
+    const result = await resetSublimationData(steamId);
+    console.log(`[${steamId}] Reset sublimation data: ${result.graduationsDeleted} graduations, ${result.snapshotDeleted} snapshots deleted`);
+
+    return NextResponse.json({
+      success: true,
+      ...result,
+    });
+  } catch (error) {
+    console.error('Sublimation DELETE API error:', error);
+    return NextResponse.json(
+      { error: 'Failed to reset sublimation data' },
       { status: 500 }
     );
   }
