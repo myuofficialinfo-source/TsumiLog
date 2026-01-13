@@ -142,6 +142,8 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
       metacritic: gameData.metacritic,
       positiveRate: steamSpyData?.positiveRate,  // 高評価率
       userTags: steamSpyData?.tags,  // ユーザータグ（別名保存）
+      developers: gameData.developers || [],  // 開発元
+      publishers: gameData.publishers || [],  // パブリッシャー
     };
   } catch {
     return null;

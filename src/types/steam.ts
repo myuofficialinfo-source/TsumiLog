@@ -33,6 +33,9 @@ export interface SteamGameDetails {
   positiveRate?: number;  // 0-100のパーセンテージ
   // ユーザータグ（SteamSpyから取得）
   userTags?: string[];
+  // 開発元とパブリッシャー
+  developers?: string[];
+  publishers?: string[];
 }
 
 export interface BacklogGame extends SteamGame {

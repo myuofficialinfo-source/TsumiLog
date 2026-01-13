@@ -156,9 +156,9 @@ export default function BattleCard({
           )}
 
           {/* スキルアイコン */}
-          {showStats && card.skills.length > 0 && (
+          {showStats && card.skills.filter(s => s !== 'developerBuff').length > 0 && (
             <div className="flex gap-1 mt-1">
-              {card.skills.slice(0, 3).map((skill, index) => (
+              {card.skills.filter(s => s !== 'developerBuff').slice(0, 3).map((skill, index) => (
                 <div
                   key={index}
                   className="px-1 py-0.5 bg-black/50 rounded text-[8px] text-white"

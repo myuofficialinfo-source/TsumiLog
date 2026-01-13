@@ -1,5 +1,10 @@
 // カードバトル用の型定義
 
+// 特別なゲームID（隠しスキル用）
+export const SPECIAL_GAME_IDS = {
+  DEVELOPER_BUFF: 2507560,  // ツミナビ開発者のゲーム - 全能力2倍
+} as const;
+
 // レアリティ（所有率の逆数で決定）
 // C(コモン), R(レア), SR(スーパーレア), UC(ウルトラレア)
 export type Rarity = 'common' | 'rare' | 'superRare' | 'ultraRare';
@@ -37,7 +42,9 @@ export type GenreSkill =
   | 'brutal'        // Violent (73): ブルータル
   | 'gore'          // Gore (74): ゴア
   | 'docu'          // Documentary (81): ドキュメント
-  | 'tutorial';     // Tutorial (84): チュートリアル
+  | 'tutorial'      // Tutorial (84): チュートリアル
+  // === 隠しスキル（特定ゲーム専用） ===
+  | 'developerBuff';  // 開発者バフ（全能力2倍）- 表示されない
 
 // ジャンルとスキルのマッピング（Steam全ジャンル対応）
 export const GENRE_SKILL_MAP: Record<string, GenreSkill> = {
@@ -936,6 +943,8 @@ export const SKILL_COORDS: Record<GenreSkill, { x: number; y: number }> = {
   reflect: { x: 0.08, y: -0.48 },
   produce: { x: 0.02, y: 0.1 },
 
+  // === 隠しスキル（座標計算で選ばれることはない） ===
+  developerBuff: { x: 999, y: 999 },
 };
 
 // タグを正規化（日本語→英語変換）
@@ -1016,6 +1025,8 @@ export const SKILL_DESCRIPTIONS: Record<GenreSkill, { ja: string; en: string }> 
   gore: { ja: 'ゴア（敵HP低いほどダメージUP）', en: 'Gore (More DMG vs low HP)' },
   docu: { ja: 'ドキュメント（被ダメ-10%）', en: 'Document (DMG taken -10%)' },
   tutorial: { ja: 'チュートリアル（初回被ダメ無効）', en: 'Tutorial (Block first hit)' },
+  // === 隠しスキル（表示されない） ===
+  developerBuff: { ja: '???', en: '???' },
 };
 
 // レアリティ設定

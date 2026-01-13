@@ -16,6 +16,7 @@ import {
   calculateRarityFromReviews,
   generateEnemyDeck,
   calculateSkillFromTags,
+  SPECIAL_GAME_IDS,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2 } from 'lucide-react';
@@ -137,6 +138,11 @@ function createBattleCard(
   const calculatedSkill = calculateSkillFromTags(allSources);
   const skills: GenreSkill[] = calculatedSkill ? [calculatedSkill] : [];
 
+  // 特別なゲームに隠しスキルを付与
+  if (game.appid === SPECIAL_GAME_IDS.DEVELOPER_BUFF) {
+    skills.push('developerBuff');
+  }
+
   // 高評価率でHP決定（取得できない場合はnullを渡してデフォルトHP200）
   const positiveRate = details?.positiveRate ?? null;
 
@@ -152,6 +158,7 @@ function createBattleCard(
     skills: [...new Set(skills)],
     developer: details?.developers?.[0],
     publisher: details?.publishers?.[0],
+    tags,
     playtimeMinutes: game.playtime_forever,
     reviewCount,
   };

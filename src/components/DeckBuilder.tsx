@@ -15,30 +15,35 @@ import {
   calculateSublimationBuff,
   calculateRarityFromReviews,
   calculateSkillFromTags,
+  RANK_INFO,
+  EnemyRank,
+  getEnemyRankFromScore,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 
-// ランクティア定義
-const RANK_TIERS = [
-  { name: { ja: 'ルーキー', en: 'Rookie' }, minScore: 0, color: '#9CA3AF', icon: '🌱' },
-  { name: { ja: 'ブロンズ', en: 'Bronze' }, minScore: 10, color: '#CD7F32', icon: '🥉' },
-  { name: { ja: 'シルバー', en: 'Silver' }, minScore: 50, color: '#C0C0C0', icon: '🥈' },
-  { name: { ja: 'ゴールド', en: 'Gold' }, minScore: 150, color: '#FFD700', icon: '🥇' },
-  { name: { ja: 'プラチナ', en: 'Platinum' }, minScore: 400, color: '#E5E4E2', icon: '💎' },
-  { name: { ja: 'ダイヤモンド', en: 'Diamond' }, minScore: 1000, color: '#B9F2FF', icon: '💠' },
-  { name: { ja: 'マスター', en: 'Master' }, minScore: 2500, color: '#9B59B6', icon: '👑' },
-  { name: { ja: 'レジェンド', en: 'Legend' }, minScore: 5000, color: '#FF6B6B', icon: '🔥' },
-];
+// RANK_INFOから色情報を取得するためのマッピング
+const RANK_COLORS: Record<EnemyRank, string> = {
+  rookie: '#9CA3AF',
+  bronze: '#CD7F32',
+  silver: '#C0C0C0',
+  gold: '#FFD700',
+  platinum: '#7B8794',
+  diamond: '#5DADE2',
+  master: '#9B59B6',
+  legend: '#FF6B6B',
+};
 
 function getRankTier(score: number) {
-  for (let i = RANK_TIERS.length - 1; i >= 0; i--) {
-    if (score >= RANK_TIERS[i].minScore) {
-      return RANK_TIERS[i];
-    }
-  }
-  return RANK_TIERS[0];
+  const rank = getEnemyRankFromScore(score);
+  const info = RANK_INFO[rank];
+  return {
+    name: { ja: info.ja, en: info.en },
+    minScore: info.minScore,
+    color: RANK_COLORS[rank],
+    icon: info.icon,
+  };
 }
 
 interface Game {
@@ -344,7 +349,7 @@ export default function DeckBuilder({
   const [draggedCard, setDraggedCard] = useState<BattleCardType | null>(null);
   const [draggedFromSlot, setDraggedFromSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
   const [dragOverSlot, setDragOverSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
-  const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'hp'>('rarity');
+  const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'hp' | 'developer' | 'genre' | 'tag'>('rarity');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
   // 保存されたデッキをロード（プリロードデータがあればそれを使用）
@@ -623,6 +628,57 @@ export default function DeckBuilder({
     common: 1,
   };
 
+  // グループ化ソート用：開発元、ジャンル、タグでグループ化されたカード
+  const groupedCards = useMemo(() => {
+    const cards = [...availableCards].filter(card => !selectedAppIds.has(card.appid));
+
+    if (sortBy === 'developer') {
+      // 開発元でグループ化
+      const groups = new Map<string, BattleCardType[]>();
+      cards.forEach(card => {
+        const dev = card.developer || (language === 'ja' ? '不明' : 'Unknown');
+        if (!groups.has(dev)) groups.set(dev, []);
+        groups.get(dev)!.push(card);
+      });
+      // グループ内はレアリティでソート
+      groups.forEach(g => g.sort((a, b) => (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0)));
+      // グループ名でソート（昇順/降順）
+      const sortedGroups = [...groups.entries()].sort((a, b) =>
+        sortOrder === 'asc' ? a[0].localeCompare(b[0]) : b[0].localeCompare(a[0])
+      );
+      return sortedGroups;
+    } else if (sortBy === 'genre') {
+      // ジャンルでグループ化（最初のジャンルを使用）
+      const groups = new Map<string, BattleCardType[]>();
+      cards.forEach(card => {
+        // genres配列が空または最初の要素が空文字列の場合も「その他」にグループ化
+        const firstGenre = card.genres && card.genres.length > 0 ? card.genres[0] : null;
+        const genre = (firstGenre && firstGenre.trim() !== '') ? firstGenre : (language === 'ja' ? 'その他' : 'Other');
+        if (!groups.has(genre)) groups.set(genre, []);
+        groups.get(genre)!.push(card);
+      });
+      groups.forEach(g => g.sort((a, b) => (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0)));
+      const sortedGroups = [...groups.entries()].sort((a, b) =>
+        sortOrder === 'asc' ? a[0].localeCompare(b[0]) : b[0].localeCompare(a[0])
+      );
+      return sortedGroups;
+    } else if (sortBy === 'tag') {
+      // タグでグループ化（最初のタグを使用）
+      const groups = new Map<string, BattleCardType[]>();
+      cards.forEach(card => {
+        const tag = card.tags?.[0] || (language === 'ja' ? 'その他' : 'Other');
+        if (!groups.has(tag)) groups.set(tag, []);
+        groups.get(tag)!.push(card);
+      });
+      groups.forEach(g => g.sort((a, b) => (rarityOrder[b.rarity] || 0) - (rarityOrder[a.rarity] || 0)));
+      const sortedGroups = [...groups.entries()].sort((a, b) =>
+        sortOrder === 'asc' ? a[0].localeCompare(b[0]) : b[0].localeCompare(a[0])
+      );
+      return sortedGroups;
+    }
+    return null;
+  }, [availableCards, selectedAppIds, sortBy, sortOrder, language, rarityOrder]);
+
   // ソートされたカード（安定ソート：同値の場合はappidでソート）
   const sortedCards = useMemo(() => {
     const cards = [...availableCards].filter(card => !selectedAppIds.has(card.appid));
@@ -644,6 +700,11 @@ export default function DeckBuilder({
           const diff = (b.hp - a.hp) * multiplier;
           return diff !== 0 ? diff : a.appid - b.appid;
         });
+      case 'developer':
+      case 'genre':
+      case 'tag':
+        // グループ化表示の場合は空配列を返す（groupedCardsを使用）
+        return [];
       default:
         return cards;
     }
@@ -906,6 +967,8 @@ export default function DeckBuilder({
   // デッキ完成判定
   const deckCardCount = frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length;
   const isDeckComplete = deckCardCount >= 10;
+  // 積みゲーが10本未満の場合はバトル不可
+  const hasEnoughBacklog = availableCards.length >= 10;
 
   // デッキ確定
   const confirmDeck = useCallback(() => {
@@ -989,6 +1052,17 @@ export default function DeckBuilder({
         </div>
       )}
 
+      {/* 積みゲー不足のメッセージ */}
+      {!hasEnoughBacklog && (
+        <div className="pop-card p-4 border-2 border-green-500 bg-green-50">
+          <p className="text-green-700 font-bold">
+            {language === 'ja'
+              ? `🎉 素晴らしい！積みゲーが${availableCards.length}本しかありません。ゲームをしっかり遊んでいる証拠です！バトルに参加するには10本以上の積みゲーが必要ですが、今のペースを維持してください！`
+              : `🎉 Amazing! You only have ${availableCards.length} backlog games. That's proof you're actually playing your games! You need 10+ backlog games to join battles, but keep up the great work!`}
+          </p>
+        </div>
+      )}
+
       {/* ヘッダー */}
       <div className="flex justify-between items-center">
         <div>
@@ -997,8 +1071,8 @@ export default function DeckBuilder({
           </h2>
           <p className="text-sm text-gray-600">
             {language === 'ja'
-              ? `${deckCardCount}/10枚 選択中`
-              : `${deckCardCount}/10 cards selected`}
+              ? `${deckCardCount}/10枚 選択中 (積みゲー${availableCards.length}本)`
+              : `${deckCardCount}/10 cards selected (${availableCards.length} backlog games)`}
           </p>
         </div>
         <div className="flex gap-2">
@@ -1083,13 +1157,13 @@ export default function DeckBuilder({
             {/* バトル使用設定ボタン（防衛デッキも同時に登録） */}
             <button
               onClick={() => setDeckActive(currentDeckNumber)}
-              disabled={isCurrentDeckActive || !isDeckComplete || isSavingDefenseDeck}
+              disabled={isCurrentDeckActive || !isDeckComplete || isSavingDefenseDeck || !hasEnoughBacklog}
               className={`flex items-center gap-2 px-4 py-2 rounded-lg border-2 transition-all ${
                 isCurrentDeckActive
                   ? 'border-green-500 bg-green-50 text-green-700'
                   : 'border-[#3D3D3D] hover:bg-gray-100'
-              } ${!isDeckComplete ? 'opacity-50 cursor-not-allowed' : ''}`}
-              style={!isCurrentDeckActive && isDeckComplete ? { backgroundColor: 'var(--card-bg)' } : {}}
+              } ${(!isDeckComplete || !hasEnoughBacklog) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              style={!isCurrentDeckActive && isDeckComplete && hasEnoughBacklog ? { backgroundColor: 'var(--card-bg)' } : {}}
             >
               <Check className={`w-4 h-4 ${isCurrentDeckActive ? 'text-green-600' : ''}`} />
               {isSavingDefenseDeck
@@ -1256,7 +1330,9 @@ export default function DeckBuilder({
             <div className="mb-4">
               <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'スキル' : 'Skills'}</p>
               <div className="flex flex-wrap gap-1">
-                {Array.from(deckStats.skillCount.entries()).map(([skill, count]) => (
+                {Array.from(deckStats.skillCount.entries())
+                  .filter(([skill]) => skill !== 'developerBuff')  // 隠しスキルは非表示
+                  .map(([skill, count]) => (
                   <span
                     key={skill}
                     className="px-2 py-1 rounded text-xs font-medium text-white"
@@ -1304,7 +1380,7 @@ export default function DeckBuilder({
           ) : (
             <div className="mb-4">
               <p className="text-xs font-bold text-gray-500 mb-2">{language === 'ja' ? 'シナジー' : 'Synergies'}</p>
-              <p className="text-xs text-gray-400">{language === 'ja' ? '同ジャンル3本以上でシナジー発動' : '3+ same genre games for synergy'}</p>
+              <p className="text-xs text-gray-400">{language === 'ja' ? '同じ属性のゲームを3本以上揃えるとボーナス発動' : '3+ games with same attribute for bonus'}</p>
             </div>
           )}
 
@@ -1366,7 +1442,7 @@ export default function DeckBuilder({
           </h3>
           <div className="flex items-center gap-2">
             {/* ソートボタン */}
-            <div className="flex gap-1">
+            <div className="flex gap-1 flex-wrap">
               <button
                 onClick={() => setSortBy('rarity')}
                 className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'rarity' ? 'text-white' : ''}`}
@@ -1387,6 +1463,27 @@ export default function DeckBuilder({
                 style={{ backgroundColor: sortBy === 'hp' ? 'var(--pop-green)' : 'var(--card-bg)' }}
               >
                 HP
+              </button>
+              <button
+                onClick={() => setSortBy('developer')}
+                className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'developer' ? 'text-white' : ''}`}
+                style={{ backgroundColor: sortBy === 'developer' ? 'var(--pop-blue)' : 'var(--card-bg)' }}
+              >
+                {language === 'ja' ? '開発元' : 'Developer'}
+              </button>
+              <button
+                onClick={() => setSortBy('genre')}
+                className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'genre' ? 'text-white' : ''}`}
+                style={{ backgroundColor: sortBy === 'genre' ? 'var(--pop-orange)' : 'var(--card-bg)' }}
+              >
+                {language === 'ja' ? 'ジャンル' : 'Genre'}
+              </button>
+              <button
+                onClick={() => setSortBy('tag')}
+                className={`px-2 py-1 text-xs rounded border-2 border-[#3D3D3D] font-bold ${sortBy === 'tag' ? 'text-white' : ''}`}
+                style={{ backgroundColor: sortBy === 'tag' ? 'var(--pop-yellow)' : 'var(--card-bg)' }}
+              >
+                {language === 'ja' ? 'タグ' : 'Tag'}
               </button>
             </div>
             {/* 昇順/降順ボタン */}
@@ -1418,23 +1515,70 @@ export default function DeckBuilder({
             {language === 'ja' ? 'スロットにドロップしてください' : 'Drop on a slot'}
           </p>
         )}
-        <div className="flex flex-wrap gap-2 max-h-80 overflow-y-auto py-3 px-2">
-          {sortedCards.map(card => (
-            <div
-              key={card.appid}
-              draggable
-              onDragStart={() => handleDragStart(card)}
-              onDragEnd={handleDragEnd}
-              className={`cursor-grab active:cursor-grabbing flex-shrink-0 ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
-            >
-              <BattleCard
-                card={card}
-                size="small"
-                onClick={() => handleCardClick(card)}
-                showStats={false}
-              />
+        <div className="max-h-96 overflow-y-auto py-3 px-2">
+          {/* グループ化表示（開発元、ジャンル、タグ） */}
+          {groupedCards ? (
+            <div className="space-y-4">
+              {groupedCards.map(([groupName, cards]) => (
+                <div key={groupName}>
+                  <div className="py-1 mb-2">
+                    <h4 className="text-sm font-bold text-gray-700 flex items-center gap-2">
+                      <span
+                        className="px-2 py-0.5 rounded text-white text-xs"
+                        style={{
+                          backgroundColor:
+                            sortBy === 'developer' ? 'var(--pop-blue)' :
+                            sortBy === 'genre' ? 'var(--pop-orange)' :
+                            'var(--pop-yellow)'
+                        }}
+                      >
+                        {groupName}
+                      </span>
+                      <span className="text-xs text-gray-500">({cards.length})</span>
+                    </h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {cards.map(card => (
+                      <div
+                        key={card.appid}
+                        draggable
+                        onDragStart={() => handleDragStart(card)}
+                        onDragEnd={handleDragEnd}
+                        className={`cursor-grab active:cursor-grabbing flex-shrink-0 ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
+                      >
+                        <BattleCard
+                          card={card}
+                          size="small"
+                          onClick={() => handleCardClick(card)}
+                          showStats={false}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
-          ))}
+          ) : (
+            /* 通常表示（レアリティ、攻撃力、HP） */
+            <div className="flex flex-wrap gap-2">
+              {sortedCards.map(card => (
+                <div
+                  key={card.appid}
+                  draggable
+                  onDragStart={() => handleDragStart(card)}
+                  onDragEnd={handleDragEnd}
+                  className={`cursor-grab active:cursor-grabbing flex-shrink-0 ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
+                >
+                  <BattleCard
+                    card={card}
+                    size="small"
+                    onClick={() => handleCardClick(card)}
+                    showStats={false}
+                  />
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
@@ -1533,11 +1677,11 @@ export default function DeckBuilder({
                 </div>
 
                 {/* スキル */}
-                {previewCard.skills && previewCard.skills.length > 0 && (
+                {previewCard.skills && previewCard.skills.filter(s => s !== 'developerBuff').length > 0 && (
                   <div className="mb-4">
                     <p className="text-xs font-bold text-gray-500 mb-1">{language === 'ja' ? 'スキル' : 'Skills'}</p>
                     <div className="flex flex-wrap gap-1">
-                      {previewCard.skills.map((skill, i) => (
+                      {previewCard.skills.filter(s => s !== 'developerBuff').map((skill, i) => (
                         <span key={i} className="px-2 py-1 rounded text-xs font-medium text-white" style={{ backgroundColor: 'var(--pop-purple)' }}>
                           {SKILL_DESCRIPTIONS[skill][language]}
                         </span>
@@ -1589,12 +1733,12 @@ export default function DeckBuilder({
         </button>
         <button
           onClick={confirmDeck}
-          disabled={!isDeckComplete}
+          disabled={!isDeckComplete || !hasEnoughBacklog}
           className={`flex items-center gap-2 px-6 py-3 rounded-lg border-2 border-[#3D3D3D] text-white font-bold ${
-            isDeckComplete ? 'pop-button' : 'opacity-50 cursor-not-allowed'
+            (isDeckComplete && hasEnoughBacklog) ? 'pop-button' : 'opacity-50 cursor-not-allowed'
           }`}
           style={{
-            backgroundColor: isDeckComplete ? undefined : '#9CA3AF',
+            backgroundColor: (isDeckComplete && hasEnoughBacklog) ? undefined : '#9CA3AF',
           }}
         >
           <Swords className="w-5 h-5" />

@@ -5,7 +5,7 @@
  * フロントエンドにはバトルログのみを返し、アニメーション再生に使用する。
  */
 
-import { GenreSkill, Rarity, RARITY_CONFIG } from '@/types/cardBattle';
+import { GenreSkill, Rarity, RARITY_CONFIG, SPECIAL_GAME_IDS } from '@/types/cardBattle';
 
 // バトルカードの型定義（サーバー用）
 export interface ServerBattleCard {
@@ -323,6 +323,11 @@ function calculateTeamHp(cards: (ServerBattleCard | null)[]): number {
   return cards.reduce((sum, card) => sum + (card?.hp || 0), 0);
 }
 
+// 開発者バフチェック（特定ゲームがデッキにあれば全能力2倍）
+function hasDeveloperBuff(cards: (ServerBattleCard | null)[]): boolean {
+  return cards.some(card => card?.appid === SPECIAL_GAME_IDS.DEVELOPER_BUFF);
+}
+
 // シナジー計算（同ジャンル3本以上でボーナス）
 function calculateSynergies(cards: (ServerBattleCard | null)[]): { skillBonus: number } {
   const genreCount = new Map<string, number>();
@@ -367,29 +372,43 @@ export function executeBattle(
   let currentTime = 0;
   const MAX_BATTLE_TIME = 120000; // 2分でタイムアウト
 
-  // チームHP初期化
-  const playerMaxHp = calculateTeamHp([...playerDeck.frontLine, ...playerDeck.backLine]);
-  const opponentMaxHp = calculateTeamHp([...opponentDeck.frontLine, ...opponentDeck.backLine]);
-  let playerHp = playerMaxHp;
-  let opponentHp = opponentMaxHp;
-
   // シナジー計算
   const playerSynergy = calculateSynergies([...playerDeck.frontLine, ...playerDeck.backLine]);
   const opponentSynergy = calculateSynergies([...opponentDeck.frontLine, ...opponentDeck.backLine]);
+
+  // 開発者バフチェック（デッキに特定ゲームがあれば全能力2倍）
+  const playerHasDevBuff = hasDeveloperBuff([...playerDeck.frontLine, ...playerDeck.backLine]);
+  const opponentHasDevBuff = hasDeveloperBuff([...opponentDeck.frontLine, ...opponentDeck.backLine]);
+  const playerDevMultiplier = playerHasDevBuff ? 2 : 1;
+  const opponentDevMultiplier = opponentHasDevBuff ? 2 : 1;
+
+  // チームHP初期化（開発者バフ適用後）
+  const playerMaxHp = calculateTeamHp([...playerDeck.frontLine, ...playerDeck.backLine]) * playerDevMultiplier;
+  const opponentMaxHp = calculateTeamHp([...opponentDeck.frontLine, ...opponentDeck.backLine]) * opponentDevMultiplier;
+  let playerHp = playerMaxHp;
+  let opponentHp = opponentMaxHp;
 
   // カード状態初期化
   const initCardStates = (
     deck: { frontLine: (ServerBattleCard | null)[]; backLine: (ServerBattleCard | null)[] },
     isPlayer: boolean,
-    skillBonus: number
+    skillBonus: number,
+    hasDevBuff: boolean
   ): BattleCardState[] => {
     const states: BattleCardState[] = [];
+    const devBuffMultiplier = hasDevBuff ? 2 : 1;
 
     deck.frontLine.forEach((card, index) => {
       if (card) {
-        const interval = calculateAttackInterval(card);
-        states.push({
+        const buffedCard = {
           ...card,
+          attack: card.attack * devBuffMultiplier,
+          hp: card.hp * devBuffMultiplier,
+          maxHp: card.maxHp * devBuffMultiplier,
+        };
+        const interval = calculateAttackInterval(buffedCard);
+        states.push({
+          ...buffedCard,
           currentTimer: interval,
           maxTimer: interval,
           isPlayer,
@@ -404,9 +423,15 @@ export function executeBattle(
 
     deck.backLine.forEach((card, index) => {
       if (card) {
-        const interval = calculateAttackInterval(card);
-        states.push({
+        const buffedCard = {
           ...card,
+          attack: card.attack * devBuffMultiplier,
+          hp: card.hp * devBuffMultiplier,
+          maxHp: card.maxHp * devBuffMultiplier,
+        };
+        const interval = calculateAttackInterval(buffedCard);
+        states.push({
+          ...buffedCard,
           currentTimer: interval,
           maxTimer: interval,
           isPlayer,
@@ -422,8 +447,8 @@ export function executeBattle(
     return states;
   };
 
-  const playerCards = initCardStates(playerDeck, true, playerSynergy.skillBonus);
-  const opponentCards = initCardStates(opponentDeck, false, opponentSynergy.skillBonus);
+  const playerCards = initCardStates(playerDeck, true, playerSynergy.skillBonus, playerHasDevBuff);
+  const opponentCards = initCardStates(opponentDeck, false, opponentSynergy.skillBonus, opponentHasDevBuff);
 
   // 統計
   let totalDamageDealt = 0;
