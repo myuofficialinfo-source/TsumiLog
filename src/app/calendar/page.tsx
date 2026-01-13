@@ -984,7 +984,7 @@ export default function CalendarPage() {
           </div>
 
           {/* タイムグリッド（オーバーレイ対応） */}
-          <div className="max-h-[600px] overflow-y-auto relative">
+          <div className="max-h-[650px] overflow-y-auto relative">
             <div className="grid" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
               {/* 時間ラベル列 */}
               <div>
