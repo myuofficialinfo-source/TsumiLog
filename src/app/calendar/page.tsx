@@ -857,7 +857,7 @@ export default function CalendarPage() {
                     className="border-b border-r border-[#E5E5E5]"
                     style={{
                       backgroundColor: 'var(--card-bg)',
-                      minHeight: `${Math.max(100, 24 + barAreaHeight + 10)}px`,
+                      minHeight: `${Math.max(50, 24 + barAreaHeight + 10)}px`,
                     }}
                   />
                   {weekDays.map((day, dayIndex) => {
@@ -875,7 +875,7 @@ export default function CalendarPage() {
                         } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: `${Math.max(100, 24 + barAreaHeight + 10)}px`,
+                          minHeight: `${Math.max(50, 24 + barAreaHeight + 10)}px`,
                           ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
                         }}
                       >
