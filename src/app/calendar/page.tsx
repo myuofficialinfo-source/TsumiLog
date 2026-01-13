@@ -77,8 +77,9 @@ export default function CalendarPage() {
           const data = await response.json();
           if (data.events && Array.isArray(data.events)) {
             // DBの形式からフロントエンドの形式に変換
+            // DBのidはnumber型なのでstringに変換
             const convertedEvents: GameEvent[] = data.events.map((e: {
-              id: string;
+              id: number | string;
               date: string;
               endDate?: string;
               startTime?: string;
@@ -91,7 +92,7 @@ export default function CalendarPage() {
               playtimeMinutes?: number;
               createdAt: string;
             }) => ({
-              id: e.id,
+              id: String(e.id),
               date: e.date,
               endDate: e.endDate,
               startTime: e.startTime,
@@ -501,10 +502,10 @@ export default function CalendarPage() {
 
       if (response.ok) {
         const data = await response.json();
-        // DBから返されたIDで更新
+        // DBから返されたIDで更新（DBのidはnumberなのでstringに変換）
         setEvents(prev => prev.map(e =>
           e.id === tempId
-            ? { ...e, id: data.event.id, createdAt: data.event.createdAt }
+            ? { ...e, id: String(data.event.id), createdAt: data.event.createdAt }
             : e
         ));
       } else {

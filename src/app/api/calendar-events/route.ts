@@ -12,8 +12,15 @@ let dbInitialized = false;
 
 async function ensureDbInitialized() {
   if (!dbInitialized) {
-    await initCalendarEventsTable();
-    dbInitialized = true;
+    console.log('[Calendar] Initializing calendar_events table...');
+    try {
+      await initCalendarEventsTable();
+      console.log('[Calendar] Table initialized successfully');
+      dbInitialized = true;
+    } catch (error) {
+      console.error('[Calendar] Failed to initialize table:', error);
+      throw error;
+    }
   }
 }
 

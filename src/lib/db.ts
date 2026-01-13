@@ -1020,6 +1020,7 @@ export async function filterSublimationCandidates(
 // カレンダーイベントテーブルマイグレーション（UUID→SERIAL変換用）
 export async function migrateCalendarEventsTable() {
   try {
+    console.log('[Calendar Migration] Checking for existing table...');
     // 既存テーブルがUUID型の場合、削除して再作成
     // テーブルが存在するか確認
     const tableExists = await sql`
@@ -1029,6 +1030,8 @@ export async function migrateCalendarEventsTable() {
       )
     `;
 
+    console.log('[Calendar Migration] Table exists:', tableExists[0]?.exists);
+
     if (tableExists[0]?.exists) {
       // カラムの型を確認
       const columnInfo = await sql`
@@ -1036,21 +1039,29 @@ export async function migrateCalendarEventsTable() {
         WHERE table_name = 'calendar_events' AND column_name = 'id'
       `;
 
+      console.log('[Calendar Migration] Column data_type:', columnInfo[0]?.data_type);
+
       // UUID型の場合はテーブルを削除
       if (columnInfo[0]?.data_type === 'uuid') {
+        console.log('[Calendar Migration] Dropping UUID-type table...');
         await sql`DROP TABLE calendar_events`;
+        console.log('[Calendar Migration] Table dropped successfully');
       }
     }
-  } catch {
+  } catch (error) {
+    console.error('[Calendar Migration] Error:', error);
     // エラーは無視（テーブルが存在しない場合など）
   }
 }
 
 // カレンダーイベントテーブル初期化
 export async function initCalendarEventsTable() {
+  console.log('[Calendar Init] Starting table initialization...');
+
   // マイグレーションを実行（UUID型テーブルがあれば削除）
   await migrateCalendarEventsTable();
 
+  console.log('[Calendar Init] Creating table with SERIAL id...');
   // 他のテーブルと同様にSERIALを使用
   await sql`
     CREATE TABLE IF NOT EXISTS calendar_events (
@@ -1069,8 +1080,10 @@ export async function initCalendarEventsTable() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `;
+  console.log('[Calendar Init] Table created, creating indexes...');
   await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_steam_id ON calendar_events(steam_id)`;
   await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date)`;
+  console.log('[Calendar Init] Initialization complete');
 }
 
 // カレンダーイベント型
