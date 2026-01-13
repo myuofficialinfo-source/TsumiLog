@@ -1153,16 +1153,22 @@ export async function updateCalendarEvent(
   }
 ): Promise<CalendarEventDB | null> {
   // 渡されたフィールドのみ更新、undefinedなら既存値を維持
+  const hasEndDate = updates.endDate !== undefined;
+  const hasStartTime = updates.startTime !== undefined;
+  const hasEndTime = updates.endTime !== undefined;
+  const hasNote = updates.note !== undefined;
+  const hasPlaytime = updates.playtimeMinutes !== undefined;
+
   const result = await sql`
     UPDATE calendar_events
     SET
       date = COALESCE(${updates.date ?? null}, date),
-      end_date = CASE WHEN ${updates.endDate !== undefined} THEN ${updates.endDate ?? null} ELSE end_date END,
-      start_time = CASE WHEN ${updates.startTime !== undefined} THEN ${updates.startTime ?? null} ELSE start_time END,
-      end_time = CASE WHEN ${updates.endTime !== undefined} THEN ${updates.endTime ?? null} ELSE end_time END,
+      end_date = CASE WHEN ${hasEndDate} THEN ${updates.endDate ?? null}::DATE ELSE end_date END,
+      start_time = CASE WHEN ${hasStartTime} THEN ${updates.startTime ?? null} ELSE start_time END,
+      end_time = CASE WHEN ${hasEndTime} THEN ${updates.endTime ?? null} ELSE end_time END,
       type = COALESCE(${updates.type ?? null}, type),
-      note = CASE WHEN ${updates.note !== undefined} THEN ${updates.note ?? null} ELSE note END,
-      playtime_minutes = CASE WHEN ${updates.playtimeMinutes !== undefined} THEN ${updates.playtimeMinutes ?? null} ELSE playtime_minutes END
+      note = CASE WHEN ${hasNote} THEN ${updates.note ?? null} ELSE note END,
+      playtime_minutes = CASE WHEN ${hasPlaytime} THEN ${updates.playtimeMinutes ?? null}::INTEGER ELSE playtime_minutes END
     WHERE id = ${eventId} AND steam_id = ${steamId}
     RETURNING *
   `;
