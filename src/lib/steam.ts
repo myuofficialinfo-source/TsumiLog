@@ -113,11 +113,19 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
 
     // recommendationsフィールドがない場合はReviews APIから取得
     let recommendations = gameData.recommendations;
-    console.log(`[getGameDetails] appId=${appId}: Store API recommendations=${JSON.stringify(recommendations)}`);
+    console.log(`[getGameDetails] appId=${appId}: Store API recommendations=${JSON.stringify(recommendations)}, type=${gameData.type}`);
     if (!recommendations) {
       console.log(`[getGameDetails] appId=${appId}: No recommendations from Store API, calling Reviews API fallback...`);
       recommendations = await getReviewCount(appId);
       console.log(`[getGameDetails] appId=${appId}: Reviews API fallback result=${JSON.stringify(recommendations)}`);
+
+      // Demoの場合で、まだレビュー数が取得できなければ本体のレビュー数を取得
+      if (!recommendations && gameData.type === 'demo' && gameData.fullgame?.appid) {
+        const fullGameAppId = parseInt(gameData.fullgame.appid, 10);
+        console.log(`[getGameDetails] appId=${appId}: Demo detected, fetching full game (${fullGameAppId}) reviews...`);
+        recommendations = await getReviewCount(fullGameAppId);
+        console.log(`[getGameDetails] appId=${appId}: Full game reviews result=${JSON.stringify(recommendations)}`);
+      }
     }
 
     return {
