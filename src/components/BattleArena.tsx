@@ -10,8 +10,9 @@ import {
   SKILL_DESCRIPTIONS,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Swords, Zap, Trophy, RotateCcw, Home, X, Play, FastForward } from 'lucide-react';
+import { Swords, Zap, Trophy, RotateCcw, Home, X, Play, FastForward, Volume2, VolumeX } from 'lucide-react';
 import { BattleLogEntry } from '@/lib/battleEngine';
+import { useBattleSounds } from '@/hooks/useBattleSounds';
 
 // サーバーから返されるバトル結果の型
 interface ServerBattleResult {
@@ -315,6 +316,8 @@ export default function BattleArena({
   serverBattleResult,
 }: BattleArenaProps) {
   const { language } = useLanguage();
+  const { playSE, playBGM, stopBGM, fadeOutBGM, toggleMute, isMuted } = useBattleSounds();
+  const [isSoundMuted, setIsSoundMuted] = useState(false);
   const [battleState, setBattleState] = useState<'preparing' | 'fighting' | 'finished'>('preparing');
   const [showBattleStart, setShowBattleStart] = useState(true);
   const [showResultPopup, setShowResultPopup] = useState(false);
@@ -390,9 +393,34 @@ export default function BattleArena({
   // バトル開始演出
   useEffect(() => {
     if (!showBattleStart) return;
+    // バトル開始SE再生
+    playSE('battleStart');
+    // BGM開始（少し遅らせて）
+    const bgmTimer = setTimeout(() => {
+      playBGM();
+    }, 500);
     const timer = setTimeout(() => setShowBattleStart(false), 2000);
-    return () => clearTimeout(timer);
-  }, [showBattleStart]);
+    return () => {
+      clearTimeout(timer);
+      clearTimeout(bgmTimer);
+    };
+  }, [showBattleStart, playSE, playBGM]);
+
+  // バトル終了時のサウンド処理
+  useEffect(() => {
+    if (battleState !== 'finished' || !winner) return;
+    // BGMフェードアウト
+    fadeOutBGM(1000);
+    // 結果SE（少し遅らせて再生）
+    const seTimer = setTimeout(() => {
+      if (winner === 'player') {
+        playSE('victory');
+      } else if (winner === 'opponent') {
+        playSE('defeat');
+      }
+    }, 500);
+    return () => clearTimeout(seTimer);
+  }, [battleState, winner, fadeOutBGM, playSE]);
 
   // バトル終了時にローディングオーバーレイを表示し、APIコール
   useEffect(() => {
@@ -742,6 +770,9 @@ export default function BattleArena({
             offsetY,
           }]);
 
+          // ヒットSE再生
+          playSE('hitDeal');
+
           // ダメージ表示クリア
           setTimeout(() => {
             setDamageDisplays(prev => prev.filter(d => d.key !== damageKey));
@@ -1072,6 +1103,9 @@ export default function BattleArena({
           offsetY,
         }]);
 
+        // ヒットSE再生
+        playSE('hitDeal');
+
         triggerShake(targetSide);
         // 火花エフェクト（デッキ全体にランダム位置）
         const newEffectKey = Date.now() + Math.random();
@@ -1207,6 +1241,13 @@ export default function BattleArena({
     }
   }, []);
 
+  // コンポーネントアンマウント時にBGM停止
+  useEffect(() => {
+    return () => {
+      stopBGM();
+    };
+  }, [stopBGM]);
+
   // 表示用カード取得
   const playerFrontCards = battleCards.filter(c => c.isPlayer && c.position === 'front');
   const playerBackCards = battleCards.filter(c => c.isPlayer && c.position === 'back');
@@ -1220,7 +1261,7 @@ export default function BattleArena({
 
   return (
     <div className="space-y-4">
-      {/* 速度コントロール */}
+      {/* 速度コントロール & ミュートボタン */}
       <div className="flex justify-center gap-2">
         {[1, 2, 3, 5].map(s => (
           <button
@@ -1235,6 +1276,18 @@ export default function BattleArena({
             x{s}
           </button>
         ))}
+        {/* ミュートボタン */}
+        <button
+          onClick={() => {
+            const newMuted = toggleMute();
+            setIsSoundMuted(newMuted);
+          }}
+          className={`flex items-center gap-1 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] font-bold transition-all hover:bg-gray-100`}
+          style={{ backgroundColor: isSoundMuted ? '#3D3D3D' : 'var(--card-bg)', color: isSoundMuted ? 'white' : 'inherit' }}
+          title={isSoundMuted ? (language === 'ja' ? 'サウンドON' : 'Sound ON') : (language === 'ja' ? 'ミュート' : 'Mute')}
+        >
+          {isSoundMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
+        </button>
       </div>
 
       {/* ヘッダー */}
