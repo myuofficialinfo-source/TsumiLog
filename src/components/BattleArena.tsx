@@ -406,21 +406,23 @@ export default function BattleArena({
     };
   }, [showBattleStart, playSE, playBGM]);
 
-  // バトル終了時のサウンド処理
+  // バトル終了時のBGMフェードアウト
   useEffect(() => {
     if (battleState !== 'finished' || !winner) return;
     // BGMフェードアウト
     fadeOutBGM(1000);
-    // 結果SE（少し遅らせて再生）
-    const seTimer = setTimeout(() => {
-      if (winner === 'player') {
-        playSE('victory');
-      } else if (winner === 'opponent') {
-        playSE('defeat');
-      }
-    }, 500);
-    return () => clearTimeout(seTimer);
-  }, [battleState, winner, fadeOutBGM, playSE]);
+  }, [battleState, winner, fadeOutBGM]);
+
+  // 結果ポップアップ表示時にSE再生
+  useEffect(() => {
+    if (!showResultPopup || !winner) return;
+    // 結果SE再生
+    if (winner === 'player') {
+      playSE('victory');
+    } else if (winner === 'opponent') {
+      playSE('defeat');
+    }
+  }, [showResultPopup, winner, playSE]);
 
   // バトル終了時にローディングオーバーレイを表示し、APIコール
   useEffect(() => {
