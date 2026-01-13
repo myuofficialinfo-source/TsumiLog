@@ -18,13 +18,13 @@ export async function GET(request: NextRequest) {
 
     // Steam Store APIはレート制限があるので、少しずつ取得
     const details = [];
-    for (const appId of ids.slice(0, 20)) { // 最大20件
+    for (const appId of ids.slice(0, 10)) { // 最大10件（バッチサイズに合わせる）
       const detail = await getGameDetails(appId, language);
       if (detail) {
         details.push(detail);
       }
       // レート制限対策で少し待機
-      await new Promise(resolve => setTimeout(resolve, 200));
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     return NextResponse.json({ details });

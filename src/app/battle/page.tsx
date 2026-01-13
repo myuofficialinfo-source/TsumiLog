@@ -332,8 +332,10 @@ function BattleContent() {
 
     const fetchDetails = async () => {
       setIsLoadingDetails(true);
-      const gamesToFetch = steamData.games.slice(0, 50);
-      const batchSize = 5;
+      // 積みゲー（バトルで使用するゲーム）のみを取得対象にする
+      const backlogGames = steamData.games.filter(g => g.isBacklog);
+      const gamesToFetch = backlogGames;
+      const batchSize = 10; // バッチサイズを増やして高速化
       setLoadingProgress({ current: 0, total: gamesToFetch.length });
 
       const allDetails = new Map<number, GameDetail>();
@@ -358,9 +360,9 @@ function BattleContent() {
         // 進捗を更新
         setLoadingProgress({ current: Math.min(i + batchSize, gamesToFetch.length), total: gamesToFetch.length });
 
-        // 最後のバッチ以外は遅延
+        // 最後のバッチ以外は遅延（レート制限対策）
         if (i + batchSize < gamesToFetch.length) {
-          await new Promise(resolve => setTimeout(resolve, 500));
+          await new Promise(resolve => setTimeout(resolve, 300));
         }
       }
 
