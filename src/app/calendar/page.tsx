@@ -745,8 +745,8 @@ export default function CalendarPage() {
 
       <main className="flex-grow max-w-7xl mx-auto px-4 py-6 w-full">
         {/* カレンダーナビゲーション */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => view === 'month' ? navigateMonth(-1) : navigateWeek(-1)}
               className="p-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
@@ -754,7 +754,7 @@ export default function CalendarPage() {
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
-            <h2 className="text-2xl font-black min-w-[200px] text-center">
+            <h2 className="text-lg sm:text-2xl font-black min-w-[140px] sm:min-w-[200px] text-center">
               {view === 'month' ? (
                 <>{currentDate.getFullYear()}{language === 'ja' ? '年' : ''} {monthNames[currentDate.getMonth()]}</>
               ) : (
@@ -776,12 +776,12 @@ export default function CalendarPage() {
             </button>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
             {/* View切り替え */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setView('month')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
+                className={`px-2 sm:px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
                   view === 'month' ? 'text-white' : ''
                 }`}
                 style={{
@@ -792,7 +792,7 @@ export default function CalendarPage() {
               </button>
               <button
                 onClick={() => setView('week')}
-                className={`px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
+                className={`px-2 sm:px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
                   view === 'week' ? 'text-white' : ''
                 }`}
                 style={{
@@ -804,7 +804,7 @@ export default function CalendarPage() {
             </div>
             <button
               onClick={goToToday}
-              className="px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+              className="px-3 sm:px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
               {language === 'ja' ? '今日' : 'Today'}
@@ -814,25 +814,21 @@ export default function CalendarPage() {
                 setSelectedDate(formatDateKey(new Date()));
                 setShowAddModal(true);
               }}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-white rounded-lg transition-colors hover:opacity-90"
+              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-sm font-bold text-white rounded-lg transition-colors hover:opacity-90"
               style={{ backgroundColor: 'var(--pop-blue)' }}
             >
               <Plus className="w-4 h-4" />
-              {language === 'ja' ? '予定追加' : 'Add Event'}
+              <span className="hidden sm:inline">{language === 'ja' ? '予定追加' : 'Add Event'}</span>
+              <span className="sm:hidden">{language === 'ja' ? '追加' : 'Add'}</span>
             </button>
           </div>
         </div>
 
         {/* 月表示 */}
         {view === 'month' && (
-        <div className="pop-card overflow-hidden">
+        <div className="pop-card overflow-hidden overflow-x-auto">
           {/* 曜日ヘッダー */}
-          <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
-            {/* 左側の空白セル */}
-            <div
-              className="py-2"
-              style={{ backgroundColor: 'var(--background-secondary)' }}
-            />
+          <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: 'repeat(7, 1fr)', minWidth: '320px' }}>
             {weekDays.map((day, index) => (
               <div
                 key={day}
@@ -863,7 +859,7 @@ export default function CalendarPage() {
                     className="absolute pointer-events-none"
                     style={{
                       top: '24px',
-                      left: '50px',
+                      left: 0,
                       right: 0,
                       height: `${barAreaHeight}px`,
                       zIndex: 1,
@@ -898,15 +894,7 @@ export default function CalendarPage() {
                 )}
 
                 {/* 日付グリッド */}
-                <div className="grid" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
-                  {/* 左側の空白セル */}
-                  <div
-                    className="border-b border-r border-[#E5E5E5]"
-                    style={{
-                      backgroundColor: 'var(--card-bg)',
-                      minHeight: `${Math.max(130, 24 + barAreaHeight + 10)}px`,
-                    }}
-                  />
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(7, 1fr)', minWidth: '320px' }}>
                   {weekDays.map((day, dayIndex) => {
                     const dayOfWeek = day.date.getDay();
                     const hasHoliday = !!day.holiday;
@@ -922,7 +910,7 @@ export default function CalendarPage() {
                         } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: `${Math.max(130, 24 + barAreaHeight + 10)}px`,
+                          minHeight: `${Math.max(80, 24 + barAreaHeight + 10)}px`,
                           ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
                         }}
                       >
@@ -987,9 +975,9 @@ export default function CalendarPage() {
 
         {/* 週表示 */}
         {view === 'week' && (
-        <div className="pop-card overflow-hidden">
+        <div className="pop-card overflow-hidden overflow-x-auto">
           {/* 曜日と日付ヘッダー */}
-          <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
+          <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: '40px repeat(7, minmax(40px, 1fr))', minWidth: '360px' }}>
             {/* 時間列のヘッダー */}
             <div
               className="py-2 text-center font-bold text-xs text-gray-500"
@@ -1032,13 +1020,13 @@ export default function CalendarPage() {
 
           {/* タイムグリッド（オーバーレイ対応） */}
           <div className="max-h-[608px] overflow-y-auto relative">
-            <div className="grid" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
+            <div className="grid" style={{ gridTemplateColumns: '40px repeat(7, minmax(40px, 1fr))', minWidth: '360px' }}>
               {/* 時間ラベル列 */}
               <div>
                 {timeSlots.map(hour => (
                   <div
                     key={hour}
-                    className="h-[50px] px-1 text-right text-xs text-gray-500 border-b border-r border-[#E5E5E5] flex items-start justify-end pt-1"
+                    className="h-[50px] px-0.5 text-right text-[10px] sm:text-xs text-gray-500 border-b border-r border-[#E5E5E5] flex items-start justify-end pt-1"
                     style={{ backgroundColor: 'var(--card-bg)' }}
                   >
                     {hour}:00
@@ -1224,7 +1212,7 @@ export default function CalendarPage() {
         )}
 
         {/* 凡例 */}
-        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
+        <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: 'var(--pop-blue)' }} />
             <span>{language === 'ja' ? '予定' : 'Planned'}</span>
