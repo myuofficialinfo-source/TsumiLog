@@ -1021,8 +1021,12 @@ export async function filterSublimationCandidates(
     } else {
       // スナップショットにないゲーム = 新規購入 or 初回アクセス前から所有
       // 昇華は「スナップショット登録後に30分以上プレイした」ゲームのみ対象
-      // なので、ここでは昇華対象にせず、スナップショットに追加するだけ
-      newGamesToSnapshot.push({ appid: game.appid, name: game.name, playtime: game.playtime });
+      // スナップショットには30分未満（積みゲー）のみ追加
+      // 30分以上のゲームは昇華対象にもスナップショットにも入れない（既にプレイ済みのため）
+      if (game.isBacklog) {
+        newGamesToSnapshot.push({ appid: game.appid, name: game.name, playtime: game.playtime });
+      }
+      // 30分以上のゲームは無視（スナップショット登録前からプレイ済み）
     }
   }
 

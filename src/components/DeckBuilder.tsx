@@ -1083,8 +1083,8 @@ export default function DeckBuilder({
           </div>
           <p className="text-xs text-gray-500 mt-2">
             {language === 'ja'
-              ? '防衛デッキを登録すると、他のプレイヤーがあなたのデッキと対戦できます。'
-              : 'Register a defense deck to let other players battle against you.'}
+              ? 'デッキをバトル使用中にすると、他のプレイヤーがあなたのデッキと対戦できます。'
+              : 'Set a deck as active for battle to let other players battle against you.'}
           </p>
         </div>
       )}

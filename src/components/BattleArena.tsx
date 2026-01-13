@@ -78,6 +78,12 @@ function applySkillEffect(
   isDodged: boolean;
   skillUsed?: GenreSkill;
 } {
+  // 重要スキル（ログに表示するもの）
+  const IMPORTANT_SKILLS: Set<GenreSkill> = new Set([
+    'ambush', 'calculate', 'lucky', 'absorb', 'teamwork',
+    'reflect', 'freebie', 'tutorial', 'training', 'gore', 'retouch', 'develop',
+  ]);
+
   // 攻撃者の位置補正を適用
   const attackerPosition = attacker.position || 'front';
   const defenderPosition = defender.position || 'front';
@@ -103,13 +109,20 @@ function applySkillEffect(
   // チュートリアル（初回被ダメ無効）チェック
   const isFirstHit = (defender.hitCount || 0) === 0;
 
+  // 重要スキルのみログに記録するヘルパー
+  const setSkillIfImportant = (skill: GenreSkill) => {
+    if (IMPORTANT_SKILLS.has(skill)) {
+      skillUsed = skill;
+    }
+  };
+
   // 攻撃者スキル（スキル倍率は攻撃者の位置で決まる）
   attacker.skills.forEach(skill => {
     switch (skill) {
       case 'absorb':
         // 吸収: 与ダメの30%回復（スキル倍率適用）
         healAmount = Math.floor(damage * 0.3 * attackerMod.skillMultiplier * attackerSkillBonus);
-        skillUsed = skill;
+        setSkillIfImportant(skill);
         break;
       case 'ambush':
         // 奇襲: 25%で2倍ダメージ（スキル倍率で確率UP、最大50%）
@@ -117,105 +130,103 @@ function applySkillEffect(
         if (Math.random() < ambushCrit) {
           damage *= 2;
           isCritical = true;
-          skillUsed = skill;
+          setSkillIfImportant(skill);
         }
         break;
       case 'buff':
         // バフ: 自攻撃+15%（スキル倍率適用）
         const buffBonus = 0.15 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + buffBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'lucky':
         // 幸運: 20%で1.5倍ダメージ
         if (Math.random() < 0.2 * attackerMod.skillMultiplier * attackerSkillBonus) {
           damage = Math.floor(damage * 1.5);
-          skillUsed = skill;
+          setSkillIfImportant(skill);
         }
         break;
       case 'teamwork':
         // 連携: 攻撃時味方HP+5%回復
         allyHealAmount = Math.floor(damage * 0.05 * attackerMod.skillMultiplier * attackerSkillBonus);
-        skillUsed = skill;
+        setSkillIfImportant(skill);
         break;
       case 'explore':
         // 探索: 敵防御無視20%
         defenseMultiplier *= (1 - 0.2 * attackerMod.skillMultiplier * attackerSkillBonus);
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'party':
         // パーティ: 味方多いほど攻撃UP（味方1人につき+5%）
         const partyBonus = allyCount * 0.05 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + partyBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'calculate':
         // 計算: クリティカル率+10%
         if (Math.random() < 0.1 * attackerMod.skillMultiplier * attackerSkillBonus) {
           damage = Math.floor(damage * 1.5);
           isCritical = true;
-          skillUsed = skill;
+          setSkillIfImportant(skill);
         }
         break;
       case 'soundwave':
         // 音波: 全体攻撃、威力50%（AOE効果はバトルループ側で処理）
-        // ここでは威力調整のみ
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'design':
         // デザイン: スキル効果+10%（他スキルの効果が強化される）
-        // 実装は他スキルの計算に影響するため、マルチプライヤーとして処理
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'study':
         // 学習: 戦闘中攻撃力徐々にUP（攻撃回数に応じて+2%）
         const studyBonus = (attacker.attackCount || 0) * 0.02 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + Math.min(0.5, studyBonus)));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'training':
         // トレーニング: 最初の攻撃2倍
         if ((attacker.attackCount || 0) === 0) {
           damage *= 2;
-          skillUsed = skill;
+          setSkillIfImportant(skill);
         }
         break;
       case 'produce':
-        // プロデュース: 味方スキル発動率UP（実装は確率計算に影響）
-        skillUsed = skill;
+        // プロデュース: 味方スキル発動率UP
+        // パッシブ：ログなし
         break;
       case 'publish':
         // パブリッシュ: 敵情報公開、弱点+10%ダメージ
         damage = Math.floor(damage * (1 + 0.1 * attackerMod.skillMultiplier * attackerSkillBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'develop':
         // 開発: ランダムスキル追加発動（10%確率で追加クリティカル）
         if (Math.random() < 0.1) {
           damage = Math.floor(damage * 1.3);
-          skillUsed = skill;
+          setSkillIfImportant(skill);
         }
         break;
       case 'mature':
         // マチュア: 攻撃+20%、防御-10%
         damage = Math.floor(damage * (1 + 0.2 * attackerMod.skillMultiplier * attackerSkillBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'expose':
         // エクスポーズ: 敵防御-20%
         defenseMultiplier *= (1 - 0.2 * attackerMod.skillMultiplier * attackerSkillBonus);
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'brutal':
         // ブルータル: 与ダメ+25%
         damage = Math.floor(damage * (1 + 0.25 * attackerMod.skillMultiplier * attackerSkillBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'gore':
         // ゴア: 敵HP低いほどダメージUP（HP50%以下で最大+50%）
         const goreBonus = Math.max(0, (50 - defenderHpPercent) / 50) * 0.5 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + goreBonus));
-        if (goreBonus > 0) skillUsed = skill;
+        if (goreBonus > 0) setSkillIfImportant(skill);
         break;
     }
   });
@@ -227,60 +238,60 @@ function applySkillEffect(
         // 防御: 被ダメ-30%（スキル倍率で軽減量UP）
         const defenseReduction = 0.3 * defenderMod.skillMultiplier * defenderSkillBonus * defenseMultiplier;
         damage = Math.floor(damage * (1 - Math.min(0.5, defenseReduction)));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'reflect':
         // 反射: 被ダメの20%返し
         isReflected = true;
-        skillUsed = skill;
+        setSkillIfImportant(skill);
         break;
       case 'fear':
         // 恐怖: 敵攻撃-20%（スキル倍率適用）
         const fearReduction = 0.2 * defenderMod.skillMultiplier * defenderSkillBonus;
         damage = Math.floor(damage * (1 - Math.min(0.4, fearReduction)));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'freebie':
         // フリービー: 被ダメ時10%で無効化
         if (Math.random() < 0.1 * defenderMod.skillMultiplier * defenderSkillBonus) {
           isDodged = true;
           damage = 0;
-          skillUsed = skill;
+          setSkillIfImportant(skill);
         }
         break;
       case 'retouch':
         // レタッチ: HP20%以下で防御2倍
         if (defenderHpPercent <= 20) {
           damage = Math.floor(damage * 0.5);
-          skillUsed = skill;
+          setSkillIfImportant(skill);
         }
         break;
       case 'utility':
-        // ユーティリティ: 状態異常耐性（反射などの追加効果を軽減）
-        // 実装は状態異常システムがある場合に効果発揮
-        skillUsed = skill;
+        // ユーティリティ: 状態異常耐性
+        // パッシブ：ログなし
         break;
       case 'tutorial':
         // チュートリアル: 初回被ダメ無効
         if (isFirstHit) {
           isDodged = true;
           damage = 0;
-          skillUsed = skill;
+          setSkillIfImportant(skill);
         }
         break;
       case 'docu':
         // ドキュメント: 敵スキル効果-20%
-        // 攻撃者のスキル効果を弱体化（ダメージを少し軽減で表現）
         damage = Math.floor(damage * (1 - 0.1 * defenderMod.skillMultiplier * defenderSkillBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'mature':
         // マチュア（防御側）: 攻撃+20%、防御-10%
         damage = Math.floor(damage * 1.1); // 被ダメ+10%
+        // パッシブ（デメリット）：ログなし
         break;
       case 'brutal':
         // ブルータル（防御側）: 被ダメ+15%
         damage = Math.floor(damage * 1.15);
+        // パッシブ（デメリット）：ログなし
         break;
     }
   });

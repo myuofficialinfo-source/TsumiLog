@@ -95,6 +95,23 @@ class SeededRandom {
   }
 }
 
+// 重要スキル（ログに表示するもの）
+// クリティカル、回復、反射、回避、条件発動系など結果が劇的に変わるもの
+const IMPORTANT_SKILLS: Set<GenreSkill> = new Set([
+  'ambush',    // クリティカル発動時
+  'calculate', // クリティカル発動時
+  'lucky',     // 確率でダメージ増加時
+  'absorb',    // 回復
+  'teamwork',  // 味方回復
+  'reflect',   // 反射
+  'freebie',   // 回避
+  'tutorial',  // 初撃無効
+  'training',  // 初撃2倍
+  'gore',      // 低HP時強化
+  'retouch',   // 低HP時防御
+  'develop',   // 確率発動
+]);
+
 // スキル効果の適用
 function applySkillEffect(
   attacker: BattleCardState,
@@ -128,89 +145,96 @@ function applySkillEffect(
 
   const isFirstHit = defender.hitCount === 0;
 
+  // 重要スキルのみログに記録するヘルパー
+  const setSkillIfImportant = (skill: GenreSkill) => {
+    if (IMPORTANT_SKILLS.has(skill)) {
+      skillUsed = skill;
+    }
+  };
+
   // 攻撃者スキル
   for (const skill of attacker.skills) {
     switch (skill) {
       case 'absorb':
         healAmount = Math.floor(damage * 0.3 * attackerMod.skillMultiplier * attackerSkillBonus);
-        skillUsed = skill;
+        setSkillIfImportant(skill); // 回復は重要
         break;
       case 'ambush':
         const ambushCrit = Math.min(0.5, 0.25 * attackerMod.skillMultiplier * attackerSkillBonus);
         if (random.next() < ambushCrit) {
           damage *= 2;
           isCritical = true;
-          skillUsed = skill;
+          setSkillIfImportant(skill); // クリティカル発動時のみ
         }
         break;
       case 'buff':
         const buffBonus = 0.15 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + buffBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'lucky':
         if (random.next() < 0.2 * attackerMod.skillMultiplier * attackerSkillBonus) {
           damage = Math.floor(damage * 1.5);
-          skillUsed = skill;
+          setSkillIfImportant(skill); // 発動時のみ
         }
         break;
       case 'teamwork':
         allyHealAmount = Math.floor(damage * 0.05 * attackerMod.skillMultiplier * attackerSkillBonus);
-        skillUsed = skill;
+        setSkillIfImportant(skill); // 回復は重要
         break;
       case 'explore':
         defenseMultiplier *= (1 - 0.2 * attackerMod.skillMultiplier * attackerSkillBonus);
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'party':
         const partyBonus = allyCount * 0.05 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + partyBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'calculate':
         if (random.next() < 0.1 * attackerMod.skillMultiplier * attackerSkillBonus) {
           damage = Math.floor(damage * 1.5);
           isCritical = true;
-          skillUsed = skill;
+          setSkillIfImportant(skill); // クリティカル発動時のみ
         }
         break;
       case 'study':
         const studyBonus = attacker.attackCount * 0.02 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + Math.min(0.5, studyBonus)));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'training':
         if (attacker.attackCount === 0) {
           damage *= 2;
-          skillUsed = skill;
+          setSkillIfImportant(skill); // 初撃2倍は重要
         }
         break;
       case 'publish':
         damage = Math.floor(damage * (1 + 0.1 * attackerMod.skillMultiplier * attackerSkillBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'develop':
         if (random.next() < 0.1) {
           damage = Math.floor(damage * 1.3);
-          skillUsed = skill;
+          setSkillIfImportant(skill); // 発動時のみ
         }
         break;
       case 'mature':
         damage = Math.floor(damage * (1 + 0.2 * attackerMod.skillMultiplier * attackerSkillBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'expose':
         defenseMultiplier *= (1 - 0.2 * attackerMod.skillMultiplier * attackerSkillBonus);
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'brutal':
         damage = Math.floor(damage * (1 + 0.25 * attackerMod.skillMultiplier * attackerSkillBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'gore':
         const goreBonus = Math.max(0, (50 - defenderHpPercent) / 50) * 0.5 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + goreBonus));
-        if (goreBonus > 0) skillUsed = skill;
+        if (goreBonus > 0) setSkillIfImportant(skill); // 条件発動時のみ
         break;
     }
   }
@@ -221,46 +245,48 @@ function applySkillEffect(
       case 'defense':
         const defenseReduction = 0.3 * defenderMod.skillMultiplier * defenderSkillBonus * defenseMultiplier;
         damage = Math.floor(damage * (1 - Math.min(0.5, defenseReduction)));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'reflect':
         isReflected = true;
-        skillUsed = skill;
+        setSkillIfImportant(skill); // 反射は重要
         break;
       case 'fear':
         const fearReduction = 0.2 * defenderMod.skillMultiplier * defenderSkillBonus;
         damage = Math.floor(damage * (1 - Math.min(0.4, fearReduction)));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'freebie':
         if (random.next() < 0.1 * defenderMod.skillMultiplier * defenderSkillBonus) {
           isDodged = true;
           damage = 0;
-          skillUsed = skill;
+          setSkillIfImportant(skill); // 回避は重要
         }
         break;
       case 'retouch':
         if (defenderHpPercent <= 20) {
           damage = Math.floor(damage * 0.5);
-          skillUsed = skill;
+          setSkillIfImportant(skill); // 条件発動時のみ
         }
         break;
       case 'tutorial':
         if (isFirstHit) {
           isDodged = true;
           damage = 0;
-          skillUsed = skill;
+          setSkillIfImportant(skill); // 初撃無効は重要
         }
         break;
       case 'docu':
         damage = Math.floor(damage * (1 - 0.1 * defenderMod.skillMultiplier * defenderSkillBonus));
-        skillUsed = skill;
+        // パッシブ：ログなし
         break;
       case 'mature':
         damage = Math.floor(damage * 1.1);
+        // パッシブ（デメリット）：ログなし
         break;
       case 'brutal':
         damage = Math.floor(damage * 1.15);
+        // パッシブ（デメリット）：ログなし
         break;
     }
   }
