@@ -8,7 +8,6 @@ import {
   BattleCard as BattleCardType,
   Deck,
   BattleResult,
-  GENRE_SKILL_MAP,
   calculateAttack,
   calculateHP,
   GenreSkill,
@@ -16,6 +15,7 @@ import {
   convertDefenseDeckToCards,
   calculateRarityFromReviews,
   generateEnemyDeck,
+  calculateSkillFromTags,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Loader2 } from 'lucide-react';
@@ -32,6 +32,8 @@ interface Game {
 
 interface GameDetail {
   genres: { description: string }[];
+  tags?: string[];        // SteamSpyからのユーザータグ
+  userTags?: string[];    // 別名
   developers?: string[];
   publishers?: string[];
   recommendations?: { total: number };
@@ -127,9 +129,13 @@ function createBattleCard(
   const rarity = calculateRarityFromReviews(reviewCount);
 
   const genres = details?.genres?.map(g => g.description) || [];
-  const skills: GenreSkill[] = genres
-    .map(genre => GENRE_SKILL_MAP[genre])
-    .filter((skill): skill is GenreSkill => skill !== undefined);
+  // タグ（SteamSpyのユーザータグ）も取得
+  const tags = details?.tags || details?.userTags || [];
+
+  // ジャンルとタグの組み合わせから座標ベースでスキルを計算
+  const allSources = [...genres, ...tags];
+  const calculatedSkill = calculateSkillFromTags(allSources);
+  const skills: GenreSkill[] = calculatedSkill ? [calculatedSkill] : [];
 
   // 高評価率でHP決定（取得できない場合はnullを渡してデフォルトHP200）
   const positiveRate = details?.positiveRate ?? null;

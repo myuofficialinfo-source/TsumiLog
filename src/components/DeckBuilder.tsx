@@ -6,7 +6,6 @@ import {
   BattleCard as BattleCardType,
   Deck,
   SynergyBonus,
-  GENRE_SKILL_MAP,
   calculateAttack,
   calculateHP,
   GenreSkill,
@@ -15,6 +14,7 @@ import {
   SublimatedGame,
   calculateSublimationBuff,
   calculateRarityFromReviews,
+  calculateSkillFromTags,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Shuffle, Wand2, Check, X, Users, Gamepad2, Tag, Building, Trophy, Swords, Heart, Calendar, Award, Flame, ArrowUp, ArrowDown, HelpCircle } from 'lucide-react';
@@ -81,16 +81,17 @@ function createBattleCard(
   const rarity = calculateRarityFromReviews(reviewCount);
 
   const genres = details?.genres?.map(g => g.description) || [];
-  const skills: GenreSkill[] = genres
-    .map(genre => GENRE_SKILL_MAP[genre])
-    .filter((skill): skill is GenreSkill => skill !== undefined);
-
-  // 高評価率でHP決定（取得できない場合はnullを渡してデフォルトHP200）
-  const positiveRate = details?.positiveRate ?? null;
-
   // ユーザータグ（SteamSpyから）とカテゴリー（Steam APIから）を統合
   const userTags = details?.userTags || details?.tags || [];
   const categories = details?.categories?.map(c => c.description) || [];
+
+  // ジャンルとタグの組み合わせから座標ベースでスキルを計算
+  const allSources = [...genres, ...userTags, ...categories];
+  const calculatedSkill = calculateSkillFromTags(allSources);
+  const skills: GenreSkill[] = calculatedSkill ? [calculatedSkill] : [];
+
+  // 高評価率でHP決定（取得できない場合はnullを渡してデフォルトHP200）
+  const positiveRate = details?.positiveRate ?? null;
 
   return {
     appid: game.appid,
