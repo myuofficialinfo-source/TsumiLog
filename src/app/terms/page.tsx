@@ -127,8 +127,24 @@ export default function TermsOfService() {
 
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-red)' }} />
+                  8. アカウント削除について
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  アカウント削除機能について、以下の点にご留意ください：
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>アカウント設定画面からいつでもアカウントを削除できます</li>
+                  <li>削除されるデータ：バトルランキング、昇華ボーナス、ゲームカレンダーの全データ</li>
+                  <li>一度削除したデータは復元できません</li>
+                  <li>再度Steamログインしても、削除前のデータは復元されません</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
-                  8. 知的財産権
+                  9. 知的財産権
                 </h2>
                 <p className="text-gray-600">
                   Steam、およびSteamのロゴはValve Corporationの商標です。
@@ -139,7 +155,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  9. 規約の変更
+                  10. 規約の変更
                 </h2>
                 <p className="text-gray-600">
                   本規約は予告なく変更される場合があります。
@@ -259,8 +275,24 @@ export default function TermsOfService() {
 
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-red)' }} />
+                  8. Account Deletion
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  Please note the following regarding account deletion:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>You can delete your account at any time from the account settings</li>
+                  <li>Data deleted: All battle rankings, sublimation bonuses, and game calendar data</li>
+                  <li>Deleted data cannot be recovered</li>
+                  <li>Data will not be restored even if you log in with Steam again</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
-                  8. Intellectual Property
+                  9. Intellectual Property
                 </h2>
                 <p className="text-gray-600">
                   Steam and the Steam logo are trademarks of Valve Corporation.
@@ -271,7 +303,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  9. Changes to Terms
+                  10. Changes to Terms
                 </h2>
                 <p className="text-gray-600">
                   These terms may be changed without notice.
