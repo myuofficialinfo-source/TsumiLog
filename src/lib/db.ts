@@ -1017,9 +1017,41 @@ export async function filterSublimationCandidates(
 // ===== カレンダーイベントテーブル =====
 // ユーザーのゲームプレイ予定を保存
 
+// カレンダーイベントテーブルマイグレーション（UUID→SERIAL変換用）
+export async function migrateCalendarEventsTable() {
+  try {
+    // 既存テーブルがUUID型の場合、削除して再作成
+    // テーブルが存在するか確認
+    const tableExists = await sql`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables
+        WHERE table_name = 'calendar_events'
+      )
+    `;
+
+    if (tableExists[0]?.exists) {
+      // カラムの型を確認
+      const columnInfo = await sql`
+        SELECT data_type FROM information_schema.columns
+        WHERE table_name = 'calendar_events' AND column_name = 'id'
+      `;
+
+      // UUID型の場合はテーブルを削除
+      if (columnInfo[0]?.data_type === 'uuid') {
+        await sql`DROP TABLE calendar_events`;
+      }
+    }
+  } catch {
+    // エラーは無視（テーブルが存在しない場合など）
+  }
+}
+
 // カレンダーイベントテーブル初期化
 export async function initCalendarEventsTable() {
-  // 他のテーブルと同様にSERIALを使用（UUIDは拡張機能が必要で権限問題が起きる）
+  // マイグレーションを実行（UUID型テーブルがあれば削除）
+  await migrateCalendarEventsTable();
+
+  // 他のテーブルと同様にSERIALを使用
   await sql`
     CREATE TABLE IF NOT EXISTS calendar_events (
       id SERIAL PRIMARY KEY,
