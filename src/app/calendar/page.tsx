@@ -60,7 +60,7 @@ export default function CalendarPage() {
     originalEndTime: string;
   } | null>(null);
 
-  // localStorageからsteamIdとイベントを復元
+  // steamIdを取得し、DBからイベントを読み込み
   useEffect(() => {
     const savedSteamId = localStorage.getItem('steamId');
     if (!savedSteamId) {
@@ -69,10 +69,63 @@ export default function CalendarPage() {
     }
     setSteamId(savedSteamId);
 
-    const savedEvents = localStorage.getItem('calendarEvents');
-    if (savedEvents) {
-      setEvents(JSON.parse(savedEvents));
-    }
+    // DBからイベントを取得
+    const fetchEvents = async () => {
+      try {
+        const response = await fetch(`/api/calendar-events?steamId=${encodeURIComponent(savedSteamId)}`);
+        if (response.ok) {
+          const data = await response.json();
+          if (data.events && Array.isArray(data.events)) {
+            // DBの形式からフロントエンドの形式に変換
+            const convertedEvents: GameEvent[] = data.events.map((e: {
+              id: string;
+              date: string;
+              endDate?: string;
+              startTime?: string;
+              endTime?: string;
+              gameId: number;
+              gameName: string;
+              gameImage?: string;
+              type: 'planned' | 'played' | 'release';
+              note?: string;
+              playtimeMinutes?: number;
+              createdAt: string;
+            }) => ({
+              id: e.id,
+              date: e.date,
+              endDate: e.endDate,
+              startTime: e.startTime,
+              endTime: e.endTime,
+              gameId: e.gameId,
+              gameName: e.gameName,
+              gameImage: e.gameImage,
+              type: e.type,
+              note: e.note,
+              playtimeMinutes: e.playtimeMinutes,
+              createdAt: e.createdAt,
+            }));
+            setEvents(convertedEvents);
+            // localStorageにもキャッシュ
+            localStorage.setItem('calendarEvents', JSON.stringify(convertedEvents));
+          }
+        } else {
+          // API失敗時はlocalStorageから読み込み
+          const savedEvents = localStorage.getItem('calendarEvents');
+          if (savedEvents) {
+            setEvents(JSON.parse(savedEvents));
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch calendar events:', error);
+        // エラー時はlocalStorageから読み込み
+        const savedEvents = localStorage.getItem('calendarEvents');
+        if (savedEvents) {
+          setEvents(JSON.parse(savedEvents));
+        }
+      }
+    };
+
+    fetchEvents();
   }, [router]);
 
   // ゲームリストを取得（localStorageからのフォールバック付き）
@@ -128,11 +181,10 @@ export default function CalendarPage() {
     fetchWishlistReleases();
   }, [steamId]);
 
-  // イベントをlocalStorageに保存
+  // イベント変更時にlocalStorageに保存（DBはハンドラで直接更新）
   useEffect(() => {
-    if (events.length > 0) {
-      localStorage.setItem('calendarEvents', JSON.stringify(events));
-    }
+    // localStorageは常に同期
+    localStorage.setItem('calendarEvents', JSON.stringify(events));
   }, [events]);
 
   // リサイズ用のグローバルマウスイベント
@@ -167,6 +219,21 @@ export default function CalendarPage() {
     };
 
     const handleMouseUp = () => {
+      // リサイズ終了時にDBを更新
+      const updatedEvent = events.find(ev => ev.id === resizeInfo.eventId);
+      if (updatedEvent && steamId) {
+        fetch('/api/calendar-events', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            steamId,
+            eventId: updatedEvent.id,
+            updates: {
+              endTime: updatedEvent.endTime,
+            },
+          }),
+        }).catch(err => console.error('Failed to update event after resize:', err));
+      }
       setResizeInfo(null);
     };
 
@@ -177,7 +244,7 @@ export default function CalendarPage() {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [resizeInfo, events]);
+  }, [resizeInfo, events, steamId]);
 
   const formatDateKey = (date: Date): string => {
     const year = date.getFullYear();
@@ -396,25 +463,104 @@ export default function CalendarPage() {
     setShowAddModal(true);
   };
 
-  const handleAddEvent = (event: Omit<GameEvent, 'id' | 'createdAt'>) => {
-    const newEvent: GameEvent = {
+  const handleAddEvent = async (event: Omit<GameEvent, 'id' | 'createdAt'>) => {
+    if (!steamId) return;
+
+    // まずUIを即座に更新（楽観的更新）
+    const tempId = crypto.randomUUID();
+    const tempEvent: GameEvent = {
       ...event,
-      id: crypto.randomUUID(),
+      id: tempId,
       createdAt: new Date().toISOString(),
     };
-    setEvents(prev => [...prev, newEvent]);
+    setEvents(prev => [...prev, tempEvent]);
     setShowAddModal(false);
     setSelectedDate(null);
+
+    // DBに保存
+    try {
+      const response = await fetch('/api/calendar-events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steamId,
+          event: {
+            date: event.date,
+            endDate: event.endDate,
+            startTime: event.startTime,
+            endTime: event.endTime,
+            gameId: event.gameId,
+            gameName: event.gameName,
+            gameImage: event.gameImage,
+            type: event.type,
+            note: event.note,
+            playtimeMinutes: event.playtimeMinutes,
+          },
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // DBから返されたIDで更新
+        setEvents(prev => prev.map(e =>
+          e.id === tempId
+            ? { ...e, id: data.event.id, createdAt: data.event.createdAt }
+            : e
+        ));
+      } else {
+        console.error('Failed to save event to DB');
+      }
+    } catch (error) {
+      console.error('Failed to save event:', error);
+    }
   };
 
-  const handleDeleteEvent = (eventId: string) => {
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!steamId) return;
+
+    // まずUIを即座に更新
     setEvents(prev => prev.filter(e => e.id !== eventId));
     setSelectedEvent(null);
+
+    // DBから削除
+    try {
+      await fetch(`/api/calendar-events?steamId=${encodeURIComponent(steamId)}&eventId=${encodeURIComponent(eventId)}`, {
+        method: 'DELETE',
+      });
+    } catch (error) {
+      console.error('Failed to delete event:', error);
+    }
   };
 
-  const handleUpdateEvent = (updatedEvent: GameEvent) => {
+  const handleUpdateEvent = async (updatedEvent: GameEvent) => {
+    if (!steamId) return;
+
+    // まずUIを即座に更新
     setEvents(prev => prev.map(e => e.id === updatedEvent.id ? updatedEvent : e));
     setSelectedEvent(null);
+
+    // DBを更新
+    try {
+      await fetch('/api/calendar-events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steamId,
+          eventId: updatedEvent.id,
+          updates: {
+            date: updatedEvent.date,
+            endDate: updatedEvent.endDate || null,
+            startTime: updatedEvent.startTime || null,
+            endTime: updatedEvent.endTime || null,
+            type: updatedEvent.type,
+            note: updatedEvent.note || null,
+            playtimeMinutes: updatedEvent.playtimeMinutes || null,
+          },
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to update event:', error);
+    }
   };
 
   // ドラッグ開始
@@ -445,9 +591,9 @@ export default function CalendarPage() {
   };
 
   // ドロップ
-  const handleDrop = (e: React.DragEvent, targetDate: string) => {
+  const handleDrop = async (e: React.DragEvent, targetDate: string) => {
     e.preventDefault();
-    if (!draggedEvent) return;
+    if (!draggedEvent || !steamId) return;
 
     // 期間イベントの場合、日数の差分を計算して両方の日付を更新
     const daysDiff = Math.floor(
@@ -469,6 +615,24 @@ export default function CalendarPage() {
 
     setEvents(prev => prev.map(e => e.id === draggedEvent.id ? updatedEvent : e));
     setDraggedEvent(null);
+
+    // DBを更新
+    try {
+      await fetch('/api/calendar-events', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steamId,
+          eventId: updatedEvent.id,
+          updates: {
+            date: updatedEvent.date,
+            endDate: updatedEvent.endDate || null,
+          },
+        }),
+      });
+    } catch (error) {
+      console.error('Failed to update event after drag:', error);
+    }
   };
 
   const weekDays = language === 'ja'
@@ -981,6 +1145,23 @@ export default function CalendarPage() {
                               endTime: newEndTime,
                             };
                             setEvents(prev => prev.map(ev => ev.id === eventId ? updatedEvent : ev));
+
+                            // DBを更新
+                            if (steamId) {
+                              fetch('/api/calendar-events', {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  steamId,
+                                  eventId: updatedEvent.id,
+                                  updates: {
+                                    date: updatedEvent.date,
+                                    startTime: updatedEvent.startTime,
+                                    endTime: updatedEvent.endTime,
+                                  },
+                                }),
+                              }).catch(err => console.error('Failed to update event after drag:', err));
+                            }
                           }
                           setDraggedEvent(null);
                         }}

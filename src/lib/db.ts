@@ -1013,3 +1013,185 @@ export async function filterSublimationCandidates(
 
   return { sublimationCandidates, newGamesToSnapshot, completionUpdates };
 }
+
+// ===== カレンダーイベントテーブル =====
+// ユーザーのゲームプレイ予定を保存
+
+// カレンダーイベントテーブル初期化
+export async function initCalendarEventsTable() {
+  await sql`
+    CREATE TABLE IF NOT EXISTS calendar_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      steam_id VARCHAR(20) NOT NULL,
+      date DATE NOT NULL,
+      end_date DATE,
+      start_time VARCHAR(5),
+      end_time VARCHAR(5),
+      game_id INTEGER NOT NULL,
+      game_name VARCHAR(200) NOT NULL,
+      game_image TEXT,
+      type VARCHAR(20) NOT NULL CHECK (type IN ('planned', 'played', 'release')),
+      note TEXT,
+      playtime_minutes INTEGER,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_steam_id ON calendar_events(steam_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date)`;
+}
+
+// カレンダーイベント型
+export interface CalendarEventDB {
+  id: string;
+  steamId: string;
+  date: string;
+  endDate?: string;
+  startTime?: string;
+  endTime?: string;
+  gameId: number;
+  gameName: string;
+  gameImage?: string;
+  type: 'planned' | 'played' | 'release';
+  note?: string;
+  playtimeMinutes?: number;
+  createdAt: string;
+}
+
+// カレンダーイベントを追加
+export async function addCalendarEvent(
+  steamId: string,
+  event: {
+    date: string;
+    endDate?: string;
+    startTime?: string;
+    endTime?: string;
+    gameId: number;
+    gameName: string;
+    gameImage?: string;
+    type: 'planned' | 'played' | 'release';
+    note?: string;
+    playtimeMinutes?: number;
+  }
+): Promise<CalendarEventDB> {
+  const result = await sql`
+    INSERT INTO calendar_events (
+      steam_id, date, end_date, start_time, end_time,
+      game_id, game_name, game_image, type, note, playtime_minutes
+    )
+    VALUES (
+      ${steamId},
+      ${event.date},
+      ${event.endDate || null},
+      ${event.startTime || null},
+      ${event.endTime || null},
+      ${event.gameId},
+      ${event.gameName},
+      ${event.gameImage || null},
+      ${event.type},
+      ${event.note || null},
+      ${event.playtimeMinutes || null}
+    )
+    RETURNING *
+  `;
+
+  const row = result[0];
+  return {
+    id: row.id as string,
+    steamId: row.steam_id as string,
+    date: (row.date as string).split('T')[0],
+    endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
+    startTime: row.start_time as string | undefined,
+    endTime: row.end_time as string | undefined,
+    gameId: row.game_id as number,
+    gameName: row.game_name as string,
+    gameImage: row.game_image as string | undefined,
+    type: row.type as 'planned' | 'played' | 'release',
+    note: row.note as string | undefined,
+    playtimeMinutes: row.playtime_minutes as number | undefined,
+    createdAt: row.created_at as string,
+  };
+}
+
+// ユーザーのカレンダーイベントを取得
+export async function getCalendarEvents(steamId: string): Promise<CalendarEventDB[]> {
+  const result = await sql`
+    SELECT *
+    FROM calendar_events
+    WHERE steam_id = ${steamId}
+    ORDER BY date ASC, start_time ASC NULLS LAST
+  `;
+
+  return result.map(row => ({
+    id: row.id as string,
+    steamId: row.steam_id as string,
+    date: (row.date as string).split('T')[0],
+    endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
+    startTime: row.start_time as string | undefined,
+    endTime: row.end_time as string | undefined,
+    gameId: row.game_id as number,
+    gameName: row.game_name as string,
+    gameImage: row.game_image as string | undefined,
+    type: row.type as 'planned' | 'played' | 'release',
+    note: row.note as string | undefined,
+    playtimeMinutes: row.playtime_minutes as number | undefined,
+    createdAt: row.created_at as string,
+  }));
+}
+
+// カレンダーイベントを更新
+export async function updateCalendarEvent(
+  steamId: string,
+  eventId: string,
+  updates: {
+    date?: string;
+    endDate?: string | null;
+    startTime?: string | null;
+    endTime?: string | null;
+    type?: 'planned' | 'played' | 'release';
+    note?: string | null;
+    playtimeMinutes?: number | null;
+  }
+): Promise<CalendarEventDB | null> {
+  const result = await sql`
+    UPDATE calendar_events
+    SET
+      date = COALESCE(${updates.date || null}, date),
+      end_date = ${updates.endDate !== undefined ? updates.endDate : null},
+      start_time = ${updates.startTime !== undefined ? updates.startTime : null},
+      end_time = ${updates.endTime !== undefined ? updates.endTime : null},
+      type = COALESCE(${updates.type || null}, type),
+      note = ${updates.note !== undefined ? updates.note : null},
+      playtime_minutes = ${updates.playtimeMinutes !== undefined ? updates.playtimeMinutes : null}
+    WHERE id = ${eventId} AND steam_id = ${steamId}
+    RETURNING *
+  `;
+
+  if (result.length === 0) return null;
+
+  const row = result[0];
+  return {
+    id: row.id as string,
+    steamId: row.steam_id as string,
+    date: (row.date as string).split('T')[0],
+    endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
+    startTime: row.start_time as string | undefined,
+    endTime: row.end_time as string | undefined,
+    gameId: row.game_id as number,
+    gameName: row.game_name as string,
+    gameImage: row.game_image as string | undefined,
+    type: row.type as 'planned' | 'played' | 'release',
+    note: row.note as string | undefined,
+    playtimeMinutes: row.playtime_minutes as number | undefined,
+    createdAt: row.created_at as string,
+  };
+}
+
+// カレンダーイベントを削除
+export async function deleteCalendarEvent(steamId: string, eventId: string): Promise<boolean> {
+  const result = await sql`
+    DELETE FROM calendar_events
+    WHERE id = ${eventId} AND steam_id = ${steamId}
+    RETURNING id
+  `;
+  return result.length > 0;
+}
