@@ -778,7 +778,7 @@ export default function CalendarPage() {
 
         {/* 月表示 */}
         {view === 'month' && (
-        <div className="pop-card overflow-hidden min-h-[1200px]">
+        <div className="pop-card overflow-hidden">
           {/* 曜日ヘッダー */}
           <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
             {/* 左側の空白セル */}
@@ -857,7 +857,7 @@ export default function CalendarPage() {
                     className="border-b border-r border-[#E5E5E5]"
                     style={{
                       backgroundColor: 'var(--card-bg)',
-                      minHeight: `${Math.max(50, 24 + barAreaHeight + 10)}px`,
+                      minHeight: `${Math.max(120, 24 + barAreaHeight + 10)}px`,
                     }}
                   />
                   {weekDays.map((day, dayIndex) => {
@@ -875,7 +875,7 @@ export default function CalendarPage() {
                         } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: `${Math.max(50, 24 + barAreaHeight + 10)}px`,
+                          minHeight: `${Math.max(120, 24 + barAreaHeight + 10)}px`,
                           ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
                         }}
                       >
