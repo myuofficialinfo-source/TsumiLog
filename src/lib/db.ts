@@ -1106,9 +1106,13 @@ export async function initCalendarEventsTable() {
 }
 
 // PostgreSQLのDATE型はDateオブジェクトとして返されるので、YYYY-MM-DD文字列に変換
+// toISOString()はUTCで変換するためタイムゾーンでずれる可能性があるので、ローカル時間で処理
 function formatDateToString(d: unknown): string {
   if (d instanceof Date) {
-    return d.toISOString().split('T')[0];
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
   }
   return String(d).split('T')[0];
 }

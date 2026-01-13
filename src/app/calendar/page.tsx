@@ -269,6 +269,11 @@ export default function CalendarPage() {
           if (!response.ok) {
             throw new Error('Failed to update');
           }
+          // 成功したらlocalStorageも更新
+          setEvents(prev => {
+            localStorage.setItem('calendarEvents', JSON.stringify(prev));
+            return prev;
+          });
         } catch (err) {
           console.error('Failed to update event after resize:', err);
           // ロールバック
@@ -677,6 +682,12 @@ export default function CalendarPage() {
       if (!response.ok) {
         throw new Error('Failed to update');
       }
+      // 成功したらlocalStorageも更新
+      setEvents(prev => {
+        const newEvents = prev.map(e => e.id === updatedEvent.id ? updatedEvent : e);
+        localStorage.setItem('calendarEvents', JSON.stringify(newEvents));
+        return newEvents;
+      });
     } catch (error) {
       console.error('Failed to update event after drag:', error);
       // ロールバック
@@ -1220,6 +1231,12 @@ export default function CalendarPage() {
                                   if (!response.ok) {
                                     throw new Error('Failed to update event');
                                   }
+                                  // 成功したらlocalStorageも更新
+                                  setEvents(prev => {
+                                    const newEvents = prev.map(ev => ev.id === updatedEvent.id ? updatedEvent : ev);
+                                    localStorage.setItem('calendarEvents', JSON.stringify(newEvents));
+                                    return newEvents;
+                                  });
                                 } catch (err) {
                                   console.error('Failed to update event after drag:', err);
                                   // ロールバック
