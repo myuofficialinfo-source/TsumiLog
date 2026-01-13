@@ -617,16 +617,21 @@ export default function CalendarPage() {
           {/* 曜日ヘッダー */}
           <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
             {/* 左側の空白セル */}
-            <div style={{ backgroundColor: 'var(--background-secondary)' }} />
+            <div
+              className="py-2"
+              style={{ backgroundColor: 'var(--background-secondary)' }}
+            />
             {weekDays.map((day, index) => (
               <div
                 key={day}
-                className={`py-3 text-center font-bold text-sm ${
-                  index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-gray-600'
-                }`}
+                className="py-2 text-center"
                 style={{ backgroundColor: 'var(--background-secondary)' }}
               >
-                {day}
+                <div className={`text-xs font-medium ${
+                  index === 0 ? 'text-red-500' : index === 6 ? 'text-blue-500' : 'text-gray-500'
+                }`}>
+                  {day}
+                </div>
               </div>
             ))}
           </div>
