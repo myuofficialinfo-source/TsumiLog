@@ -1086,6 +1086,14 @@ export async function initCalendarEventsTable() {
   console.log('[Calendar Init] Initialization complete');
 }
 
+// PostgreSQLのDATE型はDateオブジェクトとして返されるので、YYYY-MM-DD文字列に変換
+function formatDateToString(d: unknown): string {
+  if (d instanceof Date) {
+    return d.toISOString().split('T')[0];
+  }
+  return String(d).split('T')[0];
+}
+
 // カレンダーイベント型
 export interface CalendarEventDB {
   id: number;
@@ -1144,8 +1152,8 @@ export async function addCalendarEvent(
   return {
     id: row.id as number,
     steamId: row.steam_id as string,
-    date: (row.date as string).split('T')[0],
-    endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
+    date: formatDateToString(row.date),
+    endDate: row.end_date ? formatDateToString(row.end_date) : undefined,
     startTime: row.start_time as string | undefined,
     endTime: row.end_time as string | undefined,
     gameId: row.game_id as number,
@@ -1170,8 +1178,8 @@ export async function getCalendarEvents(steamId: string): Promise<CalendarEventD
   return result.map(row => ({
     id: row.id as number,
     steamId: row.steam_id as string,
-    date: (row.date as string).split('T')[0],
-    endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
+    date: formatDateToString(row.date),
+    endDate: row.end_date ? formatDateToString(row.end_date) : undefined,
     startTime: row.start_time as string | undefined,
     endTime: row.end_time as string | undefined,
     gameId: row.game_id as number,
@@ -1225,8 +1233,8 @@ export async function updateCalendarEvent(
   return {
     id: row.id as number,
     steamId: row.steam_id as string,
-    date: (row.date as string).split('T')[0],
-    endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
+    date: formatDateToString(row.date),
+    endDate: row.end_date ? formatDateToString(row.end_date) : undefined,
     startTime: row.start_time as string | undefined,
     endTime: row.end_time as string | undefined,
     gameId: row.game_id as number,
