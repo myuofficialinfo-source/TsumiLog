@@ -2,48 +2,17 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Globe } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Header } from '@/components/Layout';
 
 export default function PrivacyPolicy() {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {/* ヘッダー */}
-      <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <Image src="/icons/icom.png" alt={t('app.title')} width={48} height={48} />
-            <div>
-              <h1 className="text-2xl font-black gradient-text">{t('app.title')}<span className="text-sm font-medium text-gray-500 ml-1">{language === 'ja' ? '（β版）' : '(beta)'}</span></h1>
-              <p className="text-xs text-gray-500 font-medium">{t('app.subtitle')}</p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            {/* 言語切り替えボタン */}
-            <button
-              onClick={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
-              style={{ backgroundColor: 'var(--card-bg)' }}
-            >
-              <Globe className="w-4 h-4" />
-              {language === 'ja' ? 'EN' : 'JA'}
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header showBack backHref="/" />
 
       <main className="flex-grow max-w-3xl mx-auto px-4 py-8 w-full">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 font-bold mb-6 hover:opacity-70 transition-opacity"
-          style={{ color: 'var(--pop-blue)' }}
-        >
-          <ArrowLeft size={20} />
-          {language === 'ja' ? 'トップページに戻る' : 'Back to Home'}
-        </Link>
-
         <div className="pop-card p-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-3 h-8 rounded-full" style={{ backgroundColor: 'var(--pop-blue)' }} />
@@ -120,7 +89,7 @@ export default function PrivacyPolicy() {
                   6. お問い合わせ
                 </h2>
                 <p className="text-gray-600">
-                  プライバシーに関するお問い合わせは、
+                  ツミナビに関するお問い合わせや要望に関しては、
                   <a
                     href="https://x.com/myu060309"
                     target="_blank"
@@ -208,7 +177,7 @@ export default function PrivacyPolicy() {
                   6. Contact
                 </h2>
                 <p className="text-gray-600">
-                  For privacy-related inquiries, please reach out via{' '}
+                  For inquiries or requests regarding TsumiNavi, please reach out via{' '}
                   <a
                     href="https://x.com/myu060309"
                     target="_blank"

@@ -2,48 +2,17 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Globe } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Header } from '@/components/Layout';
 
 export default function TermsOfService() {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {/* ヘッダー */}
-      <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <Image src="/icons/icom.png" alt={t('app.title')} width={48} height={48} />
-            <div>
-              <h1 className="text-2xl font-black gradient-text">{t('app.title')}<span className="text-sm font-medium text-gray-500 ml-1">{language === 'ja' ? '（β版）' : '(beta)'}</span></h1>
-              <p className="text-xs text-gray-500 font-medium">{t('app.subtitle')}</p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            {/* 言語切り替えボタン */}
-            <button
-              onClick={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
-              style={{ backgroundColor: 'var(--card-bg)' }}
-            >
-              <Globe className="w-4 h-4" />
-              {language === 'ja' ? 'EN' : 'JA'}
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header showBack backHref="/" />
 
       <main className="flex-grow max-w-3xl mx-auto px-4 py-8 w-full">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 font-bold mb-6 hover:opacity-70 transition-opacity"
-          style={{ color: 'var(--pop-blue)' }}
-        >
-          <ArrowLeft size={20} />
-          {language === 'ja' ? 'トップページに戻る' : 'Back to Home'}
-        </Link>
-
         <div className="pop-card p-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-3 h-8 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
@@ -142,8 +111,24 @@ export default function TermsOfService() {
 
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-blue)' }} />
+                  7. カレンダー機能について
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  本サービスのカレンダー機能では、以下の点にご留意ください：
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>カレンダーに登録した予定データはサーバーに保存され、SteamIDに紐づいて管理されます</li>
+                  <li>予定データは同じSteamアカウントでログインすれば、別のデバイスからもアクセスできます</li>
+                  <li>Steamセールやイベント情報の正確性・最新性について保証しません</li>
+                  <li>ウィッシュリストの発売日情報はSteamから取得しており、変更される場合があります</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
-                  7. 知的財産権
+                  8. 知的財産権
                 </h2>
                 <p className="text-gray-600">
                   Steam、およびSteamのロゴはValve Corporationの商標です。
@@ -154,7 +139,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  8. 規約の変更
+                  9. 規約の変更
                 </h2>
                 <p className="text-gray-600">
                   本規約は予告なく変更される場合があります。
@@ -258,8 +243,24 @@ export default function TermsOfService() {
 
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-blue)' }} />
+                  7. Calendar Features
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  Please note the following regarding the calendar features:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>Calendar event data is stored on our server and linked to your SteamID</li>
+                  <li>You can access your calendar data from different devices by logging in with the same Steam account</li>
+                  <li>We do not guarantee the accuracy or timeliness of Steam sale and event information</li>
+                  <li>Wishlist release dates are fetched from Steam and may change</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
-                  7. Intellectual Property
+                  8. Intellectual Property
                 </h2>
                 <p className="text-gray-600">
                   Steam and the Steam logo are trademarks of Valve Corporation.
@@ -270,7 +271,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  8. Changes to Terms
+                  9. Changes to Terms
                 </h2>
                 <p className="text-gray-600">
                   These terms may be changed without notice.
