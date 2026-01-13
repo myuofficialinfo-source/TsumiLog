@@ -663,8 +663,19 @@ export default function DeckBuilder({
 
   // デッキステータス計算
   const deckStats = useMemo(() => {
-    const allCards = [...frontLine, ...backLine].filter((c): c is BattleCardType => c !== null);
-    const totalAttack = allCards.reduce((sum, card) => sum + card.attack, 0);
+    // 前衛: 攻撃+20%、後衛: 攻撃-20%
+    const FRONT_ATTACK_BONUS = 1.2;
+    const BACK_ATTACK_BONUS = 0.8;
+
+    const frontCards = frontLine.filter((c): c is BattleCardType => c !== null);
+    const backCards = backLine.filter((c): c is BattleCardType => c !== null);
+    const allCards = [...frontCards, ...backCards];
+
+    // 前衛/後衛補正を適用した攻撃力
+    const frontAttack = frontCards.reduce((sum, card) => sum + Math.round(card.attack * FRONT_ATTACK_BONUS), 0);
+    const backAttack = backCards.reduce((sum, card) => sum + Math.round(card.attack * BACK_ATTACK_BONUS), 0);
+    const totalAttack = frontAttack + backAttack;
+
     const totalHp = allCards.reduce((sum, card) => sum + card.hp, 0);
     const avgAttack = allCards.length > 0 ? Math.round(totalAttack / allCards.length) : 0;
     const avgHp = allCards.length > 0 ? Math.round(totalHp / allCards.length) : 0;
