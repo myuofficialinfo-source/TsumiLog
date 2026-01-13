@@ -468,42 +468,64 @@ export default function BattleArena({
 
     const reportBattle = async () => {
       try {
-        // 昇華済みカード（30分以上プレイ）を抽出
         const allCards = [...playerDeck.frontLine, ...playerDeck.backLine].filter(
           (c): c is BattleCardType => c !== null
         );
-        const graduatedGames = allCards
-          .filter(c => c.playtimeMinutes >= 30) // 30分以上 = 昇華
-          .map(c => ({ appid: c.appid, name: c.name }));
-
-        // デッキで使用したゲーム一覧
         const deckGames = allCards.map(c => ({ appid: c.appid, name: c.name }));
 
-        const result = winner === 'player' ? 'win' : winner === 'opponent' ? 'lose' : 'draw';
-
-        const response = await fetch('/api/battle', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            steamId,
-            result,
-            personaName,
-            avatarUrl,
-            graduatedGames,
-            deckGames,
-            opponentSteamId, // PVP対戦時の相手のSteamID
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          setBattleStats({
-            graduations: data.userStats.graduations,
-            wins: data.userStats.wins,
-            score: data.userStats.score,
-            rank: data.userStats.rank,
-            newGraduations: data.newGraduations || [],
+        if (serverMode) {
+          // サーバーモード：勝敗は /api/battle/execute で既に記録済み
+          // ゲーム使用記録のみ行い、スコアを取得
+          await fetch('/api/game-usage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ steamId, deckGames }),
           });
+
+          // スコア取得
+          const statsRes = await fetch(`/api/battle?steamId=${encodeURIComponent(steamId)}`);
+          if (statsRes.ok) {
+            const data = await statsRes.json();
+            setBattleStats({
+              graduations: data.graduations || 0,
+              wins: data.wins || 0,
+              score: data.score || 0,
+              rank: data.rank,
+              newGraduations: [],
+            });
+          }
+        } else {
+          // クライアントモード（フォールバック）：従来通り全て記録
+          const graduatedGames = allCards
+            .filter(c => c.playtimeMinutes >= 30)
+            .map(c => ({ appid: c.appid, name: c.name }));
+
+          const result = winner === 'player' ? 'win' : winner === 'opponent' ? 'lose' : 'draw';
+
+          const response = await fetch('/api/battle', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              steamId,
+              result,
+              personaName,
+              avatarUrl,
+              graduatedGames,
+              deckGames,
+              opponentSteamId,
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            setBattleStats({
+              graduations: data.userStats.graduations,
+              wins: data.userStats.wins,
+              score: data.userStats.score,
+              rank: data.userStats.rank,
+              newGraduations: data.newGraduations || [],
+            });
+          }
         }
       } catch (error) {
         console.error('Failed to report battle:', error);
@@ -515,7 +537,7 @@ export default function BattleArena({
     };
 
     reportBattle();
-  }, [battleState, winner, steamId, personaName, avatarUrl, playerDeck]);
+  }, [battleState, winner, steamId, personaName, avatarUrl, playerDeck, serverMode, opponentSteamId]);
 
   // バトル初期化
   useEffect(() => {
