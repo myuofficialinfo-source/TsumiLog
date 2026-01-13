@@ -73,8 +73,9 @@ export async function getSteamSpyData(appId: number): Promise<{
 // Steam Reviews APIからレビュー数を取得（フォールバック用）
 async function getReviewCount(appId: number): Promise<{ total: number } | undefined> {
   try {
+    // language=allで全言語のレビュー合計を取得
     const response = await fetch(
-      `https://store.steampowered.com/appreviews/${appId}?json=1&num_per_page=0`
+      `https://store.steampowered.com/appreviews/${appId}?json=1&num_per_page=0&language=all`
     );
     if (!response.ok) return undefined;
     const data = await response.json();
