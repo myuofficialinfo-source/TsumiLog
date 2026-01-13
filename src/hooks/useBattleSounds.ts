@@ -19,6 +19,7 @@ export function useBattleSounds() {
   const audioPoolRef = useRef<Map<BattleSoundType, HTMLAudioElement[]>>(new Map());
   const isMutedRef = useRef(false);
   const volumeRef = useRef(0.5); // デフォルト音量50%
+  const bgmWasPlayingRef = useRef(false); // ミュート前にBGMが再生中だったか
 
   // オーディオプールを初期化（SEは複数同時再生対応）
   const getAudioFromPool = useCallback((type: BattleSoundType): HTMLAudioElement | null => {
@@ -80,11 +81,31 @@ export function useBattleSounds() {
     });
   }, []);
 
-  // BGM停止
+  // BGM停止（完全停止、位置もリセット）
   const stopBGM = useCallback(() => {
     if (bgmRef.current) {
       bgmRef.current.pause();
       bgmRef.current.currentTime = 0;
+      bgmWasPlayingRef.current = false;
+    }
+  }, []);
+
+  // BGM一時停止（位置は保持）
+  const pauseBGM = useCallback(() => {
+    if (bgmRef.current && !bgmRef.current.paused) {
+      bgmRef.current.pause();
+    }
+  }, []);
+
+  // BGM再開（現在位置から）
+  const resumeBGM = useCallback(() => {
+    if (typeof window === 'undefined') return;
+    if (isMutedRef.current) return;
+
+    if (bgmRef.current) {
+      bgmRef.current.play().catch(() => {
+        // ユーザー操作前の自動再生はブラウザによってブロックされる
+      });
     }
   }, []);
 
@@ -123,12 +144,24 @@ export function useBattleSounds() {
 
   // ミュート切り替え
   const toggleMute = useCallback(() => {
+    const wasPlaying = bgmRef.current && !bgmRef.current.paused;
+
     isMutedRef.current = !isMutedRef.current;
+
     if (isMutedRef.current) {
-      stopBGM();
+      // ミュートにする場合：BGMを一時停止（位置は保持）
+      if (wasPlaying) {
+        bgmWasPlayingRef.current = true;
+        pauseBGM();
+      }
+    } else {
+      // ミュート解除する場合：BGMが再生中だった場合は再開
+      if (bgmWasPlayingRef.current) {
+        resumeBGM();
+      }
     }
     return isMutedRef.current;
-  }, [stopBGM]);
+  }, [pauseBGM, resumeBGM]);
 
   // ミュート状態取得
   const isMuted = useCallback(() => isMutedRef.current, []);
@@ -150,6 +183,8 @@ export function useBattleSounds() {
     playSE,
     playBGM,
     stopBGM,
+    pauseBGM,
+    resumeBGM,
     fadeOutBGM,
     setVolume,
     toggleMute,
