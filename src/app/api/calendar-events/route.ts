@@ -37,8 +37,9 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ events });
   } catch (error) {
     console.error('Calendar Events GET API error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to fetch calendar events' },
+      { error: 'Failed to fetch calendar events', details: errorMessage },
       { status: 500 }
     );
   }
@@ -85,8 +86,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ event: newEvent });
   } catch (error) {
     console.error('Calendar Events POST API error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
-      { error: 'Failed to add calendar event' },
+      { error: 'Failed to add calendar event', details: errorMessage },
       { status: 500 }
     );
   }
