@@ -1418,14 +1418,14 @@ export const ENEMY_GAME_POOL: {
 
 // ランクティア定義（エネミー強度調整用）
 export const ENEMY_RANK_CONFIG = {
-  rookie:   { tierWeights: [0.7, 0.25, 0.05, 0], playtimeMultiplier: 0.5 },   // Tier1中心
-  bronze:   { tierWeights: [0.5, 0.35, 0.12, 0.03], playtimeMultiplier: 0.6 },
-  silver:   { tierWeights: [0.3, 0.4, 0.22, 0.08], playtimeMultiplier: 0.7 },
-  gold:     { tierWeights: [0.15, 0.35, 0.35, 0.15], playtimeMultiplier: 0.8 },
-  platinum: { tierWeights: [0.08, 0.25, 0.4, 0.27], playtimeMultiplier: 0.9 },
-  diamond:  { tierWeights: [0.03, 0.15, 0.4, 0.42], playtimeMultiplier: 0.95 },
-  master:   { tierWeights: [0, 0.1, 0.35, 0.55], playtimeMultiplier: 1.0 },
-  legend:   { tierWeights: [0, 0.05, 0.3, 0.65], playtimeMultiplier: 1.0 },
+  rookie:   { tierWeights: [0.7, 0.25, 0.05, 0], playtimeMultiplier: 0.3, hpMultiplier: 0.4 },   // Tier1中心、大幅に弱く
+  bronze:   { tierWeights: [0.5, 0.35, 0.12, 0.03], playtimeMultiplier: 0.5, hpMultiplier: 0.6 },
+  silver:   { tierWeights: [0.3, 0.4, 0.22, 0.08], playtimeMultiplier: 0.7, hpMultiplier: 0.75 },
+  gold:     { tierWeights: [0.15, 0.35, 0.35, 0.15], playtimeMultiplier: 0.8, hpMultiplier: 0.85 },
+  platinum: { tierWeights: [0.08, 0.25, 0.4, 0.27], playtimeMultiplier: 0.9, hpMultiplier: 0.9 },
+  diamond:  { tierWeights: [0.03, 0.15, 0.4, 0.42], playtimeMultiplier: 0.95, hpMultiplier: 0.95 },
+  master:   { tierWeights: [0, 0.1, 0.35, 0.55], playtimeMultiplier: 1.0, hpMultiplier: 1.0 },
+  legend:   { tierWeights: [0, 0.05, 0.3, 0.65], playtimeMultiplier: 1.0, hpMultiplier: 1.0 },
 } as const;
 
 export type EnemyRank = keyof typeof ENEMY_RANK_CONFIG;
@@ -1509,12 +1509,15 @@ export function generateEnemyDeck(playerScore: number): { deck: Deck; enemyName:
     const calculatedSkill = calculateSkillFromTags(genres);
     const skills: GenreSkill[] = calculatedSkill ? [calculatedSkill] : [];
 
+    const baseHp = calculateHP(game.positiveRate);
+    const adjustedHp = Math.floor(baseHp * config.hpMultiplier);
+
     return {
       appid: game.appid,
       name: game.name,
       headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
-      hp: calculateHP(game.positiveRate),
-      maxHp: calculateHP(game.positiveRate),
+      hp: adjustedHp,
+      maxHp: adjustedHp,
       attack: calculateAttack(adjustedPlaytime, rarity),
       rarity,
       genres,
