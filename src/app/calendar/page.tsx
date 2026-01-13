@@ -419,6 +419,20 @@ export default function CalendarPage() {
 
   // ドラッグ開始
   const handleDragStart = (e: React.DragEvent, event: GameEvent) => {
+    const target = e.currentTarget as HTMLElement;
+    // カスタムドラッグ画像を設定（要素自体をクローン）
+    const dragElement = target.cloneNode(true) as HTMLElement;
+    dragElement.style.position = 'absolute';
+    dragElement.style.top = '-9999px';
+    dragElement.style.left = '-9999px';
+    dragElement.style.width = `${target.offsetWidth}px`;
+    dragElement.style.opacity = '1';
+    document.body.appendChild(dragElement);
+    e.dataTransfer.setDragImage(dragElement, target.offsetWidth / 2, 10);
+    // クローン要素を遅延削除
+    setTimeout(() => {
+      document.body.removeChild(dragElement);
+    }, 0);
     setDraggedEvent(event);
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', event.id);
@@ -856,6 +870,20 @@ export default function CalendarPage() {
                               e.preventDefault();
                               return;
                             }
+                            const target = e.currentTarget as HTMLElement;
+                            // カスタムドラッグ画像を設定（要素自体をクローン）
+                            const dragElement = target.cloneNode(true) as HTMLElement;
+                            dragElement.style.position = 'absolute';
+                            dragElement.style.top = '-9999px';
+                            dragElement.style.left = '-9999px';
+                            dragElement.style.width = `${target.offsetWidth}px`;
+                            dragElement.style.opacity = '1';
+                            document.body.appendChild(dragElement);
+                            e.dataTransfer.setDragImage(dragElement, target.offsetWidth / 2, 10);
+                            // クローン要素を遅延削除
+                            setTimeout(() => {
+                              document.body.removeChild(dragElement);
+                            }, 0);
                             e.dataTransfer.setData('eventId', event.id);
                             e.dataTransfer.setData('type', 'move');
                             setDraggedEvent(event);
@@ -873,6 +901,7 @@ export default function CalendarPage() {
                             height: `${heightPx}px`,
                             backgroundColor: getEventTypeColor(event.type),
                             zIndex: resizeInfo?.eventId === event.id ? 20 : 10,
+                            opacity: draggedEvent?.id === event.id ? 0.5 : 1,
                           }}
                         >
                           <div className="p-1 h-full flex flex-col pointer-events-none">
