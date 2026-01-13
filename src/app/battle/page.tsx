@@ -706,7 +706,6 @@ function BattleContent() {
             opponentName={opponentInfo?.personaName || enemyName || 'Enemy'}
             opponentAvatarUrl={opponentInfo?.avatarUrl}
             opponentSteamId={opponentInfo?.steamId}
-            serverMode={!!serverBattleResult}
             serverBattleResult={serverBattleResult}
           />
         )}

@@ -6,8 +6,8 @@ import {
   BattleCard as BattleCardType,
   Deck,
   BattleResult,
-  GenreSkill,
   SKILL_DESCRIPTIONS,
+  GenreSkill,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Swords, Zap, Trophy, RotateCcw, Home, X, Play, FastForward, Volume2, VolumeX } from 'lucide-react';
@@ -37,166 +37,7 @@ interface BattleArenaProps {
   opponentName?: string;
   opponentAvatarUrl?: string;
   opponentSteamId?: string;
-  serverMode?: boolean;
-  serverBattleResult?: ServerBattleResult;
-}
-
-function calculateInterval(card: BattleCardType): number {
-  const baseInterval = 2000;
-  const attackPenalty = Math.min(500, Math.floor(card.attack / 10) * 100);
-  const hpBonus = Math.min(300, Math.floor(card.hp / 100) * 50);
-  const firstStrikeBonus = card.skills.includes('firstStrike') ? -500 : 0;
-  const speedBonus = card.skills.includes('speed') ? -300 : 0;
-  return Math.max(600, baseInterval + attackPenalty - hpBonus + firstStrikeBonus + speedBonus);
-}
-
-const POSITION_MODIFIERS = {
-  front: { attackMultiplier: 1.2, skillMultiplier: 0.7 },
-  back: { attackMultiplier: 0.8, skillMultiplier: 1.5 },
-};
-
-function applySkillEffect(
-  attacker: BattleCardType & { position?: 'front' | 'back'; attackCount?: number; skillBonus?: number },
-  defender: BattleCardType & { position?: 'front' | 'back'; hitCount?: number; skillBonus?: number },
-  baseDamage: number,
-  allyCount: number = 1,
-  defenderHpPercent: number = 100
-): {
-  damage: number;
-  healAmount: number;
-  allyHealAmount: number;
-  isReflected: boolean;
-  isCritical: boolean;
-  isDodged: boolean;
-  skillUsed?: GenreSkill;
-} {
-  const IMPORTANT_SKILLS: Set<GenreSkill> = new Set([
-    'ambush', 'calculate', 'lucky', 'absorb', 'teamwork',
-    'reflect', 'freebie', 'tutorial', 'training', 'gore', 'retouch', 'develop',
-  ]);
-
-  const attackerPosition = attacker.position || 'front';
-  const defenderPosition = defender.position || 'front';
-  const attackerMod = POSITION_MODIFIERS[attackerPosition];
-  const defenderMod = POSITION_MODIFIERS[defenderPosition];
-  const attackerSkillBonus = 1 + ((attacker.skillBonus || 0) / 100);
-  const defenderSkillBonus = 1 + ((defender.skillBonus || 0) / 100);
-
-  let damage = Math.floor(baseDamage * attackerMod.attackMultiplier);
-  let healAmount = 0;
-  let allyHealAmount = 0;
-  let isReflected = false;
-  let isCritical = false;
-  let isDodged = false;
-  let skillUsed: GenreSkill | undefined;
-  let defenseMultiplier = 1.0;
-  const isFirstHit = (defender.hitCount || 0) === 0;
-
-  const setSkillIfImportant = (skill: GenreSkill) => {
-    if (IMPORTANT_SKILLS.has(skill)) skillUsed = skill;
-  };
-
-  attacker.skills.forEach(skill => {
-    switch (skill) {
-      case 'absorb':
-        healAmount = Math.floor(damage * 0.3 * attackerMod.skillMultiplier * attackerSkillBonus);
-        setSkillIfImportant(skill);
-        break;
-      case 'ambush':
-        const ambushCrit = Math.min(0.5, 0.25 * attackerMod.skillMultiplier * attackerSkillBonus);
-        if (Math.random() < ambushCrit) { damage *= 2; isCritical = true; setSkillIfImportant(skill); }
-        break;
-      case 'buff':
-        damage = Math.floor(damage * (1 + 0.15 * attackerMod.skillMultiplier * attackerSkillBonus));
-        break;
-      case 'lucky':
-        if (Math.random() < 0.2 * attackerMod.skillMultiplier * attackerSkillBonus) { damage = Math.floor(damage * 1.5); setSkillIfImportant(skill); }
-        break;
-      case 'teamwork':
-        allyHealAmount = Math.floor(damage * 0.05 * attackerMod.skillMultiplier * attackerSkillBonus);
-        setSkillIfImportant(skill);
-        break;
-      case 'explore':
-        defenseMultiplier *= (1 - 0.2 * attackerMod.skillMultiplier * attackerSkillBonus);
-        break;
-      case 'party':
-        damage = Math.floor(damage * (1 + allyCount * 0.05 * attackerMod.skillMultiplier * attackerSkillBonus));
-        break;
-      case 'calculate':
-        if (Math.random() < 0.1 * attackerMod.skillMultiplier * attackerSkillBonus) { damage = Math.floor(damage * 1.5); isCritical = true; setSkillIfImportant(skill); }
-        break;
-      case 'study':
-        damage = Math.floor(damage * (1 + Math.min(0.5, (attacker.attackCount || 0) * 0.02 * attackerMod.skillMultiplier * attackerSkillBonus)));
-        break;
-      case 'training':
-        if ((attacker.attackCount || 0) === 0) { damage *= 2; setSkillIfImportant(skill); }
-        break;
-      case 'publish':
-        damage = Math.floor(damage * (1 + 0.1 * attackerMod.skillMultiplier * attackerSkillBonus));
-        break;
-      case 'develop':
-        if (Math.random() < 0.1) { damage = Math.floor(damage * 1.3); setSkillIfImportant(skill); }
-        break;
-      case 'mature':
-        damage = Math.floor(damage * (1 + 0.2 * attackerMod.skillMultiplier * attackerSkillBonus));
-        break;
-      case 'expose':
-        defenseMultiplier *= (1 - 0.2 * attackerMod.skillMultiplier * attackerSkillBonus);
-        break;
-      case 'brutal':
-        damage = Math.floor(damage * (1 + 0.25 * attackerMod.skillMultiplier * attackerSkillBonus));
-        break;
-      case 'gore':
-        const goreBonus = Math.max(0, (50 - defenderHpPercent) / 50) * 0.5 * attackerMod.skillMultiplier * attackerSkillBonus;
-        damage = Math.floor(damage * (1 + goreBonus));
-        if (goreBonus > 0) setSkillIfImportant(skill);
-        break;
-      case 'soundwave':
-        damage = Math.floor(damage * 0.5);
-        break;
-      case 'design':
-        damage = Math.floor(damage * 1.1);
-        break;
-      case 'produce':
-        damage = Math.floor(damage * 1.05);
-        break;
-    }
-  });
-
-  defender.skills.forEach(skill => {
-    switch (skill) {
-      case 'defense':
-        damage = Math.floor(damage * (1 - Math.min(0.5, 0.3 * defenderMod.skillMultiplier * defenderSkillBonus * defenseMultiplier)));
-        break;
-      case 'reflect':
-        isReflected = true;
-        setSkillIfImportant(skill);
-        break;
-      case 'fear':
-        damage = Math.floor(damage * (1 - Math.min(0.4, 0.2 * defenderMod.skillMultiplier * defenderSkillBonus)));
-        break;
-      case 'freebie':
-        if (Math.random() < 0.1 * defenderMod.skillMultiplier * defenderSkillBonus) { isDodged = true; damage = 0; setSkillIfImportant(skill); }
-        break;
-      case 'retouch':
-        if (defenderHpPercent <= 20) { damage = Math.floor(damage * 0.5); setSkillIfImportant(skill); }
-        break;
-      case 'tutorial':
-        if (isFirstHit) { isDodged = true; damage = 0; setSkillIfImportant(skill); }
-        break;
-      case 'docu':
-        damage = Math.floor(damage * (1 - 0.1 * defenderMod.skillMultiplier * defenderSkillBonus));
-        break;
-      case 'mature':
-        damage = Math.floor(damage * 1.1);
-        break;
-      case 'brutal':
-        damage = Math.floor(damage * 1.15);
-        break;
-    }
-  });
-
-  return { damage, healAmount, allyHealAmount, isReflected, isCritical, isDodged, skillUsed };
+  serverBattleResult: ServerBattleResult;
 }
 
 interface BattleCardState extends BattleCardType {
@@ -205,9 +46,6 @@ interface BattleCardState extends BattleCardType {
   isPlayer: boolean;
   position: 'front' | 'back';
   index: number;
-  attackCount: number;
-  hitCount: number;
-  skillBonus: number;
   isActive?: boolean;
 }
 
@@ -222,7 +60,6 @@ export default function BattleArena({
   opponentName,
   opponentAvatarUrl,
   opponentSteamId,
-  serverMode = false,
   serverBattleResult,
 }: BattleArenaProps) {
   const { language } = useLanguage();
@@ -359,139 +196,62 @@ export default function BattleArena({
         );
         const deckGames = allCards.map(c => ({ appid: c.appid, name: c.name }));
 
-        if (serverMode) {
-          // サーバーモード：勝敗は /api/battle/execute で既に記録済み
-          // ゲーム使用記録のみ行い、スコアを取得
-          await fetch('/api/game-usage', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ steamId, deckGames }),
+        await fetch('/api/game-usage', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ steamId, deckGames }),
+        });
+
+        const statsRes = await fetch(`/api/battle?steamId=${encodeURIComponent(steamId)}`);
+        if (statsRes.ok) {
+          const data = await statsRes.json();
+          setBattleStats({
+            graduations: data.graduations || 0,
+            wins: data.wins || 0,
+            score: data.score || 0,
+            rank: data.rank,
+            newGraduations: [],
           });
-
-          // スコア取得
-          const statsRes = await fetch(`/api/battle?steamId=${encodeURIComponent(steamId)}`);
-          if (statsRes.ok) {
-            const data = await statsRes.json();
-            setBattleStats({
-              graduations: data.graduations || 0,
-              wins: data.wins || 0,
-              score: data.score || 0,
-              rank: data.rank,
-              newGraduations: [],
-            });
-          }
-        } else {
-          // クライアントモード（フォールバック）：従来通り全て記録
-          const graduatedGames = allCards
-            .filter(c => c.playtimeMinutes >= 30)
-            .map(c => ({ appid: c.appid, name: c.name }));
-
-          const result = winner === 'player' ? 'win' : winner === 'opponent' ? 'lose' : 'draw';
-
-          const response = await fetch('/api/battle', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              steamId,
-              result,
-              personaName,
-              avatarUrl,
-              graduatedGames,
-              deckGames,
-              opponentSteamId,
-            }),
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            setBattleStats({
-              graduations: data.userStats.graduations,
-              wins: data.userStats.wins,
-              score: data.userStats.score,
-              rank: data.userStats.rank,
-              newGraduations: data.newGraduations || [],
-            });
-          }
         }
       } catch (error) {
         console.error('Failed to report battle:', error);
       } finally {
-        // ローディング終了、ポップアップ表示
         setShowLoadingOverlay(false);
         setShowResultPopup(true);
       }
     };
 
     reportBattle();
-  }, [battleState, winner, steamId, personaName, avatarUrl, playerDeck, serverMode, opponentSteamId]);
+  }, [battleState, winner, steamId, playerDeck]);
 
-  // バトル初期化
+  // バトル初期化（サーバーモード用：表示用カードのみ初期化）
   useEffect(() => {
     if (battleState !== 'preparing' || showBattleStart) return;
 
     const cards: BattleCardState[] = [];
-    let totalPlayerHp = 0;
-    let totalOpponentHp = 0;
 
-    // シナジーからスキルボーナスを計算
-    const playerSkillBonus = playerDeck.synergies.reduce((acc, synergy) => {
-      return acc + (synergy.effect.skillBonus || 0);
-    }, 0);
-    const opponentSkillBonus = opponentDeck.synergies.reduce((acc, synergy) => {
-      return acc + (synergy.effect.skillBonus || 0);
-    }, 0);
-
-    // プレイヤーカード初期化
+    // プレイヤーカード初期化（表示用、サーバーからintervalは取得済み）
     playerDeck.frontLine.forEach((card, index) => {
       if (card) {
-        const interval = calculateInterval(card);
-        const boostedCard = { ...card };
-        // シナジーボーナス適用
-        playerDeck.synergies.forEach(synergy => {
-          if (synergy.effect.attackBonus) {
-            boostedCard.attack = Math.floor(boostedCard.attack * (1 + synergy.effect.attackBonus / 100));
-          }
-          if (synergy.effect.hpBonus) {
-            boostedCard.hp = Math.floor(boostedCard.hp * (1 + synergy.effect.hpBonus / 100));
-          }
-        });
-        totalPlayerHp += boostedCard.hp;
         cards.push({
-          ...boostedCard,
+          ...card,
           currentTimer: 0,
-          maxTimer: interval,
+          maxTimer: 3000,
           isPlayer: true,
           position: 'front',
           index,
-          attackCount: 0,
-          hitCount: 0,
-          skillBonus: playerSkillBonus,
         });
       }
     });
     playerDeck.backLine.forEach((card, index) => {
       if (card) {
-        const interval = calculateInterval(card);
-        const boostedCard = { ...card };
-        playerDeck.synergies.forEach(synergy => {
-          if (synergy.effect.attackBonus) {
-            boostedCard.attack = Math.floor(boostedCard.attack * (1 + synergy.effect.attackBonus / 100));
-          }
-          if (synergy.effect.hpBonus) {
-            boostedCard.hp = Math.floor(boostedCard.hp * (1 + synergy.effect.hpBonus / 100));
-          }
-        });
-        totalPlayerHp += boostedCard.hp;
         cards.push({
-          ...boostedCard,
+          ...card,
           currentTimer: 0,
-          maxTimer: interval,
+          maxTimer: 3000,
           isPlayer: true,
           position: 'back',
           index,
-          attackCount: 0,
-          hitCount: 0,
-          skillBonus: playerSkillBonus,
         });
       }
     });
@@ -499,65 +259,30 @@ export default function BattleArena({
     // 相手カード初期化
     opponentDeck.frontLine.forEach((card, index) => {
       if (card) {
-        const interval = calculateInterval(card);
-        const boostedCard = { ...card };
-        opponentDeck.synergies.forEach(synergy => {
-          if (synergy.effect.attackBonus) {
-            boostedCard.attack = Math.floor(boostedCard.attack * (1 + synergy.effect.attackBonus / 100));
-          }
-          if (synergy.effect.hpBonus) {
-            boostedCard.hp = Math.floor(boostedCard.hp * (1 + synergy.effect.hpBonus / 100));
-          }
-        });
-        totalOpponentHp += boostedCard.hp;
         cards.push({
-          ...boostedCard,
+          ...card,
           currentTimer: 0,
-          maxTimer: interval,
+          maxTimer: 3000,
           isPlayer: false,
           position: 'front',
           index,
-          attackCount: 0,
-          hitCount: 0,
-          skillBonus: opponentSkillBonus,
         });
       }
     });
     opponentDeck.backLine.forEach((card, index) => {
       if (card) {
-        const interval = calculateInterval(card);
-        const boostedCard = { ...card };
-        opponentDeck.synergies.forEach(synergy => {
-          if (synergy.effect.attackBonus) {
-            boostedCard.attack = Math.floor(boostedCard.attack * (1 + synergy.effect.attackBonus / 100));
-          }
-          if (synergy.effect.hpBonus) {
-            boostedCard.hp = Math.floor(boostedCard.hp * (1 + synergy.effect.hpBonus / 100));
-          }
-        });
-        totalOpponentHp += boostedCard.hp;
         cards.push({
-          ...boostedCard,
+          ...card,
           currentTimer: 0,
-          maxTimer: interval,
+          maxTimer: 3000,
           isPlayer: false,
           position: 'back',
           index,
-          attackCount: 0,
-          hitCount: 0,
-          skillBonus: opponentSkillBonus,
         });
       }
     });
 
     setBattleCards(cards);
-    setPlayerTotalHp(totalPlayerHp);
-    setPlayerMaxHp(totalPlayerHp);
-    setOpponentTotalHp(totalOpponentHp);
-    setOpponentMaxHp(totalOpponentHp);
-    playerHpRef.current = totalPlayerHp;
-    opponentHpRef.current = totalOpponentHp;
-
     setBattleState('fighting');
   }, [battleState, playerDeck, opponentDeck, showBattleStart]);
 
@@ -576,9 +301,8 @@ export default function BattleArena({
   // 現在のバトル時間（ref で管理してリアルタイム参照）
   const currentBattleTimeRef = useRef(0);
 
-  // サーバーモード：バトル結果を使ってログを再生
   useEffect(() => {
-    if (!serverMode || !serverBattleResult || battleState !== 'fighting') return;
+    if (!serverBattleResult || battleState !== 'fighting') return;
 
     // サーバーのバトルログを設定
     serverLogsRef.current = serverBattleResult.logs;
@@ -623,12 +347,10 @@ export default function BattleArena({
       setPlayerTotalHp(initialPlayerHp);
       setOpponentTotalHp(initialOpponentHp);
     }
-  }, [serverMode, serverBattleResult, battleState]);
+  }, [serverBattleResult, battleState]);
 
-  // サーバーモード：統合されたログ再生＆ゲージアニメーションループ
-  // requestAnimationFrameで統一し、時間軸を完全に同期
   useEffect(() => {
-    if (!serverMode || !serverBattleResult || battleState !== 'fighting') return;
+    if (!serverBattleResult || battleState !== 'fighting') return;
     if (serverLogsRef.current.length === 0) return;
 
     let animFrameId: number;
@@ -854,308 +576,25 @@ export default function BattleArena({
       clearTimeout(startTimeout);
       if (animFrameId) cancelAnimationFrame(animFrameId);
     };
-  }, [serverMode, serverBattleResult, battleState, speed, language, opponentName, personaName]);
+  }, [serverBattleResult, battleState, speed, language, opponentName, personaName]);
 
-  // アクション処理用のref
-  const pendingActionRef = useRef<{
-    attacker: string;
-    attackerIndex: number;
-    attackerPosition: 'front' | 'back';
-    attackerIsPlayer: boolean;
-    defender: string;
-    damage: number;
-    isCritical: boolean;
-    isPlayerAttacking: boolean;
-    skill?: GenreSkill;
-    healAmount: number;
-    reflectDamage: number;
-  } | null>(null);
-
-  // リアルタイムバトルループ（クライアントサイドバトル用 - serverModeがfalseの場合のみ実行）
-  // ※ サーバーモード時は上のサーバーログ再生ループが使用される
-  useEffect(() => {
-    // サーバーモードの場合はこのバトルループを使用しない
-    if (serverMode) return;
-    if (battleState !== 'fighting') return;
-
-    const tick = (timestamp: number) => {
-      if (!lastTimeRef.current) lastTimeRef.current = timestamp;
-      const deltaTime = (timestamp - lastTimeRef.current) * speed;
-      lastTimeRef.current = timestamp;
-
-      // 勝敗判定
-      if (playerHpRef.current <= 0 || opponentHpRef.current <= 0) {
-        if (playerHpRef.current <= 0 && opponentHpRef.current <= 0) {
-          setWinner('draw');
-        } else if (playerHpRef.current <= 0) {
-          setWinner('opponent');
-        } else {
-          setWinner('player');
-        }
-        setBattleState('finished');
-        // ポップアップ表示はAPIレスポンス後に行う（useEffect内で処理）
-        return;
-      }
-
-      setBattleCards(prevCards => {
-        const newCards = prevCards.map(c => ({ ...c }));
-        let actionOccurred = false;
-
-        // 全カード処理（チーム共有HPなので全カードが常にアクティブ）
-        const playerCards = newCards.filter(c => c.isPlayer);
-        const opponentCards = newCards.filter(c => !c.isPlayer);
-
-        newCards.forEach(card => {
-          if (actionOccurred) return;
-
-          card.currentTimer += deltaTime;
-
-          // タイマーが満タンになったら攻撃
-          if (card.currentTimer >= card.maxTimer) {
-            card.currentTimer = 0;
-
-            // ターゲット選択（敵チームからランダム）
-            const enemies = card.isPlayer ? opponentCards : playerCards;
-            const allies = card.isPlayer ? playerCards : opponentCards;
-            const target = enemies[Math.floor(Math.random() * enemies.length)];
-
-            if (target) {
-              // HP％を計算（goreスキル用）
-              const targetTeamHp = card.isPlayer ? opponentHpRef.current : playerHpRef.current;
-              const targetTeamMaxHp = card.isPlayer ? opponentMaxHp : playerMaxHp;
-              const defenderHpPercent = targetTeamMaxHp > 0 ? (targetTeamHp / targetTeamMaxHp) * 100 : 100;
-
-              const result = applySkillEffect(
-                card,
-                target,
-                card.attack,
-                allies.length,
-                defenderHpPercent
-              );
-
-              // 攻撃回数をインクリメント（studyスキル用）
-              card.attackCount++;
-              // 被ダメ回数をインクリメント（tutorialスキル用）
-              target.hitCount++;
-
-              // 回避された場合はダメージなし
-              if (result.isDodged) {
-                pendingActionRef.current = {
-                  attacker: card.name,
-                  attackerIndex: card.index,
-                  attackerPosition: card.position,
-                  attackerIsPlayer: card.isPlayer,
-                  defender: target.name,
-                  damage: 0,
-                  isCritical: false,
-                  isPlayerAttacking: card.isPlayer,
-                  skill: result.skillUsed,
-                  healAmount: 0,
-                  reflectDamage: 0,
-                };
-                actionOccurred = true;
-                return;
-              }
-
-              // 反射ダメージ計算（防御者の位置でスキル倍率適用）
-              const targetMod = POSITION_MODIFIERS[target.position];
-              const reflectMultiplier = 0.2 * targetMod.skillMultiplier; // 基本20%、後衛なら30%
-
-              // チーム共有HPにダメージ
-              let reflectDamage = 0;
-              if (card.isPlayer) {
-                opponentHpRef.current = Math.max(0, opponentHpRef.current - result.damage);
-                // 吸収で自チーム回復
-                if (result.healAmount > 0) {
-                  playerHpRef.current = Math.min(playerMaxHp, playerHpRef.current + result.healAmount);
-                }
-                // 連携で味方HP回復
-                if (result.allyHealAmount > 0) {
-                  playerHpRef.current = Math.min(playerMaxHp, playerHpRef.current + result.allyHealAmount);
-                }
-                // 反射ダメージ（位置補正適用）
-                if (result.isReflected) {
-                  reflectDamage = Math.floor(result.damage * reflectMultiplier);
-                  playerHpRef.current = Math.max(0, playerHpRef.current - reflectDamage);
-                }
-              } else {
-                playerHpRef.current = Math.max(0, playerHpRef.current - result.damage);
-                if (result.healAmount > 0) {
-                  opponentHpRef.current = Math.min(opponentMaxHp, opponentHpRef.current + result.healAmount);
-                }
-                if (result.allyHealAmount > 0) {
-                  opponentHpRef.current = Math.min(opponentMaxHp, opponentHpRef.current + result.allyHealAmount);
-                }
-                if (result.isReflected) {
-                  reflectDamage = Math.floor(result.damage * reflectMultiplier);
-                  opponentHpRef.current = Math.max(0, opponentHpRef.current - reflectDamage);
-                }
-              }
-
-              pendingActionRef.current = {
-                attacker: card.name,
-                attackerIndex: card.index,
-                attackerPosition: card.position,
-                attackerIsPlayer: card.isPlayer,
-                defender: target.name,
-                damage: result.damage,
-                isCritical: result.isCritical,
-                isPlayerAttacking: card.isPlayer,
-                skill: result.skillUsed,
-                healAmount: result.healAmount,
-                reflectDamage,
-              };
-              actionOccurred = true;
-            }
-          }
-        });
-
-        // HP更新
-        setPlayerTotalHp(playerHpRef.current);
-        setOpponentTotalHp(opponentHpRef.current);
-
-        return newCards;
-      });
-
-      // エフェクト表示
-      const action = pendingActionRef.current;
-      if (action) {
-        pendingActionRef.current = null;
-        setCurrentAction(action);
-        const targetSide = action.isPlayerAttacking ? 'opponent' : 'player';
-
-        // ダメージ表示を追加（ランダムオフセット付き、上下左右に散らす）
-        const damageKey = Date.now() + Math.random();
-        const offsetX = (Math.random() - 0.5) * 150; // -75px〜75px（左右広め）
-        const offsetY = (Math.random() - 0.5) * 80;  // -40px〜40px（上下も広め）
-        setDamageDisplays(prev => [...prev, {
-          target: targetSide,
-          damage: action.damage,
-          isCritical: action.isCritical,
-          key: damageKey,
-          offsetX,
-          offsetY,
-        }]);
-
-        // ヒットSE再生
-        playSE('hitDeal');
-
-        triggerShake(targetSide);
-        // 火花エフェクト（デッキ全体にランダム位置）
-        const newEffectKey = Date.now() + Math.random();
-        const randomX = Math.random() * 80 + 10; // 10%〜90%
-        const randomY = Math.random() * 60 + 20; // 20%〜80%
-        setHitEffects(prev => [...prev, {
-          target: targetSide,
-          key: newEffectKey,
-          x: randomX,
-          y: randomY,
-        }]);
-
-        // スキル発動表示を追加（積み上げ式、最大5件まで）
-        if (action.skill) {
-          const skillKey = Date.now() + Math.random();
-          setSkillDisplays(prev => {
-            const newDisplays = [...prev, {
-              skill: action.skill!,
-              isPlayerAttacking: action.isPlayerAttacking,
-              key: skillKey,
-            }];
-            // 最大5件まで（古いものは即削除）
-            return newDisplays.slice(-5);
-          });
-
-          // 3秒後に一番古いものから順に削除
-          setTimeout(() => {
-            setSkillDisplays(prev => prev.filter(d => d.key !== skillKey));
-          }, 3000 / speed);
-        }
-
-        // ログ追加（ユーザー名のゲーム名 → 相手ユーザー名 形式）
-        const playerLabel = personaName || (language === 'ja' ? 'あなた' : 'You');
-        const opponentLabel = opponentName || 'AI';
-        const ownerLabel = action.isPlayerAttacking ? playerLabel : opponentLabel;
-        const targetLabel = action.isPlayerAttacking ? opponentLabel : playerLabel;
-        const skillText = action.skill ? ` [${action.skill}]` : '';
-        const critText = action.isCritical ? ' CRIT!' : '';
-        setBattleLog(prev => [
-          `${ownerLabel}の${action.attacker}${skillText} → ${targetLabel} (-${action.damage}${critText})`,
-          ...prev.slice(0, 9),
-        ]);
-
-        // エフェクトクリア（その他は400ms）
-        setTimeout(() => {
-          setCurrentAction(null);
-        }, 400 / speed);
-
-        // ダメージ表示は2.5秒後にフェードアウト（長めに表示）
-        setTimeout(() => {
-          setDamageDisplays(prev => prev.filter(d => d.key !== damageKey));
-        }, 2500 / speed);
-
-        // 火花エフェクトは個別に削除（アニメーション完了後）
-        setTimeout(() => {
-          setHitEffects(prev => prev.filter(e => e.key !== newEffectKey));
-        }, 600 / speed);
-      }
-
-      animationRef.current = requestAnimationFrame(tick);
-    };
-
-    animationRef.current = requestAnimationFrame(tick);
-
-    return () => {
-      if (animationRef.current) {
-        cancelAnimationFrame(animationRef.current);
-      }
-      lastTimeRef.current = 0;
-    };
-  }, [battleState, speed, serverMode]);
-
-  // スキップ
+  // スキップ（サーバー結果をそのまま使用）
   const skipToEnd = useCallback(() => {
     if (animationRef.current) {
       cancelAnimationFrame(animationRef.current);
     }
 
-    // サーバーモードの場合は、サーバー結果をそのまま使用
-    if (serverMode && serverBattleResult) {
-      playerHpRef.current = serverBattleResult.playerFinalHp;
-      opponentHpRef.current = serverBattleResult.opponentFinalHp;
-      setPlayerTotalHp(serverBattleResult.playerFinalHp);
-      setOpponentTotalHp(serverBattleResult.opponentFinalHp);
-      setWinner(serverBattleResult.winner);
-    } else {
-      // クライアントモード：簡易シミュレーション
-      const playerCards = battleCards.filter(c => c.isPlayer);
-      const opponentCards = battleCards.filter(c => !c.isPlayer);
-      const playerDps = playerCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
-      const opponentDps = opponentCards.reduce((sum, c) => sum + (c.attack * 1000 / c.maxTimer), 0);
-
-      const playerTime = opponentHpRef.current / playerDps;
-      const opponentTime = playerHpRef.current / opponentDps;
-
-      if (playerTime < opponentTime) {
-        opponentHpRef.current = 0;
-        setWinner('player');
-      } else if (opponentTime < playerTime) {
-        playerHpRef.current = 0;
-        setWinner('opponent');
-      } else {
-        setWinner('draw');
-      }
-
-      setPlayerTotalHp(playerHpRef.current);
-      setOpponentTotalHp(opponentHpRef.current);
-    }
-
+    playerHpRef.current = serverBattleResult.playerFinalHp;
+    opponentHpRef.current = serverBattleResult.opponentFinalHp;
+    setPlayerTotalHp(serverBattleResult.playerFinalHp);
+    setOpponentTotalHp(serverBattleResult.opponentFinalHp);
+    setWinner(serverBattleResult.winner);
     setCurrentAction(null);
     setDamageDisplays([]);
     setHitEffects([]);
     setSkillDisplays([]);
     setBattleState('finished');
-    // ポップアップ表示はAPIレスポンス後に行う（useEffect内で処理）
-  }, [battleCards, serverMode, serverBattleResult]);
+  }, [serverBattleResult]);
 
   // カードのタイマー表示用
   const getCardTimerPercent = (card: BattleCardState) => {
