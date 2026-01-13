@@ -1152,16 +1152,17 @@ export async function updateCalendarEvent(
     playtimeMinutes?: number | null;
   }
 ): Promise<CalendarEventDB | null> {
+  // 渡されたフィールドのみ更新、undefinedなら既存値を維持
   const result = await sql`
     UPDATE calendar_events
     SET
-      date = COALESCE(${updates.date || null}, date),
-      end_date = ${updates.endDate !== undefined ? updates.endDate : null},
-      start_time = ${updates.startTime !== undefined ? updates.startTime : null},
-      end_time = ${updates.endTime !== undefined ? updates.endTime : null},
-      type = COALESCE(${updates.type || null}, type),
-      note = ${updates.note !== undefined ? updates.note : null},
-      playtime_minutes = ${updates.playtimeMinutes !== undefined ? updates.playtimeMinutes : null}
+      date = COALESCE(${updates.date ?? null}, date),
+      end_date = CASE WHEN ${updates.endDate !== undefined} THEN ${updates.endDate ?? null} ELSE end_date END,
+      start_time = CASE WHEN ${updates.startTime !== undefined} THEN ${updates.startTime ?? null} ELSE start_time END,
+      end_time = CASE WHEN ${updates.endTime !== undefined} THEN ${updates.endTime ?? null} ELSE end_time END,
+      type = COALESCE(${updates.type ?? null}, type),
+      note = CASE WHEN ${updates.note !== undefined} THEN ${updates.note ?? null} ELSE note END,
+      playtime_minutes = CASE WHEN ${updates.playtimeMinutes !== undefined} THEN ${updates.playtimeMinutes ?? null} ELSE playtime_minutes END
     WHERE id = ${eventId} AND steam_id = ${steamId}
     RETURNING *
   `;
