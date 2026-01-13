@@ -268,18 +268,6 @@ export default function RankingPage() {
           </div>
         )}
 
-          {/* スコア計算方法の説明 */}
-          <div className="mt-6 pop-card p-4 text-sm text-gray-600">
-            <h3 className="font-bold mb-2 flex items-center gap-2">
-              <Star className="w-4 h-4 text-yellow-500" />
-              {language === 'ja' ? 'スコア計算方法' : 'Score Calculation'}
-            </h3>
-            <p>
-              {language === 'ja'
-                ? 'スコア = (昇華数 × 10) + 勝利数。積みゲーを10時間以上プレイすると「昇華」になり、バトルに勝つとボーナスポイントになります！'
-                : 'Score = (Sublimated × 10) + Wins. Play backlog games for 10+ hours to sublimate them, and win battles to earn bonus points!'}
-            </p>
-          </div>
         </div>
       </main>
 

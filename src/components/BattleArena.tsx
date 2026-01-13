@@ -50,8 +50,7 @@ function calculateInterval(card: BattleCardType): number {
   const hpBonus = Math.min(300, Math.floor(card.hp / 100) * 50);
   const firstStrikeBonus = card.skills.includes('firstStrike') ? -500 : 0;
   const speedBonus = card.skills.includes('speed') ? -300 : 0;  // Racing: 加速
-  const earlybirdBonus = card.skills.includes('earlybird') ? -800 : 0;  // Early Access: 先制確定
-  return Math.max(600, baseInterval + attackPenalty - hpBonus + firstStrikeBonus + speedBonus + earlybirdBonus);
+  return Math.max(600, baseInterval + attackPenalty - hpBonus + firstStrikeBonus + speedBonus);
 }
 
 // 前衛/後衛の位置補正
@@ -228,6 +227,24 @@ function applySkillEffect(
         damage = Math.floor(damage * (1 + goreBonus));
         if (goreBonus > 0) setSkillIfImportant(skill);
         break;
+      case 'soundwave':
+        // 音波: 全体攻撃（威力50%）
+        damage = Math.floor(damage * 0.5);
+        break;
+      case 'design':
+        // デザイン: スキル効果+10%
+        damage = Math.floor(damage * 1.1);
+        break;
+      case 'produce':
+        // プロデュース: 味方スキル発動率UP
+        damage = Math.floor(damage * 1.05);
+        break;
+      case 'firstStrike':
+        // 先制攻撃: インターバル-500ms（calculateIntervalで処理）
+        break;
+      case 'speed':
+        // 加速: 攻撃速度UP（calculateIntervalで処理）
+        break;
     }
   });
 
@@ -265,10 +282,6 @@ function applySkillEffect(
           damage = Math.floor(damage * 0.5);
           setSkillIfImportant(skill);
         }
-        break;
-      case 'utility':
-        // ユーティリティ: 状態異常耐性
-        // パッシブ：ログなし
         break;
       case 'tutorial':
         // チュートリアル: 初回被ダメ無効

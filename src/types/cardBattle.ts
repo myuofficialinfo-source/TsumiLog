@@ -4,7 +4,7 @@
 // C(コモン), R(レア), SR(スーパーレア), UC(ウルトラレア)
 export type Rarity = 'common' | 'rare' | 'superRare' | 'ultraRare';
 
-// ジャンルスキル（Steam全29ジャンル対応）
+// ジャンルスキル（Steam全26ジャンル対応）
 export type GenreSkill =
   // === ゲーム用ジャンル（ID 1-37） ===
   | 'firstStrike'   // Action (1): 先制攻撃
@@ -23,18 +23,15 @@ export type GenreSkill =
   | 'reflect'       // Puzzle: 反射
   // === ソフトウェア用ジャンル（ID 50-60） ===
   | 'calculate'     // Accounting (50): 計算
-  | 'animate'       // Animation & Modeling (51): アニメート
   | 'soundwave'     // Audio Production (52): 音波
   | 'design'        // Design & Illustration (53): デザイン
   | 'study'         // Education (54): 学習
   | 'retouch'       // Photo Editing (55): レタッチ
   | 'training'      // Software Training (56): トレーニング
-  | 'utility'       // Utilities (57): ユーティリティ
   | 'produce'       // Video Production (58): プロデュース
   | 'publish'       // Web Publishing (59): パブリッシュ
   | 'develop'       // Game Development (60): 開発
   // === タグ/コンテンツ系（ID 70-84） ===
-  | 'earlybird'     // Early Access (70): アーリーバード
   | 'mature'        // Sexual Content (71): マチュア
   | 'expose'        // Nudity (72): エクスポーズ
   | 'brutal'        // Violent (73): ブルータル
@@ -61,18 +58,18 @@ export const GENRE_SKILL_MAP: Record<string, GenreSkill> = {
   'Puzzle': 'reflect',
   // === ソフトウェア用ジャンル ===
   'Accounting': 'calculate',
-  'Animation & Modeling': 'animate',
+  'Animation & Modeling': 'design',  // animateは削除、designに統合
   'Audio Production': 'soundwave',
   'Design & Illustration': 'design',
   'Education': 'study',
   'Photo Editing': 'retouch',
   'Software Training': 'training',
-  'Utilities': 'utility',
+  'Utilities': 'defense',  // utilityは削除、defenseに統合
   'Video Production': 'produce',
   'Web Publishing': 'publish',
   'Game Development': 'develop',
   // === タグ/コンテンツ系 ===
-  'Early Access': 'earlybird',
+  'Early Access': 'ambush',  // earlybirdは削除、ambushに統合
   'Sexual Content': 'mature',
   'Nudity': 'expose',
   'Violent': 'brutal',
@@ -94,17 +91,17 @@ export const GENRE_SKILL_MAP: Record<string, GenreSkill> = {
   'ホラー': 'fear',
   'パズル': 'reflect',
   '会計': 'calculate',
-  'アニメーション': 'animate',
+  'アニメーション': 'design',  // animateは削除、designに統合
   '音声制作': 'soundwave',
   'デザイン': 'design',
   '教育': 'study',
   '写真編集': 'retouch',
   'トレーニング': 'training',
-  'ユーティリティ': 'utility',
+  'ユーティリティ': 'defense',  // utilityは削除、defenseに統合
   '動画制作': 'produce',
   'Web': 'publish',
   'ゲーム開発': 'develop',
-  '早期アクセス': 'earlybird',
+  '早期アクセス': 'ambush',  // earlybirdは削除、ambushに統合
   '性的コンテンツ': 'mature',
   '裸体': 'expose',
   '暴力': 'brutal',
@@ -910,7 +907,6 @@ export const SKILL_COORDS: Record<GenreSkill, { x: number; y: number }> = {
 
   // 上エリア (速度系) - スポーツ/レース向け
   speed: { x: 0.2, y: 0.85 },
-  earlybird: { x: -0.1, y: 0.6 },
   soundwave: { x: 0.4, y: 0.7 },
 
   // 中央上エリア - カジュアル向け
@@ -918,7 +914,6 @@ export const SKILL_COORDS: Record<GenreSkill, { x: number; y: number }> = {
   freebie: { x: -0.3, y: 0.18 },
 
   // 左エリア (防御系) - ストラテジー/シム向け
-  utility: { x: -0.4, y: 0 },
   defense: { x: -0.55, y: -0.18 },
   fear: { x: -0.38, y: -0.42 },
   docu: { x: -0.7, y: -0.55 },
@@ -941,8 +936,6 @@ export const SKILL_COORDS: Record<GenreSkill, { x: number; y: number }> = {
   reflect: { x: 0.08, y: -0.48 },
   produce: { x: 0.02, y: 0.1 },
 
-  // ソフトウェア系（デフォルト位置）
-  animate: { x: 0.0, y: 0.0 },
 };
 
 // タグを正規化（日本語→英語変換）
@@ -1008,23 +1001,20 @@ export const SKILL_DESCRIPTIONS: Record<GenreSkill, { ja: string; en: string }> 
   reflect: { ja: '反射（被ダメの20%返し）', en: 'Reflect (Return 20% DMG)' },
   // === ソフトウェア用 ===
   calculate: { ja: '計算（クリティカル率+10%）', en: 'Calculate (Crit +10%)' },
-  animate: { ja: 'アニメート（攻撃エフェクト強化）', en: 'Animate (Enhanced effects)' },
   soundwave: { ja: '音波（全体攻撃、威力50%）', en: 'Soundwave (AoE 50% DMG)' },
   design: { ja: 'デザイン（スキル効果+10%）', en: 'Design (Skill effect +10%)' },
   study: { ja: '学習（戦闘中攻撃力徐々にUP）', en: 'Study (ATK grows in battle)' },
   retouch: { ja: 'レタッチ（HP20%以下で防御2倍）', en: 'Retouch (2x DEF when HP<20%)' },
   training: { ja: 'トレーニング（最初の攻撃2倍）', en: 'Training (First attack 2x)' },
-  utility: { ja: 'ユーティリティ（状態異常耐性）', en: 'Utility (Status resist)' },
   produce: { ja: 'プロデュース（味方スキル発動率UP）', en: 'Produce (Ally skill rate +)' },
   publish: { ja: 'パブリッシュ（敵情報公開、弱点+10%）', en: 'Publish (Expose weakness +10%)' },
   develop: { ja: '開発（ランダムスキル追加発動）', en: 'Develop (Random bonus skill)' },
   // === コンテンツ系 ===
-  earlybird: { ja: 'アーリーバード（先制攻撃確定）', en: 'Early Bird (Always first)' },
   mature: { ja: 'マチュア（攻撃+20%、防御-10%）', en: 'Mature (ATK+20%, DEF-10%)' },
   expose: { ja: 'エクスポーズ（敵防御-20%）', en: 'Expose (Enemy DEF -20%)' },
   brutal: { ja: 'ブルータル（与ダメ+25%、被ダメ+15%）', en: 'Brutal (DMG+25%, taken+15%)' },
   gore: { ja: 'ゴア（敵HP低いほどダメージUP）', en: 'Gore (More DMG vs low HP)' },
-  docu: { ja: 'ドキュメント（敵スキル効果-20%）', en: 'Document (Enemy skill -20%)' },
+  docu: { ja: 'ドキュメント（被ダメ-10%）', en: 'Document (DMG taken -10%)' },
   tutorial: { ja: 'チュートリアル（初回被ダメ無効）', en: 'Tutorial (Block first hit)' },
 };
 

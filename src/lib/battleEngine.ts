@@ -77,8 +77,7 @@ function calculateAttackInterval(card: ServerBattleCard): number {
   const hpBonus = Math.min(300, Math.floor(card.hp / 100) * 50);
   const firstStrikeBonus = card.skills.includes('firstStrike') ? -500 : 0;
   const speedBonus = card.skills.includes('speed') ? -300 : 0;
-  const earlybirdBonus = card.skills.includes('earlybird') ? -800 : 0;
-  return Math.max(600, baseInterval + attackPenalty - hpBonus + firstStrikeBonus + speedBonus + earlybirdBonus);
+  return Math.max(600, baseInterval + attackPenalty - hpBonus + firstStrikeBonus + speedBonus);
 }
 
 // シード付き乱数生成器（再現性のため）
@@ -235,6 +234,31 @@ function applySkillEffect(
         const goreBonus = Math.max(0, (50 - defenderHpPercent) / 50) * 0.5 * attackerMod.skillMultiplier * attackerSkillBonus;
         damage = Math.floor(damage * (1 + goreBonus));
         if (goreBonus > 0) setSkillIfImportant(skill); // 条件発動時のみ
+        break;
+      case 'soundwave':
+        // 音波: 全体攻撃（威力50%）- ダメージ計算は50%、全体攻撃はバトルループ側で処理
+        damage = Math.floor(damage * 0.5);
+        // パッシブ：ログなし
+        break;
+      case 'design':
+        // デザイン: スキル効果+10%（他スキルの効果が強化される）
+        // 実際の効果は他スキルの倍率に含まれる形で表現
+        damage = Math.floor(damage * 1.1);
+        // パッシブ：ログなし
+        break;
+      case 'produce':
+        // プロデュース: 味方スキル発動率UP（確率系スキルの発動率+5%）
+        // 実装は確率系スキルに影響するが、ここでは小ダメージボーナスで表現
+        damage = Math.floor(damage * 1.05);
+        // パッシブ：ログなし
+        break;
+      case 'firstStrike':
+        // 先制攻撃: インターバル-500ms（バトルループ側で処理）
+        // ダメージ計算では効果なし
+        break;
+      case 'speed':
+        // 加速: 攻撃速度UP（バトルループ側で処理）
+        // ダメージ計算では効果なし
         break;
     }
   }

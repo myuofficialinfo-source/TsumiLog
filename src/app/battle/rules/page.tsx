@@ -20,15 +20,13 @@ export default function RulesPage() {
     // 速度系 (SPD)
     { name: 'firstStrike', ja: '先制', desc: { ja: '攻撃間隔-500ms', en: 'Attack interval -500ms' }, type: 'SPD' },
     { name: 'speed', ja: '加速', desc: { ja: '攻撃間隔-300ms', en: 'Attack interval -300ms' }, type: 'SPD' },
-    { name: 'earlybird', ja: 'アーリーバード', desc: { ja: '攻撃間隔-800ms', en: 'Attack interval -800ms' }, type: 'SPD' },
     // 防御系 (DEF)
     { name: 'defense', ja: '防御', desc: { ja: '被ダメ-30%', en: 'Damage taken -30%' }, type: 'DEF' },
     { name: 'fear', ja: '恐怖', desc: { ja: '敵攻撃-20%', en: 'Enemy attack -20%' }, type: 'DEF' },
     { name: 'freebie', ja: 'フリービー', desc: { ja: '10%で攻撃回避', en: '10% dodge chance' }, type: 'DEF' },
     { name: 'tutorial', ja: 'チュートリアル', desc: { ja: '初回被ダメ無効', en: 'First hit blocked' }, type: 'DEF' },
     { name: 'retouch', ja: 'レタッチ', desc: { ja: 'HP20%以下で防御2倍', en: 'Defense x2 when HP below 20%' }, type: 'DEF' },
-    { name: 'utility', ja: 'ユーティリティ', desc: { ja: '状態異常耐性', en: 'Status effect resistance' }, type: 'DEF' },
-    { name: 'docu', ja: 'ドキュメント', desc: { ja: '敵スキル効果-20%', en: 'Enemy skill effects -20%' }, type: 'DEF' },
+    { name: 'docu', ja: 'ドキュメント', desc: { ja: '被ダメ-10%', en: 'Damage taken -10%' }, type: 'DEF' },
     // 回復系 (HEAL)
     { name: 'absorb', ja: '吸収', desc: { ja: '与ダメの30%回復', en: 'Heal 30% of damage dealt' }, type: 'HEAL' },
     { name: 'teamwork', ja: '連携', desc: { ja: '攻撃時味方HP回復', en: 'Heal allies on attack' }, type: 'HEAL' },
