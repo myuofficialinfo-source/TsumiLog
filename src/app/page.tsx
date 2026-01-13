@@ -210,11 +210,11 @@ function HomeContent() {
             {steamId && (
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
                 style={{ backgroundColor: 'var(--card-bg)' }}
               >
                 <LogOut className="w-4 h-4" />
-                {t('header.logout')}
+                <span className="hidden sm:inline">{t('header.logout')}</span>
               </button>
             )}
           </div>

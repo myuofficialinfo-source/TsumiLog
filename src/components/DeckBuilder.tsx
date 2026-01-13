@@ -1075,30 +1075,33 @@ export default function DeckBuilder({
               : `${deckCardCount}/10 cards selected (${availableCards.length} backlog games)`}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1 sm:gap-2">
           <button
             onClick={shuffle}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
+            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
             style={{ backgroundColor: 'var(--card-bg)' }}
+            title={language === 'ja' ? 'シャッフル' : 'Shuffle'}
           >
             <Shuffle className="w-4 h-4" />
-            {language === 'ja' ? 'シャッフル' : 'Shuffle'}
+            <span className="hidden sm:inline">{language === 'ja' ? 'シャッフル' : 'Shuffle'}</span>
           </button>
           <button
             onClick={autoFill}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
+            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
             style={{ backgroundColor: 'var(--card-bg)' }}
+            title={language === 'ja' ? 'おまかせ' : 'Auto Fill'}
           >
             <Wand2 className="w-4 h-4" />
-            {language === 'ja' ? 'おまかせ' : 'Auto Fill'}
+            <span className="hidden sm:inline">{language === 'ja' ? 'おまかせ' : 'Auto Fill'}</span>
           </button>
           <Link
             href="/battle/rules"
-            className="flex items-center gap-2 px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
+            className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100"
             style={{ backgroundColor: 'var(--card-bg)' }}
+            title={language === 'ja' ? 'ルール' : 'Rules'}
           >
             <HelpCircle className="w-4 h-4" />
-            {language === 'ja' ? 'ルール' : 'Rules'}
+            <span className="hidden sm:inline">{language === 'ja' ? 'ルール' : 'Rules'}</span>
           </Link>
         </div>
       </div>

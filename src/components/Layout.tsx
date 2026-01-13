@@ -42,21 +42,21 @@ export function Header({ showLogout, onLogout, showBack, backHref = '/' }: Heade
           {showBack && (
             <Link
               href={backHref}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
               <ArrowLeft className="w-4 h-4" />
-              {language === 'ja' ? '戻る' : 'Back'}
+              <span className="hidden sm:inline">{language === 'ja' ? '戻る' : 'Back'}</span>
             </Link>
           )}
           {showLogout && onLogout && (
             <button
               onClick={onLogout}
-              className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
               <LogOut className="w-4 h-4" />
-              {language === 'ja' ? 'ログアウト' : 'Logout'}
+              <span className="hidden sm:inline">{language === 'ja' ? 'ログアウト' : 'Logout'}</span>
             </button>
           )}
         </div>

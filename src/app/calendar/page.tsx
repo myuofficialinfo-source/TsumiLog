@@ -745,14 +745,14 @@ export default function CalendarPage() {
 
       <main className="flex-grow max-w-7xl mx-auto px-4 py-6 w-full">
         {/* カレンダーナビゲーション */}
-        <div className="flex flex-col sm:flex-row items-center justify-between mb-6 gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between mb-4 sm:mb-6 gap-3">
           <div className="flex items-center gap-2 sm:gap-4">
             <button
               onClick={() => view === 'month' ? navigateMonth(-1) : navigateWeek(-1)}
-              className="p-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
-              <ChevronLeft className="w-5 h-5" />
+              <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
             <h2 className="text-lg sm:text-2xl font-black min-w-[140px] sm:min-w-[200px] text-center">
               {view === 'month' ? (
@@ -769,42 +769,42 @@ export default function CalendarPage() {
             </h2>
             <button
               onClick={() => view === 'month' ? navigateMonth(1) : navigateWeek(1)}
-              className="p-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+              className="p-1.5 sm:p-2 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
-              <ChevronRight className="w-5 h-5" />
+              <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
             </button>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap justify-center">
+          <div className="flex items-center gap-1 sm:gap-3 flex-wrap justify-center">
             {/* View切り替え */}
             <div className="flex items-center gap-1">
               <button
                 onClick={() => setView('month')}
-                className={`px-2 sm:px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
                   view === 'month' ? 'text-white' : ''
                 }`}
                 style={{
                   backgroundColor: view === 'month' ? 'var(--pop-blue)' : 'var(--card-bg)'
                 }}
               >
-                {language === 'ja' ? '月' : 'Month'}
+                {language === 'ja' ? '月' : 'M'}
               </button>
               <button
                 onClick={() => setView('week')}
-                className={`px-2 sm:px-3 py-1.5 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
+                className={`px-2 sm:px-3 py-1 sm:py-1.5 text-xs sm:text-sm font-medium rounded-lg border-2 border-[#3D3D3D] transition-colors ${
                   view === 'week' ? 'text-white' : ''
                 }`}
                 style={{
                   backgroundColor: view === 'week' ? 'var(--pop-blue)' : 'var(--card-bg)'
                 }}
               >
-                {language === 'ja' ? '週' : 'Week'}
+                {language === 'ja' ? '週' : 'W'}
               </button>
             </div>
             <button
               onClick={goToToday}
-              className="px-3 sm:px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+              className="px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
               {language === 'ja' ? '今日' : 'Today'}
@@ -814,21 +814,21 @@ export default function CalendarPage() {
                 setSelectedDate(formatDateKey(new Date()));
                 setShowAddModal(true);
               }}
-              className="flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 text-sm font-bold text-white rounded-lg transition-colors hover:opacity-90"
+              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-1 sm:py-2 text-xs sm:text-sm font-bold text-white rounded-lg transition-colors hover:opacity-90"
               style={{ backgroundColor: 'var(--pop-blue)' }}
             >
-              <Plus className="w-4 h-4" />
-              <span className="hidden sm:inline">{language === 'ja' ? '予定追加' : 'Add Event'}</span>
-              <span className="sm:hidden">{language === 'ja' ? '追加' : 'Add'}</span>
+              <Plus className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden sm:inline">{language === 'ja' ? '予定追加' : 'Add'}</span>
+              <span className="sm:hidden">+</span>
             </button>
           </div>
         </div>
 
         {/* 月表示 */}
         {view === 'month' && (
-        <div className="pop-card overflow-hidden overflow-x-auto">
+        <div className="pop-card overflow-hidden">
           {/* 曜日ヘッダー */}
-          <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: 'repeat(7, 1fr)', minWidth: '320px' }}>
+          <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
             {weekDays.map((day, index) => (
               <div
                 key={day}
@@ -894,7 +894,7 @@ export default function CalendarPage() {
                 )}
 
                 {/* 日付グリッド */}
-                <div className="grid" style={{ gridTemplateColumns: 'repeat(7, 1fr)', minWidth: '320px' }}>
+                <div className="grid" style={{ gridTemplateColumns: 'repeat(7, 1fr)' }}>
                   {weekDays.map((day, dayIndex) => {
                     const dayOfWeek = day.date.getDay();
                     const hasHoliday = !!day.holiday;
@@ -905,12 +905,12 @@ export default function CalendarPage() {
                         onClick={() => handleDateClick(day.date)}
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, day.dateStr)}
-                        className={`relative border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50/50 transition-colors ${
+                        className={`relative border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50/50 transition-colors overflow-hidden sm:overflow-visible ${
                           !day.isCurrentMonth ? 'opacity-40' : ''
                         } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: `${Math.max(80, 24 + barAreaHeight + 10)}px`,
+                          minHeight: `${Math.max(130, 24 + barAreaHeight + 10)}px`,
                           ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
                         }}
                       >
@@ -930,12 +930,12 @@ export default function CalendarPage() {
                           )}
                         </div>
 
-                        {/* ユーザーイベント表示 - セル内に収める */}
+                        {/* ユーザーイベント表示 - Steamイベントバーに重ねてオーバーレイ */}
                         <div
-                          className="px-0.5 space-y-0.5 relative overflow-hidden"
-                          style={{ zIndex: 10, maxHeight: 'calc(100% - 24px)' }}
+                          className="px-1 space-y-0.5 relative"
+                          style={{ zIndex: 10 }}
                         >
-                          {day.events.slice(0, 3).map(event => (
+                          {day.events.map(event => (
                             <div
                               key={event.id}
                               draggable
@@ -945,7 +945,7 @@ export default function CalendarPage() {
                                 e.stopPropagation();
                                 setSelectedEvent(event);
                               }}
-                              className="px-1 py-0.5 rounded text-[8px] sm:text-[10px] font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing shadow-sm"
+                              className="px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing shadow-sm"
                               style={{ backgroundColor: getEventTypeColor(event.type) }}
                             >
                               {event.gameName}
@@ -955,19 +955,13 @@ export default function CalendarPage() {
                           {getWishlistReleasesForDate(day.dateStr).slice(0, 2).map(release => (
                             <div
                               key={`wl-${release.appid}`}
-                              className="px-1 py-0.5 rounded text-[8px] sm:text-[10px] font-medium text-white truncate"
+                              className="px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-medium text-white truncate"
                               style={{ backgroundColor: 'var(--pop-yellow)' }}
                               title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
                             >
                               {release.name}
                             </div>
                           ))}
-                          {/* 件数が多い場合は+表示 */}
-                          {(day.events.length > 3 || getWishlistReleasesForDate(day.dateStr).length > 2) && (
-                            <div className="text-[8px] text-gray-500 text-center">
-                              +{day.events.length - 3 + Math.max(0, getWishlistReleasesForDate(day.dateStr).length - 2)}
-                            </div>
-                          )}
                         </div>
                       </div>
                     );
@@ -981,9 +975,9 @@ export default function CalendarPage() {
 
         {/* 週表示 */}
         {view === 'week' && (
-        <div className="pop-card overflow-hidden overflow-x-auto">
+        <div className="pop-card overflow-hidden">
           {/* 曜日と日付ヘッダー */}
-          <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: '40px repeat(7, minmax(40px, 1fr))', minWidth: '360px' }}>
+          <div className="grid border-b-2 border-[#3D3D3D]" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
             {/* 時間列のヘッダー */}
             <div
               className="py-2 text-center font-bold text-xs text-gray-500"
@@ -1026,13 +1020,13 @@ export default function CalendarPage() {
 
           {/* タイムグリッド（オーバーレイ対応） */}
           <div className="max-h-[608px] overflow-y-auto relative">
-            <div className="grid" style={{ gridTemplateColumns: '40px repeat(7, minmax(40px, 1fr))', minWidth: '360px' }}>
+            <div className="grid" style={{ gridTemplateColumns: '50px repeat(7, 1fr)' }}>
               {/* 時間ラベル列 */}
               <div>
                 {timeSlots.map(hour => (
                   <div
                     key={hour}
-                    className="h-[50px] px-0.5 text-right text-[10px] sm:text-xs text-gray-500 border-b border-r border-[#E5E5E5] flex items-start justify-end pt-1"
+                    className="h-[50px] px-1 text-right text-xs text-gray-500 border-b border-r border-[#E5E5E5] flex items-start justify-end pt-1"
                     style={{ backgroundColor: 'var(--card-bg)' }}
                   >
                     {hour}:00
@@ -1218,7 +1212,7 @@ export default function CalendarPage() {
         )}
 
         {/* 凡例 */}
-        <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm">
+        <div className="mt-4 flex flex-wrap items-center gap-4 text-sm">
           <div className="flex items-center gap-2">
             <div className="w-3 h-3 rounded" style={{ backgroundColor: 'var(--pop-blue)' }} />
             <span>{language === 'ja' ? '予定' : 'Planned'}</span>
