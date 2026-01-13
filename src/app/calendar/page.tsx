@@ -74,7 +74,7 @@ export default function CalendarPage() {
   const { language } = useLanguage();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
-  const [events, setEvents] = useState<GameEvent[]>(getInitialEvents);
+  const [events, setEvents] = useState<GameEvent[]>([]);
   const [games, setGames] = useState<SteamGame[]>(getInitialGames);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -250,21 +250,32 @@ export default function CalendarPage() {
       ));
     };
 
-    const handleMouseUp = () => {
+    const handleMouseUp = async () => {
       // リサイズ終了時にDBを更新
       const updatedEvent = events.find(ev => ev.id === resizeInfo.eventId);
       if (updatedEvent && steamId) {
-        fetch('/api/calendar-events', {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            steamId,
-            eventId: updatedEvent.id,
-            updates: {
-              endTime: updatedEvent.endTime,
-            },
-          }),
-        }).catch(err => console.error('Failed to update event after resize:', err));
+        try {
+          const response = await fetch('/api/calendar-events', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              steamId,
+              eventId: updatedEvent.id,
+              updates: {
+                endTime: updatedEvent.endTime,
+              },
+            }),
+          });
+          if (!response.ok) {
+            throw new Error('Failed to update');
+          }
+        } catch (err) {
+          console.error('Failed to update event after resize:', err);
+          // ロールバック
+          setEvents(prev => prev.map(ev =>
+            ev.id === resizeInfo.eventId ? { ...ev, endTime: resizeInfo.originalEndTime } : ev
+          ));
+        }
       }
       setResizeInfo(null);
     };
@@ -645,12 +656,13 @@ export default function CalendarPage() {
       endDate: newEndDate,
     };
 
+    const originalEvent = draggedEvent;
     setEvents(prev => prev.map(e => e.id === draggedEvent.id ? updatedEvent : e));
     setDraggedEvent(null);
 
-    // DBを更新
+    // DBを更新（失敗時はロールバック）
     try {
-      await fetch('/api/calendar-events', {
+      const response = await fetch('/api/calendar-events', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -662,8 +674,13 @@ export default function CalendarPage() {
           },
         }),
       });
+      if (!response.ok) {
+        throw new Error('Failed to update');
+      }
     } catch (error) {
       console.error('Failed to update event after drag:', error);
+      // ロールバック
+      setEvents(prev => prev.map(e => e.id === originalEvent.id ? originalEvent : e));
     }
   };
 
@@ -905,12 +922,12 @@ export default function CalendarPage() {
                         onClick={() => handleDateClick(day.date)}
                         onDragOver={handleDragOver}
                         onDrop={(e) => handleDrop(e, day.dateStr)}
-                        className={`relative border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50/50 transition-colors overflow-hidden sm:overflow-visible ${
+                        className={`relative border-b border-r border-[#E5E5E5] cursor-pointer hover:bg-gray-50/50 transition-colors overflow-hidden ${
                           !day.isCurrentMonth ? 'opacity-40' : ''
                         } ${day.isToday ? 'ring-2 ring-inset' : ''} ${draggedEvent ? 'hover:bg-blue-50' : ''}`}
                         style={{
                           backgroundColor: day.isToday ? 'var(--background-secondary)' : 'var(--card-bg)',
-                          minHeight: `${Math.max(130, 24 + barAreaHeight + 10)}px`,
+                          height: `${Math.max(130, 24 + barAreaHeight + 10)}px`,
                           ...(day.isToday && { '--tw-ring-color': 'var(--pop-blue)' } as React.CSSProperties)
                         }}
                       >
@@ -932,8 +949,8 @@ export default function CalendarPage() {
 
                         {/* ユーザーイベント表示 - Steamイベントバーに重ねてオーバーレイ */}
                         <div
-                          className="px-1 space-y-0.5 relative"
-                          style={{ zIndex: 10 }}
+                          className="px-1 space-y-0.5 relative overflow-hidden"
+                          style={{ zIndex: 10, maxHeight: 'calc(100% - 28px)' }}
                         >
                           {day.events.map(event => (
                             <div
@@ -1180,23 +1197,35 @@ export default function CalendarPage() {
                               startTime: newStartTime,
                               endTime: newEndTime,
                             };
+                            const originalEvent = draggedEvent;
                             setEvents(prev => prev.map(ev => ev.id === eventId ? updatedEvent : ev));
 
-                            // DBを更新
+                            // DBを更新（失敗時はロールバック）
                             if (steamId) {
-                              fetch('/api/calendar-events', {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                  steamId,
-                                  eventId: updatedEvent.id,
-                                  updates: {
-                                    date: updatedEvent.date,
-                                    startTime: updatedEvent.startTime,
-                                    endTime: updatedEvent.endTime,
-                                  },
-                                }),
-                              }).catch(err => console.error('Failed to update event after drag:', err));
+                              (async () => {
+                                try {
+                                  const response = await fetch('/api/calendar-events', {
+                                    method: 'PUT',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      steamId,
+                                      eventId: updatedEvent.id,
+                                      updates: {
+                                        date: updatedEvent.date,
+                                        startTime: updatedEvent.startTime,
+                                        endTime: updatedEvent.endTime,
+                                      },
+                                    }),
+                                  });
+                                  if (!response.ok) {
+                                    throw new Error('Failed to update event');
+                                  }
+                                } catch (err) {
+                                  console.error('Failed to update event after drag:', err);
+                                  // ロールバック
+                                  setEvents(prev => prev.map(ev => ev.id === originalEvent.id ? originalEvent : ev));
+                                }
+                              })();
                             }
                           }
                           setDraggedEvent(null);
