@@ -9,20 +9,11 @@ import {
 
 // DB初期化フラグ
 let dbInitialized = false;
-let dbInitError: Error | null = null;
 
 async function ensureDbInitialized() {
-  if (dbInitError) {
-    throw dbInitError;
-  }
   if (!dbInitialized) {
-    try {
-      await initCalendarEventsTable();
-      dbInitialized = true;
-    } catch (error) {
-      dbInitError = error instanceof Error ? error : new Error(String(error));
-      throw dbInitError;
-    }
+    await initCalendarEventsTable();
+    dbInitialized = true;
   }
 }
 
@@ -111,7 +102,7 @@ export async function PUT(request: NextRequest) {
     const body = await request.json();
     const { steamId, eventId, updates } = body as {
       steamId: string;
-      eventId: string;
+      eventId: number | string;
       updates: {
         date?: string;
         endDate?: string | null;
@@ -123,14 +114,15 @@ export async function PUT(request: NextRequest) {
       };
     };
 
-    if (!steamId || !eventId) {
+    if (!steamId || eventId === undefined) {
       return NextResponse.json(
         { error: 'steamId and eventId are required' },
         { status: 400 }
       );
     }
 
-    const updatedEvent = await updateCalendarEvent(steamId, eventId, updates);
+    const numericEventId = typeof eventId === 'string' ? parseInt(eventId, 10) : eventId;
+    const updatedEvent = await updateCalendarEvent(steamId, numericEventId, updates);
 
     if (!updatedEvent) {
       return NextResponse.json(
@@ -165,7 +157,8 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    const deleted = await deleteCalendarEvent(steamId, eventId);
+    const numericEventId = parseInt(eventId, 10);
+    const deleted = await deleteCalendarEvent(steamId, numericEventId);
 
     if (!deleted) {
       return NextResponse.json(

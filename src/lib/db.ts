@@ -1019,37 +1019,31 @@ export async function filterSublimationCandidates(
 
 // カレンダーイベントテーブル初期化
 export async function initCalendarEventsTable() {
-  try {
-    // pgcrypto拡張を有効化（gen_random_uuid()に必要）
-    await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`;
-    await sql`
-      CREATE TABLE IF NOT EXISTS calendar_events (
-        id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-        steam_id VARCHAR(20) NOT NULL,
-        date DATE NOT NULL,
-        end_date DATE,
-        start_time VARCHAR(5),
-        end_time VARCHAR(5),
-        game_id INTEGER NOT NULL,
-        game_name VARCHAR(200) NOT NULL,
-        game_image TEXT,
-        type VARCHAR(20) NOT NULL CHECK (type IN ('planned', 'played', 'release')),
-        note TEXT,
-        playtime_minutes INTEGER,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
-    `;
-    await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_steam_id ON calendar_events(steam_id)`;
-    await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date)`;
-  } catch (error) {
-    console.error('Failed to init calendar_events table:', error);
-    throw error; // エラーを上位に伝播して詳細を確認できるようにする
-  }
+  // 他のテーブルと同様にSERIALを使用（UUIDは拡張機能が必要で権限問題が起きる）
+  await sql`
+    CREATE TABLE IF NOT EXISTS calendar_events (
+      id SERIAL PRIMARY KEY,
+      steam_id VARCHAR(20) NOT NULL,
+      date DATE NOT NULL,
+      end_date DATE,
+      start_time VARCHAR(5),
+      end_time VARCHAR(5),
+      game_id INTEGER NOT NULL,
+      game_name VARCHAR(200) NOT NULL,
+      game_image TEXT,
+      type VARCHAR(20) NOT NULL CHECK (type IN ('planned', 'played', 'release')),
+      note TEXT,
+      playtime_minutes INTEGER,
+      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    )
+  `;
+  await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_steam_id ON calendar_events(steam_id)`;
+  await sql`CREATE INDEX IF NOT EXISTS idx_calendar_events_date ON calendar_events(date)`;
 }
 
 // カレンダーイベント型
 export interface CalendarEventDB {
-  id: string;
+  id: number;
   steamId: string;
   date: string;
   endDate?: string;
@@ -1103,7 +1097,7 @@ export async function addCalendarEvent(
 
   const row = result[0];
   return {
-    id: row.id as string,
+    id: row.id as number,
     steamId: row.steam_id as string,
     date: (row.date as string).split('T')[0],
     endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
@@ -1129,7 +1123,7 @@ export async function getCalendarEvents(steamId: string): Promise<CalendarEventD
   `;
 
   return result.map(row => ({
-    id: row.id as string,
+    id: row.id as number,
     steamId: row.steam_id as string,
     date: (row.date as string).split('T')[0],
     endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
@@ -1148,7 +1142,7 @@ export async function getCalendarEvents(steamId: string): Promise<CalendarEventD
 // カレンダーイベントを更新
 export async function updateCalendarEvent(
   steamId: string,
-  eventId: string,
+  eventId: number,
   updates: {
     date?: string;
     endDate?: string | null;
@@ -1184,7 +1178,7 @@ export async function updateCalendarEvent(
 
   const row = result[0];
   return {
-    id: row.id as string,
+    id: row.id as number,
     steamId: row.steam_id as string,
     date: (row.date as string).split('T')[0],
     endDate: row.end_date ? (row.end_date as string).split('T')[0] : undefined,
@@ -1201,7 +1195,7 @@ export async function updateCalendarEvent(
 }
 
 // カレンダーイベントを削除
-export async function deleteCalendarEvent(steamId: string, eventId: string): Promise<boolean> {
+export async function deleteCalendarEvent(steamId: string, eventId: number): Promise<boolean> {
   const result = await sql`
     DELETE FROM calendar_events
     WHERE id = ${eventId} AND steam_id = ${steamId}
