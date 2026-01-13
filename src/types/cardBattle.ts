@@ -427,10 +427,8 @@ export function calculateSublimationBuff(
 // 超マイナー・超メジャー = コモン、中堅マイナー = レア
 // 10-500件の隠れた良作がUC（ウルトラレア）
 export function calculateRarityFromReviews(reviewCount: number): Rarity {
-  // レビュー10件以下または5万件以上 → C（みんな持ってる or ゲーム未満）
-  if (reviewCount <= 10 || reviewCount >= 50000) return 'common';
-  // 1万〜5万件 → C（メジャータイトル）
-  if (reviewCount >= 10000) return 'common';
+  // レビュー10件以下または1万件以上 → C（みんな持ってる or ゲーム未満）
+  if (reviewCount <= 10 || reviewCount >= 10000) return 'common';
   // 1000〜1万件 → R（人気作）
   if (reviewCount >= 1000) return 'rare';
   // 500〜1000件 → SR（中堅タイトル）

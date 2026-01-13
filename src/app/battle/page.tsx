@@ -123,7 +123,7 @@ function createBattleCard(
   details: GameDetail | undefined
 ): BattleCardType {
   // レビュー数からレアリティを決定（取得できない場合は中間値=R）
-  const reviewCount = details?.recommendations?.total ?? 10000;
+  const reviewCount = details?.recommendations?.total ?? 5000;
   const rarity = calculateRarityFromReviews(reviewCount);
 
   const genres = details?.genres?.map(g => g.description) || [];
@@ -151,16 +151,55 @@ function createBattleCard(
   };
 }
 
+// sessionStorageから初期データを取得（SSR対応）
+function getInitialSteamData(): { steamId: string | null; steamData: SteamData | null; gameDetails: Map<number, GameDetail> } {
+  if (typeof window === 'undefined') {
+    return { steamId: null, steamData: null, gameDetails: new Map() };
+  }
+  try {
+    const savedSteamId = localStorage.getItem('steamId');
+    if (!savedSteamId) {
+      return { steamId: null, steamData: null, gameDetails: new Map() };
+    }
+
+    const cacheKey = `battleSteamData_${savedSteamId}`;
+    const cachedData = sessionStorage.getItem(cacheKey);
+    let steamData: SteamData | null = null;
+    if (cachedData) {
+      steamData = JSON.parse(cachedData);
+    }
+
+    // ゲーム詳細のキャッシュ（言語に依存するが、日本語をデフォルトで試す）
+    const detailsCacheKey = `battleGameDetails_${savedSteamId}_ja`;
+    const detailsCacheKeyEn = `battleGameDetails_${savedSteamId}_en`;
+    const cachedDetails = sessionStorage.getItem(detailsCacheKey) || sessionStorage.getItem(detailsCacheKeyEn);
+    let gameDetails = new Map<number, GameDetail>();
+    if (cachedDetails) {
+      const parsed = JSON.parse(cachedDetails);
+      gameDetails = new Map(Object.entries(parsed).map(([k, v]) => [Number(k), v as GameDetail]));
+    }
+
+    return { steamId: savedSteamId, steamData, gameDetails };
+  } catch {
+    return { steamId: null, steamData: null, gameDetails: new Map() };
+  }
+}
+
 function BattleContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { language } = useLanguage();
-  const [isLoading, setIsLoading] = useState(true);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
+
+  // 初期データを同期的に取得
+  const initialData = useMemo(() => getInitialSteamData(), []);
+  const hasCachedData = initialData.steamData !== null && initialData.gameDetails.size > 0;
+
+  const [isLoading, setIsLoading] = useState(!hasCachedData);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(!hasCachedData);
   const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
-  const [steamId, setSteamId] = useState<string | null>(null);
-  const [steamData, setSteamData] = useState<SteamData | null>(null);
-  const [gameDetails, setGameDetails] = useState<Map<number, GameDetail>>(new Map());
+  const [steamId, setSteamId] = useState<string | null>(initialData.steamId);
+  const [steamData, setSteamData] = useState<SteamData | null>(initialData.steamData);
+  const [gameDetails, setGameDetails] = useState<Map<number, GameDetail>>(initialData.gameDetails);
   const [phase, setPhase] = useState<'deck' | 'matching' | 'battle' | 'result'>('deck');
   const [playerDeck, setPlayerDeck] = useState<Deck | null>(null);
   const [opponentDeck, setOpponentDeck] = useState<Deck | null>(null);
@@ -215,6 +254,11 @@ function BattleContent() {
       return;
     }
 
+    // 初期化時にキャッシュから読み込み済みの場合はスキップ
+    if (hasCachedData && steamData) {
+      return;
+    }
+
     const savedSteamId = localStorage.getItem('steamId');
     if (!savedSteamId) {
       router.push('/');
@@ -260,6 +304,7 @@ function BattleContent() {
     };
 
     fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, dummyGames, dummyDetails]);
 
   // ゲーム詳細の取得（キャッシュ対応、全部読み込んでから表示）
@@ -267,6 +312,8 @@ function BattleContent() {
     if (!steamData?.games || !steamId) return;
     // ダミーモードでは既に設定済み
     if (dummyGames) return;
+    // 初期化時にキャッシュから読み込み済みの場合はスキップ
+    if (hasCachedData && gameDetails.size > 0) return;
 
     const detailsCacheKey = `battleGameDetails_${steamId}_${language}`;
 

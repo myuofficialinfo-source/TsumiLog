@@ -41,13 +41,41 @@ interface WeekEventBar {
   row: number;      // 表示行（重なり回避用）
 }
 
+// localStorageから初期イベントを取得（SSR対応）
+function getInitialEvents(): GameEvent[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = localStorage.getItem('calendarEvents');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {
+    // エラーは無視
+  }
+  return [];
+}
+
+// localStorageから初期ゲームリストを取得（SSR対応）
+function getInitialGames(): SteamGame[] {
+  if (typeof window === 'undefined') return [];
+  try {
+    const saved = localStorage.getItem('cachedGames');
+    if (saved) {
+      return JSON.parse(saved);
+    }
+  } catch {
+    // エラーは無視
+  }
+  return [];
+}
+
 export default function CalendarPage() {
   const router = useRouter();
   const { language } = useLanguage();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<CalendarView>('month');
-  const [events, setEvents] = useState<GameEvent[]>([]);
-  const [games, setGames] = useState<SteamGame[]>([]);
+  const [events, setEvents] = useState<GameEvent[]>(getInitialEvents);
+  const [games, setGames] = useState<SteamGame[]>(getInitialGames);
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState<GameEvent | null>(null);
