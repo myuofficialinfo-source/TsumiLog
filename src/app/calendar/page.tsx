@@ -930,12 +930,12 @@ export default function CalendarPage() {
                           )}
                         </div>
 
-                        {/* ユーザーイベント表示 - Steamイベントバーに重ねてオーバーレイ */}
+                        {/* ユーザーイベント表示 - セル内に収める */}
                         <div
-                          className="px-1 space-y-0.5 relative"
-                          style={{ zIndex: 10 }}
+                          className="px-0.5 space-y-0.5 relative overflow-hidden"
+                          style={{ zIndex: 10, maxHeight: 'calc(100% - 24px)' }}
                         >
-                          {day.events.map(event => (
+                          {day.events.slice(0, 3).map(event => (
                             <div
                               key={event.id}
                               draggable
@@ -945,7 +945,7 @@ export default function CalendarPage() {
                                 e.stopPropagation();
                                 setSelectedEvent(event);
                               }}
-                              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing shadow-sm"
+                              className="px-1 py-0.5 rounded text-[8px] sm:text-[10px] font-medium text-white truncate cursor-grab hover:opacity-80 active:cursor-grabbing shadow-sm"
                               style={{ backgroundColor: getEventTypeColor(event.type) }}
                             >
                               {event.gameName}
@@ -955,13 +955,19 @@ export default function CalendarPage() {
                           {getWishlistReleasesForDate(day.dateStr).slice(0, 2).map(release => (
                             <div
                               key={`wl-${release.appid}`}
-                              className="px-1.5 py-0.5 rounded text-[10px] font-medium text-white truncate"
+                              className="px-1 py-0.5 rounded text-[8px] sm:text-[10px] font-medium text-white truncate"
                               style={{ backgroundColor: 'var(--pop-yellow)' }}
                               title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
                             >
                               {release.name}
                             </div>
                           ))}
+                          {/* 件数が多い場合は+表示 */}
+                          {(day.events.length > 3 || getWishlistReleasesForDate(day.dateStr).length > 2) && (
+                            <div className="text-[8px] text-gray-500 text-center">
+                              +{day.events.length - 3 + Math.max(0, getWishlistReleasesForDate(day.dateStr).length - 2)}
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
