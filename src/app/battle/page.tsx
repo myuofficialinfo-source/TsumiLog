@@ -201,8 +201,11 @@ function BattleContent() {
   const hasCachedData = initialData.steamData !== null && initialData.gameDetails.size > 0;
 
   const [isLoading, setIsLoading] = useState(!hasCachedData);
-  const [isLoadingDetails, setIsLoadingDetails] = useState(!hasCachedData);
-  const [loadingProgress, setLoadingProgress] = useState({ current: 0, total: 0 });
+  // キャッシュがあっても一瞬ローディング画面を表示（100%で）
+  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(
+    hasCachedData ? { current: 100, total: 100 } : { current: 0, total: 0 }
+  );
   const [steamId, setSteamId] = useState<string | null>(initialData.steamId);
   const [steamData, setSteamData] = useState<SteamData | null>(initialData.steamData);
   const [gameDetails, setGameDetails] = useState<Map<number, GameDetail>>(initialData.gameDetails);
@@ -213,6 +216,15 @@ function BattleContent() {
   const [opponentInfo, setOpponentInfo] = useState<OpponentInfo | null>(null);
   const [enemyName, setEnemyName] = useState<string | null>(null);
   const [playerScore, setPlayerScore] = useState<number>(0);
+  // ユーザースタッツがプリロード済みかどうか
+  const [userStatsPreloaded, setUserStatsPreloaded] = useState<boolean>(() => {
+    // 初期化時にキャッシュがあればプリロード済みとする
+    if (typeof window !== 'undefined' && initialData.steamId) {
+      const cached = localStorage.getItem(`userStats_${initialData.steamId}`);
+      return cached !== null;
+    }
+    return false;
+  });
   // サーバーサイドバトル結果
   const [serverBattleResult, setServerBattleResult] = useState<any>(null);
 
@@ -313,6 +325,16 @@ function BattleContent() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router, dummyGames, dummyDetails]);
 
+  // キャッシュがある場合、一瞬100%のプログレスバーを表示してから消す
+  useEffect(() => {
+    if (hasCachedData && isLoadingDetails) {
+      const timer = setTimeout(() => {
+        setIsLoadingDetails(false);
+      }, 500); // 500ms後にローディング画面を消す
+      return () => clearTimeout(timer);
+    }
+  }, [hasCachedData, isLoadingDetails]);
+
   // ゲーム詳細の取得（キャッシュ対応、全部読み込んでから表示）
   useEffect(() => {
     if (!steamData?.games || !steamId) return;
@@ -385,9 +407,12 @@ function BattleContent() {
     fetchDetails();
   }, [steamData?.games, steamId, language, dummyGames]);
 
-  // プレイヤーのスコアを取得（エネミー強度調整用）
+  // プレイヤーのスコアを取得（エネミー強度調整用）+ ユーザースタッツをプリフェッチ
   useEffect(() => {
-    if (!steamId || steamId === 'dummy') return;
+    if (!steamId || steamId === 'dummy') {
+      setUserStatsPreloaded(true); // ダミーモードではプリロード完了とする
+      return;
+    }
 
     const fetchScore = async () => {
       try {
@@ -395,9 +420,19 @@ function BattleContent() {
         if (response.ok) {
           const data = await response.json();
           setPlayerScore(data.score || 0);
+          // userStatsをlocalStorageにキャッシュ（DeckBuilderで使用）
+          const stats = {
+            sublimations: data.sublimations || 0,
+            wins: data.wins || 0,
+            score: data.score || 0,
+            rank: data.rank,
+          };
+          localStorage.setItem(`userStats_${steamId}`, JSON.stringify(stats));
         }
       } catch (error) {
         console.error('Failed to fetch player score:', error);
+      } finally {
+        setUserStatsPreloaded(true);
       }
     };
 
@@ -629,8 +664,8 @@ function BattleContent() {
     return null;
   }
 
-  // ゲーム詳細読み込み中
-  if (isLoadingDetails && phase === 'deck') {
+  // ゲーム詳細読み込み中、またはユーザースタッツのプリロード中
+  if ((isLoadingDetails || !userStatsPreloaded) && phase === 'deck') {
     const progressPercent = loadingProgress.total > 0
       ? Math.round((loadingProgress.current / loadingProgress.total) * 100)
       : 0;
