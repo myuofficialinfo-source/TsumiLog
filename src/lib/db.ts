@@ -1279,3 +1279,24 @@ export async function deleteCalendarEvent(steamId: string, eventId: number): Pro
   `;
   return result.length > 0;
 }
+
+// ユーザーの全データを削除（アカウント削除）
+export async function deleteUserData(steamId: string): Promise<boolean> {
+  try {
+    // 関連データを全て削除
+    await sql`DELETE FROM calendar_events WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM defense_decks WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM user_decks WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM game_usage WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM battles WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM graduations WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM user_games WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM user_wishlist WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM backlog_snapshot WHERE steam_id = ${steamId}`;
+    await sql`DELETE FROM users WHERE steam_id = ${steamId}`;
+    return true;
+  } catch (error) {
+    console.error('Failed to delete user data:', error);
+    return false;
+  }
+}

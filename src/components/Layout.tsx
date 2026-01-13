@@ -1,19 +1,28 @@
 'use client';
 
+import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Globe, LogOut, ArrowLeft } from 'lucide-react';
+import { Globe, Settings, ArrowLeft, LogOut, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+
+interface AccountInfo {
+  steamId: string;
+  personaName: string;
+  avatarUrl: string;
+}
 
 interface HeaderProps {
   showLogout?: boolean;
   onLogout?: () => void;
   showBack?: boolean;
   backHref?: string;
+  accountInfo?: AccountInfo;
 }
 
-export function Header({ showLogout, onLogout, showBack, backHref = '/' }: HeaderProps) {
+export function Header({ showLogout, onLogout, showBack, backHref = '/', accountInfo }: HeaderProps) {
   const { language, setLanguage, t } = useLanguage();
+  const [showAccountPopup, setShowAccountPopup] = useState(false);
 
   return (
     <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
@@ -50,14 +59,79 @@ export function Header({ showLogout, onLogout, showBack, backHref = '/' }: Heade
             </Link>
           )}
           {showLogout && onLogout && (
-            <button
-              onClick={onLogout}
-              className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
-              style={{ backgroundColor: 'var(--card-bg)' }}
-            >
-              <LogOut className="w-4 h-4" />
-              <span className="hidden sm:inline">{language === 'ja' ? 'ログアウト' : 'Logout'}</span>
-            </button>
+            <div className="relative">
+              <button
+                onClick={() => setShowAccountPopup(!showAccountPopup)}
+                className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+                style={{ backgroundColor: 'var(--card-bg)' }}
+              >
+                <Settings className="w-4 h-4" />
+                <span className="hidden sm:inline">{language === 'ja' ? 'アカウント' : 'Account'}</span>
+              </button>
+
+              {/* アカウントポップアップ */}
+              {showAccountPopup && (
+                <>
+                  {/* オーバーレイ */}
+                  <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => setShowAccountPopup(false)}
+                  />
+                  {/* ポップアップ */}
+                  <div
+                    className="absolute right-0 top-full mt-2 w-72 rounded-xl border-3 border-[#3D3D3D] shadow-lg z-50 p-4"
+                    style={{ backgroundColor: 'var(--card-bg)' }}
+                  >
+                    <div className="flex justify-between items-start mb-3">
+                      <h3 className="font-bold text-lg">
+                        {language === 'ja' ? 'アカウント情報' : 'Account Info'}
+                      </h3>
+                      <button
+                        onClick={() => setShowAccountPopup(false)}
+                        className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+
+                    {accountInfo ? (
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <Image
+                            src={accountInfo.avatarUrl}
+                            alt={accountInfo.personaName}
+                            width={48}
+                            height={48}
+                            className="rounded-lg border-2 border-[#3D3D3D]"
+                          />
+                          <div>
+                            <p className="font-bold">{accountInfo.personaName}</p>
+                            <p className="text-xs text-gray-500">Steam ID: {accountInfo.steamId}</p>
+                          </div>
+                        </div>
+
+                        <hr className="border-gray-300" />
+
+                        <button
+                          onClick={() => {
+                            setShowAccountPopup(false);
+                            onLogout();
+                          }}
+                          className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-red-400 text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          {language === 'ja' ? 'ログアウト' : 'Logout'}
+                        </button>
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500">
+                        {language === 'ja' ? '情報を取得中...' : 'Loading...'}
+                      </p>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
           )}
         </div>
       </div>
