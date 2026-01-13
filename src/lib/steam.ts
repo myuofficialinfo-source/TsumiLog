@@ -77,8 +77,12 @@ async function getReviewCount(appId: number): Promise<{ total: number } | undefi
     const response = await fetch(
       `https://store.steampowered.com/appreviews/${appId}?json=1&num_per_page=0&language=all`
     );
-    if (!response.ok) return undefined;
+    if (!response.ok) {
+      console.log(`[getReviewCount] appId=${appId}: response not ok (${response.status})`);
+      return undefined;
+    }
     const data = await response.json();
+    console.log(`[getReviewCount] appId=${appId}: success=${data.success}, total_reviews=${data.query_summary?.total_reviews}`);
     if (data.success === 1 && data.query_summary) {
       const total = data.query_summary.total_reviews || 0;
       if (total > 0) {
@@ -86,7 +90,8 @@ async function getReviewCount(appId: number): Promise<{ total: number } | undefi
       }
     }
     return undefined;
-  } catch {
+  } catch (error) {
+    console.error(`[getReviewCount] appId=${appId}: error`, error);
     return undefined;
   }
 }
@@ -108,8 +113,11 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
 
     // recommendationsフィールドがない場合はReviews APIから取得
     let recommendations = gameData.recommendations;
+    console.log(`[getGameDetails] appId=${appId}: Store API recommendations=${JSON.stringify(recommendations)}`);
     if (!recommendations) {
+      console.log(`[getGameDetails] appId=${appId}: No recommendations from Store API, calling Reviews API fallback...`);
       recommendations = await getReviewCount(appId);
+      console.log(`[getGameDetails] appId=${appId}: Reviews API fallback result=${JSON.stringify(recommendations)}`);
     }
 
     return {
