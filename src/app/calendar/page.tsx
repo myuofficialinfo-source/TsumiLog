@@ -82,6 +82,7 @@ export default function CalendarPage() {
   const [steamId, setSteamId] = useState<string | null>(null);
   const [wishlistReleases, setWishlistReleases] = useState<WishlistRelease[]>([]);
   const [draggedEvent, setDraggedEvent] = useState<GameEvent | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [resizeInfo, setResizeInfo] = useState<{
     eventId: string;
     startY: number;
@@ -151,6 +152,8 @@ export default function CalendarPage() {
         if (savedEvents) {
           setEvents(JSON.parse(savedEvents));
         }
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -718,6 +721,22 @@ export default function CalendarPage() {
       return parsedDate === dateStr && !release.comingSoon;
     });
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
+        <Header showBack backHref="/" />
+        <main className="flex-grow flex items-center justify-center">
+          <div className="flex flex-col items-center gap-4">
+            <div className="w-12 h-12 border-4 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+            <p className="text-gray-500 font-medium">
+              {language === 'ja' ? 'カレンダーを読み込み中...' : 'Loading calendar...'}
+            </p>
+          </div>
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
