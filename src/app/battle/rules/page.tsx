@@ -216,8 +216,8 @@ export default function RulesPage() {
           </h2>
           <p className="text-gray-700 mb-4">
             {language === 'ja'
-              ? 'レアリティはSteamのレビュー数で決まり、攻撃力に影響する'
-              : 'Rarity is determined by Steam review count and affects attack power'}
+              ? 'レアリティはSteamのレビュー数で決まり、有名なゲームほどみんなが持っている＝レアリティ低い。と設定させてもらってます。'
+              : 'Rarity is determined by Steam review count. Popular games = more people own them = lower rarity.'}
           </p>
           <div className="grid gap-2">
             <div className="flex items-center gap-3 p-2 rounded-lg" style={{ backgroundColor: 'var(--background-secondary)' }}>
