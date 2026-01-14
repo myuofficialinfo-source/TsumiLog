@@ -412,6 +412,7 @@ export default function DeckBuilder({
         }
       }
 
+      console.log('[DeckBuilder] restoreDecksFromData: newDeckStates keys:', Object.keys(newDeckStates), 'data.decks count:', (data.decks || []).length);
       setDeckStates(newDeckStates);
 
       // アクティブデッキがなかった場合、デッキ1を表示
@@ -537,6 +538,7 @@ export default function DeckBuilder({
 
     // 新しいデッキをロード
     const newDeck = deckStates[deckNum];
+    console.log('[DeckBuilder] switchDeck to', deckNum, 'deckStates keys:', Object.keys(deckStates), 'newDeck:', newDeck ? 'found' : 'not found');
     if (newDeck) {
       setFrontLine(newDeck.frontLine);
       setBackLine(newDeck.backLine);
