@@ -60,6 +60,8 @@ function HomeContent() {
   const [showAccountPopup, setShowAccountPopup] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [showMaintenancePopup, setShowMaintenancePopup] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
 
   // 起動時にlocalStorageからsteamIdを復元
   useEffect(() => {
@@ -116,7 +118,19 @@ function HomeContent() {
     }
   };
 
-  const handleSteamLogin = () => {
+  const handleSteamLogin = async () => {
+    // メンテナンスモードチェック
+    try {
+      const res = await fetch('/api/maintenance');
+      const data = await res.json();
+      if (data.maintenance) {
+        setMaintenanceMessage(data.message);
+        setShowMaintenancePopup(true);
+        return;
+      }
+    } catch {
+      // APIエラー時はログインを続行
+    }
     window.location.href = '/api/auth/steam?action=login';
   };
 
@@ -539,6 +553,41 @@ function HomeContent() {
           </div>
         )}
       </main>
+
+      {/* メンテナンスポップアップ */}
+      {showMaintenancePopup && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-50"
+            onClick={() => setShowMaintenancePopup(false)}
+          />
+          <div
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 rounded-xl border-3 border-[#3D3D3D] shadow-lg z-50 p-5"
+            style={{ backgroundColor: 'var(--card-bg)' }}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold text-lg">
+                {language === 'ja' ? 'メンテナンス中' : 'Under Maintenance'}
+              </h3>
+              <button
+                onClick={() => setShowMaintenancePopup(false)}
+                className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 text-center">
+              {maintenanceMessage}
+            </p>
+            <button
+              onClick={() => setShowMaintenancePopup(false)}
+              className="w-full mt-4 px-4 py-2 text-sm font-medium rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              {language === 'ja' ? '閉じる' : 'Close'}
+            </button>
+          </div>
+        </>
+      )}
 
       {/* フッター */}
       <footer className="border-t-3 border-[#3D3D3D] py-8 mt-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
