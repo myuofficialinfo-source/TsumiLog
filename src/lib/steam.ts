@@ -152,36 +152,49 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
 
 export async function getWishlist(steamId: string): Promise<WishlistGame[]> {
   try {
-    // Wishlist APIはページネーションが必要
+    // 新しいSteam IWishlistService APIを使用
+    const response = await fetch(
+      `${STEAM_API_BASE}/IWishlistService/GetWishlist/v1/?steamid=${steamId}&key=${STEAM_API_KEY}`
+    );
+
+    if (!response.ok) {
+      console.error('[Steam] Wishlist API error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const items = data.response?.items || [];
+
+    // ゲーム名を取得するため、各ゲームの詳細を取得
     const games: WishlistGame[] = [];
-    let page = 0;
+    for (const item of items) {
+      // ゲーム名はStore APIから取得する必要がある
+      try {
+        const detailsResponse = await fetch(
+          `${STEAM_STORE_API}/appdetails?appids=${item.appid}&l=japanese`
+        );
+        const detailsData = await detailsResponse.json();
+        const gameData = detailsData[item.appid]?.data;
 
-    while (true) {
-      const response = await fetch(
-        `https://store.steampowered.com/wishlist/profiles/${steamId}/wishlistdata/?p=${page}`
-      );
-
-      if (!response.ok) break;
-
-      const data = await response.json();
-      if (!data || Object.keys(data).length === 0) break;
-
-      for (const [appid, info] of Object.entries(data)) {
-        const gameInfo = info as { name: string; priority: number; added: number };
         games.push({
-          appid: parseInt(appid),
-          name: gameInfo.name,
-          priority: gameInfo.priority,
-          added: gameInfo.added,
+          appid: item.appid,
+          name: gameData?.name || `Game ${item.appid}`,
+          priority: item.priority || 0,
+          added: item.date_added || 0,
+        });
+      } catch {
+        games.push({
+          appid: item.appid,
+          name: `Game ${item.appid}`,
+          priority: item.priority || 0,
+          added: item.date_added || 0,
         });
       }
-
-      page++;
-      if (page > 10) break; // 安全のため上限
     }
 
     return games;
-  } catch {
+  } catch (error) {
+    console.error('[Steam] Wishlist fetch error:', error);
     return [];
   }
 }
