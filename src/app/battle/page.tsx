@@ -245,8 +245,11 @@ function BattleContent() {
   const [preloadedDeckData, setPreloadedDeckData] = useState<any>(null);
   // サーバーサイドバトル結果
   const [serverBattleResult, setServerBattleResult] = useState<any>(null);
-  // βテストポップアップ
-  const [showBetaPopup, setShowBetaPopup] = useState(true);
+  // βテストポップアップ（一度表示したら再表示しない）
+  const [showBetaPopup, setShowBetaPopup] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    return !localStorage.getItem('betaPopupShown');
+  });
 
   // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用（本番環境では無効）
   const dummyCount = searchParams.get('dummyBacklog');
@@ -769,7 +772,10 @@ function BattleContent() {
             style={{ backgroundColor: 'var(--card-bg)' }}
           >
             <button
-              onClick={() => setShowBetaPopup(false)}
+              onClick={() => {
+                localStorage.setItem('betaPopupShown', 'true');
+                setShowBetaPopup(false);
+              }}
               className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors"
             >
               <X className="w-5 h-5" style={{ color: 'var(--foreground)' }} />
@@ -791,7 +797,10 @@ function BattleContent() {
             </p>
 
             <button
-              onClick={() => setShowBetaPopup(false)}
+              onClick={() => {
+                localStorage.setItem('betaPopupShown', 'true');
+                setShowBetaPopup(false);
+              }}
               className="w-full py-3 rounded-xl font-bold text-white transition-opacity hover:opacity-90"
               style={{ backgroundColor: 'var(--pop-blue)' }}
             >
