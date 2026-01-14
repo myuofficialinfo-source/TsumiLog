@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
+  initDatabase,
   initDeckTable,
   saveDeck,
   getDeck,
@@ -14,6 +15,7 @@ let dbInitialized = false;
 
 async function ensureDbInitialized() {
   if (!dbInitialized) {
+    await initDatabase();
     await initDeckTable();
     dbInitialized = true;
   }

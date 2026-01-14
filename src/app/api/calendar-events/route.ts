@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import {
+  initDatabase,
   initCalendarEventsTable,
   addCalendarEvent,
   getCalendarEvents,
@@ -14,6 +15,7 @@ async function ensureDbInitialized() {
   if (!dbInitialized) {
     console.log('[Calendar] Initializing calendar_events table...');
     try {
+      await initDatabase();
       await initCalendarEventsTable();
       console.log('[Calendar] Table initialized successfully');
       dbInitialized = true;
