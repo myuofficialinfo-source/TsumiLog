@@ -1,11 +1,14 @@
 import { Metadata } from 'next';
 
+// 静的生成を無効化し、動的レンダリングを強制
+export const dynamic = 'force-dynamic';
+
 type Props = {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 };
 
 export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const params = await searchParams;
+  const params = await searchParams || {};
   const result = (params.result as string) || 'win';
   const wins = (params.wins as string) || '0';
   const rank = (params.rank as string) || '-';
