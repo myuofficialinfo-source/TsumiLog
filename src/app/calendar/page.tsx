@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import { ChevronLeft, ChevronRight, Plus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Plus, Calendar, ExternalLink } from 'lucide-react';
 import { Header } from '@/components/Layout';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { GameEvent, CalendarDay, CalendarView } from '@/types/calendar';
@@ -81,6 +81,7 @@ export default function CalendarPage() {
   const [selectedEvent, setSelectedEvent] = useState<GameEvent | null>(null);
   const [steamId, setSteamId] = useState<string | null>(null);
   const [wishlistReleases, setWishlistReleases] = useState<WishlistRelease[]>([]);
+  const [selectedWishlistRelease, setSelectedWishlistRelease] = useState<WishlistRelease | null>(null);
   const [draggedEvent, setDraggedEvent] = useState<GameEvent | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [resizeInfo, setResizeInfo] = useState<{
@@ -987,9 +988,13 @@ export default function CalendarPage() {
                           {getWishlistReleasesForDate(day.dateStr).slice(0, 2).map(release => (
                             <div
                               key={`wl-${release.appid}`}
-                              className="px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-medium text-white truncate"
+                              className="px-1 sm:px-1.5 py-0.5 rounded text-[8px] sm:text-[10px] font-medium text-white truncate cursor-pointer hover:opacity-80"
                               style={{ backgroundColor: 'var(--pop-yellow)' }}
                               title={`${language === 'ja' ? '発売日' : 'Release'}: ${release.name}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedWishlistRelease(release);
+                              }}
                             >
                               {release.name}
                             </div>
@@ -1314,6 +1319,52 @@ export default function CalendarPage() {
           onUpdate={handleUpdateEvent}
           language={language}
         />
+      )}
+
+      {/* ウィッシュリスト発売日詳細モーダル */}
+      {selectedWishlistRelease && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSelectedWishlistRelease(null)}>
+          <div className="bg-white rounded-xl max-w-md w-full overflow-hidden shadow-2xl" onClick={e => e.stopPropagation()}>
+            {/* ヘッダー画像 */}
+            <div className="relative">
+              <img
+                src={selectedWishlistRelease.headerImage}
+                alt={selectedWishlistRelease.name}
+                className="w-full h-40 object-cover"
+              />
+              <button
+                onClick={() => setSelectedWishlistRelease(null)}
+                className="absolute top-2 right-2 w-8 h-8 bg-black/50 rounded-full flex items-center justify-center text-white hover:bg-black/70"
+              >
+                ×
+              </button>
+              <div className="absolute bottom-2 left-2 px-2 py-1 rounded text-xs font-bold text-white" style={{ backgroundColor: 'var(--pop-yellow)' }}>
+                {language === 'ja' ? 'WL発売' : 'WL Release'}
+              </div>
+            </div>
+
+            {/* コンテンツ */}
+            <div className="p-4">
+              <h3 className="font-bold text-lg mb-2">{selectedWishlistRelease.name}</h3>
+              <div className="flex items-center gap-2 text-gray-600 mb-4">
+                <Calendar className="w-4 h-4" />
+                <span>{selectedWishlistRelease.releaseDate}</span>
+              </div>
+
+              {/* Steamストアへのリンク */}
+              <a
+                href={`https://store.steampowered.com/app/${selectedWishlistRelease.appid}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 w-full py-2 px-4 rounded-lg text-white font-medium hover:opacity-90 transition-opacity"
+                style={{ backgroundColor: '#1b2838' }}
+              >
+                <ExternalLink className="w-4 h-4" />
+                {language === 'ja' ? 'Steamで見る' : 'View on Steam'}
+              </a>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
