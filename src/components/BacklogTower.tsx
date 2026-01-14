@@ -108,16 +108,27 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     img.onload = () => {
       // コンテナの幅に合わせてキャンバスサイズを設定
       const containerWidth = containerRef.current?.clientWidth || 400;
-      const scale = containerWidth / img.width;
+      // 元の画像のアスペクト比を維持
+      const aspectRatio = img.height / img.width;
       canvas.width = containerWidth;
-      canvas.height = img.height * scale;
+      canvas.height = containerWidth * aspectRatio;
       setContainerHeight(canvas.height);
 
-      // キャッシュ画像を描画
+      // キャッシュ画像を描画（元のサイズで描画）
       ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
     };
+    img.onerror = () => {
+      // キャッシュ画像の読み込みに失敗した場合、キャッシュをクリアしてアニメーションを再実行
+      setCachedImageUrl(null);
+      setIsComplete(false);
+      try {
+        sessionStorage.removeItem(cacheKey);
+      } catch {
+        // 無視
+      }
+    };
     img.src = cachedImageUrl;
-  }, [cachedImageUrl]);
+  }, [cachedImageUrl, cacheKey]);
 
   // キャッシュがない場合はアニメーションを実行
   useEffect(() => {
@@ -293,7 +304,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
                 const imageUrl = canvas.toDataURL('image/png', 0.8);
                 sessionStorage.setItem(cacheKey, JSON.stringify({
                   imageUrl,
-                  height,
+                  width: canvas.width,
+                  height: canvas.height,
                 }));
               }
             } catch {
