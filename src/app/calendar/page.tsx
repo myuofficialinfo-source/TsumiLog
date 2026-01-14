@@ -744,10 +744,13 @@ export default function CalendarPage() {
   };
 
   // 特定の日付のウィッシュリスト発売日を取得
+  // comingSoonは「まだ発売していない」を意味するが、発売日が確定している（パースできる）場合は表示する
+  // 「発表予定」のような不確定な日付はパースできないので除外される
   const getWishlistReleasesForDate = (dateStr: string): WishlistRelease[] => {
     return wishlistReleases.filter(release => {
       const parsedDate = parseReleaseDate(release.releaseDate);
-      return parsedDate === dateStr && !release.comingSoon;
+      // 日付がパースできて、指定日と一致すれば表示
+      return parsedDate === dateStr;
     });
   };
 
