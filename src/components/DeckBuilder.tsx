@@ -517,6 +517,14 @@ export default function DeckBuilder({
   const switchDeck = useCallback((deckNum: number) => {
     if (deckNum === currentDeckNumber) return;
 
+    // 切り替え前に現在のデッキをDBに保存（ユーザーが編集していた場合）
+    if (isUserActionRef.current) {
+      saveDeckToServer(currentDeckNumber, frontLine, backLine);
+    }
+
+    // 切り替え時はユーザーアクションフラグをリセット（ロードされたデータで保存が発火しないように）
+    isUserActionRef.current = false;
+
     // 現在のデッキをローカル状態に保存
     setDeckStates(prev => ({
       ...prev,
@@ -538,7 +546,7 @@ export default function DeckBuilder({
     }
 
     setCurrentDeckNumber(deckNum);
-  }, [currentDeckNumber, frontLine, backLine, deckStates]);
+  }, [currentDeckNumber, frontLine, backLine, deckStates, saveDeckToServer]);
 
   // デッキをアクティブに設定（防衛デッキも同時に登録）
   const setDeckActive = useCallback(async (deckNum: number) => {
