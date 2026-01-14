@@ -354,6 +354,8 @@ export default function DeckBuilder({
 
   // スマホ用：カード配置先選択ポップアップ
   const [cardToPlace, setCardToPlace] = useState<BattleCardType | null>(null);
+  // スマホ用：スロットタップ時のゲーム選択ポップアップ
+  const [slotToFill, setSlotToFill] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
 
   // 保存されたデッキをロード（プリロードデータがあればそれを使用）
   useEffect(() => {
@@ -884,6 +886,30 @@ export default function DeckBuilder({
     setCardToPlace(null);
   };
 
+  // スマホ用：スロットをタップしてゲーム選択ポップアップを開く
+  const handleSlotTap = (line: 'front' | 'back', index: number) => {
+    setSlotToFill({ line, index });
+  };
+
+  // スマホ用：ゲーム選択ポップアップからカードを選んでスロットに配置
+  const selectCardForSlot = (card: BattleCardType) => {
+    if (!slotToFill) return;
+    if (slotToFill.line === 'front') {
+      setFrontLine(prev => {
+        const newLine = [...prev];
+        newLine[slotToFill.index] = card;
+        return newLine;
+      });
+    } else {
+      setBackLine(prev => {
+        const newLine = [...prev];
+        newLine[slotToFill.index] = card;
+        return newLine;
+      });
+    }
+    setSlotToFill(null);
+  };
+
   // スロットへのドラッグオーバー
   const handleDragOver = (e: DragEvent<HTMLDivElement>, line: 'front' | 'back', index: number) => {
     e.preventDefault();
@@ -1276,7 +1302,7 @@ export default function DeckBuilder({
                     <CardSlot
                       position="front"
                       size="small"
-                      onClick={() => setSelectedSlot({ line: 'front', index })}
+                      onClick={() => handleSlotTap('front', index)}
                     />
                   )}
                 </div>
@@ -1326,7 +1352,7 @@ export default function DeckBuilder({
                     <CardSlot
                       position="back"
                       size="small"
-                      onClick={() => setSelectedSlot({ line: 'back', index })}
+                      onClick={() => handleSlotTap('back', index)}
                     />
                   )}
                 </div>
@@ -1855,6 +1881,71 @@ export default function DeckBuilder({
             >
               {language === 'ja' ? 'キャンセル' : 'Cancel'}
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ゲーム選択ポップアップ（スロットタップ時） */}
+      {slotToFill && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setSlotToFill(null)}>
+          <div
+            className="pop-card p-4 max-w-md w-full max-h-[80vh] flex flex-col"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* ヘッダー */}
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span
+                  className="px-2 py-1 rounded text-white text-xs font-bold"
+                  style={{ backgroundColor: slotToFill.line === 'front' ? 'var(--pop-red)' : 'var(--pop-blue)' }}
+                >
+                  {slotToFill.line === 'front'
+                    ? (language === 'ja' ? '前衛' : 'Front')
+                    : (language === 'ja' ? '後衛' : 'Back')}
+                </span>
+                <span className="text-sm font-bold">
+                  {language === 'ja' ? `${slotToFill.index + 1}番スロット` : `Slot #${slotToFill.index + 1}`}
+                </span>
+              </div>
+              <button
+                onClick={() => setSlotToFill(null)}
+                className="p-1 rounded hover:bg-gray-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <p className="text-sm text-gray-500 mb-3">
+              {language === 'ja' ? '配置するゲームを選択' : 'Select a game to place'}
+            </p>
+
+            {/* ゲームリスト */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="grid grid-cols-3 gap-2">
+                {sortedCards.length > 0 ? sortedCards.map(card => (
+                  <button
+                    key={card.appid}
+                    onClick={() => selectCardForSlot(card)}
+                    className="flex flex-col items-center p-2 rounded-lg border-2 border-transparent hover:border-[#3D3D3D] hover:bg-gray-50 transition-all"
+                  >
+                    <img
+                      src={card.headerImage}
+                      alt={card.name}
+                      className="w-full aspect-[460/215] object-cover rounded border border-gray-300 mb-1"
+                    />
+                    <p className="text-xs font-medium text-center line-clamp-2 leading-tight">{card.name}</p>
+                    <div className="flex items-center gap-2 mt-1 text-xs">
+                      <span style={{ color: 'var(--pop-red)' }}>{card.attack}</span>
+                      <span style={{ color: 'var(--pop-green)' }}>{card.hp}</span>
+                    </div>
+                  </button>
+                )) : (
+                  <p className="col-span-3 text-center text-gray-500 py-8">
+                    {language === 'ja' ? '配置可能なゲームがありません' : 'No games available'}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
