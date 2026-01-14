@@ -7,6 +7,7 @@ import {
   getWishlist,
   getCompletedGames,
 } from '@/lib/steam';
+import { initDatabase, initWishlistTable, syncUserWishlist } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams;
@@ -41,6 +42,22 @@ export async function GET(request: NextRequest) {
       getOwnedGames(steamId),
       includeWishlist ? getWishlist(steamId) : Promise.resolve([]),
     ]);
+
+    // ウィッシュリストをDBに保存（バックグラウンドで実行）
+    if (includeWishlist && wishlist.length > 0) {
+      (async () => {
+        try {
+          await initDatabase();
+          await initWishlistTable();
+          await syncUserWishlist(
+            steamId,
+            wishlist.map(g => ({ appid: g.appid, name: g.name }))
+          );
+        } catch (error) {
+          console.error('Failed to sync wishlist to DB:', error);
+        }
+      })();
+    }
 
     if (!profile) {
       return NextResponse.json(
