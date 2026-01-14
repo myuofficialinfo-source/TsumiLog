@@ -51,6 +51,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
   const [containerHeight, setContainerHeight] = useState(400);
+  const [cachedImageUrl, setCachedImageUrl] = useState<string | null>(null);
   const { language } = useLanguage();
 
   // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用（本番環境では無効）
@@ -74,10 +75,53 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     return `${backlogGames.length}-${backlogGames[0]?.appid || 0}`;
   }, [displayGames]);
 
+  // キャッシュキー
+  const cacheKey = `backlogTower_${backlogKey}`;
+
   // 初期化済みキーを保持（同じデータでの再実行を防ぐ）
   const initializedKeyRef = useRef<string | null>(null);
 
+  // キャッシュから画像を読み込む
   useEffect(() => {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const data = JSON.parse(cached);
+        setCachedImageUrl(data.imageUrl);
+        setContainerHeight(data.height || 400);
+        setIsComplete(true);
+      }
+    } catch {
+      // キャッシュ読み込みエラーは無視
+    }
+  }, [cacheKey]);
+
+  // キャッシュ画像をキャンバスに描画
+  useEffect(() => {
+    if (!cachedImageUrl || !containerRef.current || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      // コンテナの幅に合わせてキャンバスサイズを設定
+      const containerWidth = containerRef.current?.clientWidth || 400;
+      const scale = containerWidth / img.width;
+      canvas.width = containerWidth;
+      canvas.height = img.height * scale;
+      setContainerHeight(canvas.height);
+
+      // キャッシュ画像を描画
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.src = cachedImageUrl;
+  }, [cachedImageUrl]);
+
+  // キャッシュがない場合はアニメーションを実行
+  useEffect(() => {
+    if (cachedImageUrl) return; // キャッシュがあればスキップ
     if (!containerRef.current || !canvasRef.current) return;
 
     const backlogGames = displayGames.filter((g: Game) => g.isBacklog);
@@ -240,7 +284,22 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const dropInterval = setInterval(() => {
         if (dropIndex >= backlogGames.length) {
           clearInterval(dropInterval);
-          setTimeout(() => setIsComplete(true), 1000);
+          // 1秒後に完了状態にしてキャッシュに保存
+          setTimeout(() => {
+            setIsComplete(true);
+            // キャンバスをキャッシュに保存
+            try {
+              if (canvas) {
+                const imageUrl = canvas.toDataURL('image/png', 0.8);
+                sessionStorage.setItem(cacheKey, JSON.stringify({
+                  imageUrl,
+                  height,
+                }));
+              }
+            } catch {
+              // キャッシュ保存エラーは無視（容量超過など）
+            }
+          }, 1000);
           return;
         }
 
@@ -356,7 +415,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       // クリーンアップ時にキーをリセットして、再マウント時に再初期化できるようにする
       initializedKeyRef.current = null;
     };
-  }, [backlogKey, displayGames]);
+  }, [backlogKey, displayGames, cachedImageUrl, cacheKey]);
 
   const backlogGamesForRender = displayGames.filter((g: Game) => g.isBacklog);
   if (backlogGamesForRender.length === 0) return null;
