@@ -2,48 +2,17 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { ArrowLeft, Globe } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { Header } from '@/components/Layout';
 
 export default function TermsOfService() {
-  const { language, setLanguage, t } = useLanguage();
+  const { language, t } = useLanguage();
 
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
-      {/* ヘッダー */}
-      <header className="border-b-3 border-[#3D3D3D] sticky top-0 z-50" style={{ backgroundColor: 'var(--card-bg)' }}>
-        <div className="max-w-7xl mx-auto px-4 py-3 flex justify-between items-center">
-          <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity">
-            <Image src="/icons/icom.png" alt={t('app.title')} width={48} height={48} />
-            <div>
-              <h1 className="text-2xl font-black gradient-text">{t('app.title')}<span className="text-sm font-medium text-gray-500 ml-1">{language === 'ja' ? '（β版）' : '(beta)'}</span></h1>
-              <p className="text-xs text-gray-500 font-medium">{t('app.subtitle')}</p>
-            </div>
-          </Link>
-          <div className="flex items-center gap-2">
-            {/* 言語切り替えボタン */}
-            <button
-              onClick={() => setLanguage(language === 'ja' ? 'en' : 'ja')}
-              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
-              style={{ backgroundColor: 'var(--card-bg)' }}
-            >
-              <Globe className="w-4 h-4" />
-              {language === 'ja' ? 'EN' : 'JA'}
-            </button>
-          </div>
-        </div>
-      </header>
+      <Header showBack backHref="/" />
 
       <main className="flex-grow max-w-3xl mx-auto px-4 py-8 w-full">
-        <Link
-          href="/"
-          className="inline-flex items-center gap-2 font-bold mb-6 hover:opacity-70 transition-opacity"
-          style={{ color: 'var(--pop-blue)' }}
-        >
-          <ArrowLeft size={20} />
-          {language === 'ja' ? 'トップページに戻る' : 'Back to Home'}
-        </Link>
-
         <div className="pop-card p-8">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-3 h-8 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
@@ -100,6 +69,8 @@ export default function TermsOfService() {
                   <li>サービスの運営を妨害する行為</li>
                   <li>他のユーザーになりすます行為</li>
                   <li>APIの過度な利用やスクレイピング</li>
+                  <li>バトル機能における不正行為（データ改ざん、チートツール使用等）</li>
+                  <li>ランキング操作を目的とした行為</li>
                 </ul>
               </section>
 
@@ -125,7 +96,55 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
-                  6. 知的財産権
+                  6. バトル機能について
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  本サービスのバトル機能では、以下の点にご同意いただいたものとします：
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>あなたが作成したバトル用デッキは、他のユーザーとの対戦に使用されます</li>
+                  <li>ランキングや対戦結果の正確性・公平性について保証しません</li>
+                  <li>不正行為が確認された場合、予告なくデータ削除やアカウント制限を行う場合があります</li>
+                  <li>バトルシステムのバランス調整により、過去の結果が変動する場合があります</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-blue)' }} />
+                  7. カレンダー機能について
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  本サービスのカレンダー機能では、以下の点にご留意ください：
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>カレンダーに登録した予定データはサーバーに保存され、SteamIDに紐づいて管理されます</li>
+                  <li>予定データは同じSteamアカウントでログインすれば、別のデバイスからもアクセスできます</li>
+                  <li>Steamセールやイベント情報の正確性・最新性について保証しません</li>
+                  <li>ウィッシュリストの発売日情報はSteamから取得しており、変更される場合があります</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-red)' }} />
+                  8. アカウント削除について
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  アカウント削除機能について、以下の点にご留意ください：
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>アカウント設定画面からいつでもアカウントを削除できます</li>
+                  <li>削除されるデータ：バトルランキング、昇華ボーナス、ゲームカレンダーの全データ</li>
+                  <li>一度削除したデータは復元できません</li>
+                  <li>再度Steamログインしても、削除前のデータは復元されません</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
+                  9. 知的財産権
                 </h2>
                 <p className="text-gray-600">
                   Steam、およびSteamのロゴはValve Corporationの商標です。
@@ -136,7 +155,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  7. 規約の変更
+                  10. 規約の変更
                 </h2>
                 <p className="text-gray-600">
                   本規約は予告なく変更される場合があります。
@@ -146,7 +165,7 @@ export default function TermsOfService() {
 
               <div className="pt-4 border-t-2 border-gray-200">
                 <p className="text-sm text-gray-400">
-                  最終更新日: 2025年1月
+                  最終更新日: 2026年1月
                 </p>
               </div>
             </div>
@@ -198,6 +217,8 @@ export default function TermsOfService() {
                   <li>Actions that interfere with service operation</li>
                   <li>Impersonating other users</li>
                   <li>Excessive API usage or scraping</li>
+                  <li>Cheating in battle features (data manipulation, cheat tools, etc.)</li>
+                  <li>Actions intended to manipulate rankings</li>
                 </ul>
               </section>
 
@@ -223,7 +244,55 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-yellow)' }} />
-                  6. Intellectual Property
+                  6. Battle Features
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  By using the battle features of this service, you agree to the following:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>Your battle deck will be used in battles against other users</li>
+                  <li>We do not guarantee the accuracy or fairness of rankings or battle results</li>
+                  <li>If cheating is detected, we may delete data or restrict accounts without notice</li>
+                  <li>Past results may change due to battle system balance adjustments</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-blue)' }} />
+                  7. Calendar Features
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  Please note the following regarding the calendar features:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>Calendar event data is stored on our server and linked to your SteamID</li>
+                  <li>You can access your calendar data from different devices by logging in with the same Steam account</li>
+                  <li>We do not guarantee the accuracy or timeliness of Steam sale and event information</li>
+                  <li>Wishlist release dates are fetched from Steam and may change</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-red)' }} />
+                  8. Account Deletion
+                </h2>
+                <p className="text-gray-600 mb-2">
+                  Please note the following regarding account deletion:
+                </p>
+                <ul className="list-disc list-inside space-y-1 text-gray-600 ml-4">
+                  <li>You can delete your account at any time from the account settings</li>
+                  <li>Data deleted: All battle rankings, sublimation bonuses, and game calendar data</li>
+                  <li>Deleted data cannot be recovered</li>
+                  <li>Data will not be restored even if you log in with Steam again</li>
+                </ul>
+              </section>
+
+              <section>
+                <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-green)' }} />
+                  9. Intellectual Property
                 </h2>
                 <p className="text-gray-600">
                   Steam and the Steam logo are trademarks of Valve Corporation.
@@ -234,7 +303,7 @@ export default function TermsOfService() {
               <section>
                 <h2 className="text-lg font-bold mb-2 flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full" style={{ backgroundColor: 'var(--pop-pink)' }} />
-                  7. Changes to Terms
+                  10. Changes to Terms
                 </h2>
                 <p className="text-gray-600">
                   These terms may be changed without notice.
@@ -244,7 +313,7 @@ export default function TermsOfService() {
 
               <div className="pt-4 border-t-2 border-gray-200">
                 <p className="text-sm text-gray-400">
-                  Last updated: January 2025
+                  Last updated: January 2026
                 </p>
               </div>
             </div>

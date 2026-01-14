@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { RelyingParty } from 'openid';
+import { getUserProfile } from '@/lib/steam';
+import { upsertUser, initDatabase } from '@/lib/db';
 
 const STEAM_OPENID_URL = 'https://steamcommunity.com/openid';
+
+// DB初期化フラグ
+let dbInitialized = false;
+
+async function ensureDbInitialized() {
+  if (!dbInitialized) {
+    await initDatabase();
+    dbInitialized = true;
+  }
+}
 
 function getBaseUrl(request: NextRequest): string {
   const host = request.headers.get('host') || 'localhost:3000';
@@ -54,7 +66,7 @@ export async function GET(request: NextRequest) {
     const fullUrl = request.url;
 
     return new Promise<NextResponse>((resolve) => {
-      relyingParty.verifyAssertion(fullUrl, (error, result) => {
+      relyingParty.verifyAssertion(fullUrl, async (error, result) => {
         if (error || !result || !result.authenticated) {
           resolve(NextResponse.redirect(`${baseUrl}?error=auth_failed`));
           return;
@@ -68,6 +80,24 @@ export async function GET(request: NextRequest) {
         if (!steamId) {
           resolve(NextResponse.redirect(`${baseUrl}?error=invalid_steam_id`));
           return;
+        }
+
+        // ユーザーをDBに登録（ログイン時に自動登録）
+        try {
+          await ensureDbInitialized();
+
+          // Steamプロフィールを取得
+          const profile = await getUserProfile(steamId);
+
+          // DBにユーザー登録（新規ユーザーは最下位からスタート）
+          await upsertUser(
+            steamId,
+            profile?.personaName,
+            profile?.avatarUrl
+          );
+        } catch (dbError) {
+          console.error('Failed to register user:', dbError);
+          // DB登録失敗しても認証は続行
         }
 
         // Steam IDをクエリパラメータとして返す

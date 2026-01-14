@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useMemo } from 'react';
 import { Download, X } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useSearchParams } from 'next/navigation';
 
 interface Game {
   appid: number;
@@ -16,20 +17,148 @@ interface BacklogTowerProps {
   backlogCount: number;
 }
 
+// テスト用ダミーデータを生成
+function generateDummyGames(count: number): Game[] {
+  const dummyGames: Game[] = [];
+  // 実際に存在するSteamゲームのappidを使用（画像が表示される）
+  const sampleAppIds = [
+    730, 570, 440, 304930, 292030, 271590, 620, 227300, 49520,
+    8930, 105600, 289070, 252490, 311210, 374320, 377160, 435150,
+    582010, 632360, 892970, 1174180, 1245620, 1091500, 367520,
+    550, 413150, 219740, 286160, 322330, 242760, 261640, 274170,
+    285900, 294100, 289130, 230410, 236390, 245620, 250900, 255220,
+    257350, 262060, 264710, 267360, 268500, 269950, 271640, 273110,
+    274940, 275850
+  ];
+
+  for (let i = 0; i < count; i++) {
+    const appid = sampleAppIds[i % sampleAppIds.length] + Math.floor(i / sampleAppIds.length) * 10000;
+    dummyGames.push({
+      appid,
+      name: `Dummy Game ${i + 1}`,
+      headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${sampleAppIds[i % sampleAppIds.length]}/header.jpg`,
+      isBacklog: true,
+    });
+  }
+  return dummyGames;
+}
+
 export default function BacklogTower({ games, backlogCount }: BacklogTowerProps) {
+  const searchParams = useSearchParams();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isComplete, setIsComplete] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
-  const [containerHeight, setContainerHeight] = useState(400);
   const { language } = useLanguage();
 
+  // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用（本番環境では無効）
+  const dummyCount = searchParams.get('dummyBacklog');
+  const dummyCountNum = process.env.NODE_ENV === 'production' ? 0 : (dummyCount ? parseInt(dummyCount, 10) : 0);
+
+  // ダミーデータをメモ化して再生成を防ぐ
+  const testGames = useMemo(() => {
+    if (dummyCountNum > 0) {
+      return generateDummyGames(dummyCountNum);
+    }
+    return null;
+  }, [dummyCountNum]);
+
+  const displayGames = testGames || games;
+  const displayBacklogCount = testGames ? testGames.length : backlogCount;
+
+  // 積みゲーリストのキー（変更検知用）
+  const backlogKey = useMemo(() => {
+    const backlogGames = displayGames.filter((g: Game) => g.isBacklog);
+    return `${backlogGames.length}-${backlogGames[0]?.appid || 0}`;
+  }, [displayGames]);
+
+  // キャッシュキー
+  const cacheKey = `backlogTower_${backlogKey}`;
+
+  // キャッシュを同期的に取得（初期レンダリング時に使用）
+  const getInitialCache = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {
+      // 無視
+    }
+    return null;
+  };
+
+  const initialCache = getInitialCache();
+  const [isComplete, setIsComplete] = useState(!!initialCache);
+  const [containerHeight, setContainerHeight] = useState(initialCache?.height || 400);
+  const [cachedImageUrl, setCachedImageUrl] = useState<string | null>(initialCache?.imageUrl || null);
+
+  // 初期化済みキーを保持（同じデータでの再実行を防ぐ）
+  const initializedKeyRef = useRef<string | null>(initialCache ? backlogKey : null);
+
+  // キャッシュキーが変わったら再チェック
   useEffect(() => {
+    if (cachedImageUrl) return; // 既にキャッシュがあればスキップ
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        const data = JSON.parse(cached);
+        setCachedImageUrl(data.imageUrl);
+        setContainerHeight(data.height || 400);
+        setIsComplete(true);
+        initializedKeyRef.current = backlogKey;
+      }
+    } catch {
+      // キャッシュ読み込みエラーは無視
+    }
+  }, [cacheKey, cachedImageUrl, backlogKey]);
+
+  // キャッシュ画像をキャンバスに描画
+  useEffect(() => {
+    if (!cachedImageUrl || !containerRef.current || !canvasRef.current) return;
+
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const img = new Image();
+    img.onload = () => {
+      // コンテナの幅に合わせてキャンバスサイズを設定
+      const containerWidth = containerRef.current?.clientWidth || 400;
+      // 元の画像のアスペクト比を維持
+      const aspectRatio = img.height / img.width;
+      canvas.width = containerWidth;
+      canvas.height = containerWidth * aspectRatio;
+      setContainerHeight(canvas.height);
+
+      // キャッシュ画像を描画（元のサイズで描画）
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    };
+    img.onerror = () => {
+      // キャッシュ画像の読み込みに失敗した場合、キャッシュをクリアしてアニメーションを再実行
+      setCachedImageUrl(null);
+      setIsComplete(false);
+      try {
+        sessionStorage.removeItem(cacheKey);
+      } catch {
+        // 無視
+      }
+    };
+    img.src = cachedImageUrl;
+  }, [cachedImageUrl, cacheKey]);
+
+  // キャッシュがない場合はアニメーションを実行
+  useEffect(() => {
+    if (cachedImageUrl) return; // キャッシュがあればスキップ
     if (!containerRef.current || !canvasRef.current) return;
 
-    const backlogGames = games.filter(g => g.isBacklog);
+    const backlogGames = displayGames.filter((g: Game) => g.isBacklog);
     if (backlogGames.length === 0) return;
+
+    // 同じキーで既に初期化済みならスキップ
+    if (initializedKeyRef.current === backlogKey) return;
+    initializedKeyRef.current = backlogKey;
 
     let cleanup: (() => void) | undefined;
     let isCancelled = false;
@@ -64,7 +193,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     // 画像を事前にロード（1000本未満のとき使用）
     const loadImages = async () => {
       await Promise.all(
-        backlogGames.map((game) => {
+        backlogGames.map((game: Game) => {
           return new Promise<void>((resolve) => {
             const img = new Image();
             img.crossOrigin = 'anonymous';
@@ -144,11 +273,11 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         isStatic: true,
         label: 'ground',
       });
-      const leftWall = Bodies.rectangle(-25, height / 2, 50, height, {
+      const leftWall = Bodies.rectangle(-25, height / 2, 50, height * 2, {
         isStatic: true,
         label: 'wall',
       });
-      const rightWall = Bodies.rectangle(width + 25, height / 2, 50, height, {
+      const rightWall = Bodies.rectangle(width + 25, height / 2, 50, height * 2, {
         isStatic: true,
         label: 'wall',
       });
@@ -159,38 +288,57 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
       const bodyGameMap = new Map<number, number>();
 
       // 積みゲー数に応じて落下間隔を調整（多いほど早く）
+      // また、一度に複数個落とすかどうかも調整
       let dropIntervalMs = 150;
-      let dropsPerInterval = 1;
+      let dropsPerInterval = 1; // 一度に落とす数
 
       if (gameCount >= 1000) {
-        dropIntervalMs = 5;
-        dropsPerInterval = 10;
+        dropIntervalMs = 5; // 1000本以上：超最高速
+        dropsPerInterval = 10; // 10個ずつ落とす
       } else if (gameCount >= 500) {
-        dropIntervalMs = 15;
-        dropsPerInterval = 3;
+        dropIntervalMs = 15; // 500〜999本：超高速
+        dropsPerInterval = 3; // 3個ずつ落とす
       } else if (gameCount >= 300) {
-        dropIntervalMs = 20;
-        dropsPerInterval = 2;
+        dropIntervalMs = 20; // 300〜499本：かなり高速
+        dropsPerInterval = 2; // 2個ずつ落とす
       } else if (gameCount >= 200) {
-        dropIntervalMs = 30;
+        dropIntervalMs = 30; // 200〜299本：高速
       } else if (gameCount >= 100) {
-        dropIntervalMs = 50;
+        dropIntervalMs = 60; // 100〜199本：やや高速
       } else if (gameCount >= 50) {
-        dropIntervalMs = 80;
+        dropIntervalMs = 100; // 50〜99本：少し早く
       }
 
       let dropIndex = 0;
       const dropInterval = setInterval(() => {
-        for (let i = 0; i < dropsPerInterval; i++) {
-          if (dropIndex >= backlogGames.length) {
-            clearInterval(dropInterval);
-            setTimeout(() => setIsComplete(true), 1000);
-            return;
-          }
+        if (dropIndex >= backlogGames.length) {
+          clearInterval(dropInterval);
+          // 1秒後に完了状態にしてキャッシュに保存
+          setTimeout(() => {
+            setIsComplete(true);
+            // キャンバスをキャッシュに保存
+            try {
+              if (canvas) {
+                const imageUrl = canvas.toDataURL('image/png', 0.8);
+                sessionStorage.setItem(cacheKey, JSON.stringify({
+                  imageUrl,
+                  width: canvas.width,
+                  height: canvas.height,
+                }));
+              }
+            } catch {
+              // キャッシュ保存エラーは無視（容量超過など）
+            }
+          }, 1000);
+          return;
+        }
 
+        // 一度に複数個落とす
+        for (let i = 0; i < dropsPerInterval && dropIndex < backlogGames.length; i++) {
           const game = backlogGames[dropIndex];
-          // 真ん中から少しだけランダムにずらす
-          const x = width / 2 + (Math.random() - 0.5) * 60;
+          // 真ん中から少しだけランダムにずらす（幅が変わるので調整）
+          const randomOffset = Math.min(width * 0.3, 100);
+          const x = width / 2 + (Math.random() - 0.5) * randomOffset;
 
           const box = Bodies.rectangle(x, -50, boxWidth, boxHeight, {
             restitution: 0.3,
@@ -292,12 +440,15 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     });
 
     return () => {
+      isCancelled = true;
       if (cleanup) cleanup();
+      // クリーンアップ時にキーをリセットして、再マウント時に再初期化できるようにする
+      initializedKeyRef.current = null;
     };
-  }, [games]);
+  }, [backlogKey, displayGames, cachedImageUrl, cacheKey]);
 
-  const backlogGames = games.filter(g => g.isBacklog);
-  if (backlogGames.length === 0) return null;
+  const backlogGamesForRender = displayGames.filter((g: Game) => g.isBacklog);
+  if (backlogGamesForRender.length === 0) return null;
 
   // エクスポート用キャンバスを生成
   const createExportCanvas = () => {
@@ -330,7 +481,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     exportCtx.font = 'bold 24px sans-serif';
     exportCtx.textAlign = 'center';
     exportCtx.fillText(
-      language === 'ja' ? `積みゲータワー【${backlogCount}本】` : `Backlog Tower【${backlogCount} games】`,
+      language === 'ja' ? `積みゲータワー【${displayBacklogCount}本】` : `Backlog Tower【${displayBacklogCount} games】`,
       exportCanvas.width / 2,
       40
     );
@@ -351,7 +502,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
     const exportCanvas = createExportCanvas();
     if (!exportCanvas) return;
 
-    // モバイル判定
+    // モバイル判定（タッチデバイスかつ画面幅が小さい）
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
 
@@ -363,7 +514,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         });
 
         if (blob) {
-          const file = new File([blob], `backlog-tower-${backlogCount}.png`, { type: 'image/png' });
+          const file = new File([blob], `backlog-tower-${displayBacklogCount}.png`, { type: 'image/png' });
 
           if (navigator.canShare({ files: [file] })) {
             await navigator.share({
@@ -389,7 +540,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
 
     // PCおよびその他のブラウザは直接ダウンロード
     const link = document.createElement('a');
-    link.download = `backlog-tower-${backlogCount}.png`;
+    link.download = `backlog-tower-${displayBacklogCount}.png`;
     link.href = exportCanvas.toDataURL('image/png');
     link.click();
   };
@@ -397,8 +548,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   // Xでシェア
   const shareToX = () => {
     const text = language === 'ja'
-      ? `私の積みゲータワー【${backlogCount}本】\n\n#ツミナビ #Steam #積みゲー\nhttps://tsumi-navi.vercel.app`
-      : `My Backlog Tower【${backlogCount} games】\n\n#TsumiNavi #Steam #Backlog\nhttps://tsumi-navi.vercel.app`;
+      ? `私の積みゲータワー【${displayBacklogCount}本】\n\n#ツミナビ #Steam #積みゲー\nhttps://tsumi-navi.vercel.app`
+      : `My Backlog Tower【${displayBacklogCount} games】\n\n#TsumiNavi #Steam #Backlog\nhttps://tsumi-navi.vercel.app`;
 
     const url = `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`;
     window.open(url, '_blank');
@@ -415,7 +566,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         </p>
       </div>
 
-      <div ref={containerRef} className="relative w-full" style={{ height: '400px' }}>
+      <div ref={containerRef} className="relative w-full" style={{ height: `${containerHeight}px` }}>
         <canvas ref={canvasRef} style={{ display: 'block' }} />
 
         {isComplete && (
@@ -429,7 +580,7 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
               }}
             >
               <p className="text-4xl font-black gradient-text">
-                {backlogCount} {language === 'ja' ? '本' : 'games'}
+                {displayBacklogCount} {language === 'ja' ? '本' : 'games'}
               </p>
               <p className="text-lg font-bold text-gray-600 mt-1">
                 {language === 'ja' ? '積みゲーが眠っています...' : 'waiting to be played...'}

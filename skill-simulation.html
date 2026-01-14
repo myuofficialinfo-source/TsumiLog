@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>Skill Distribution Simulation</title>
+  <style>
+    body { font-family: monospace; background: #1a1a2e; color: #eee; padding: 20px; }
+    h1 { color: #fff; }
+    .result { background: #16213e; padding: 15px; border-radius: 8px; margin: 10px 0; }
+    .bar { height: 20px; background: linear-gradient(90deg, #4ecdc4, #44a08d); margin: 2px 0; border-radius: 3px; }
+    .skill-row { display: flex; align-items: center; margin: 5px 0; }
+    .skill-name { width: 150px; }
+    .skill-count { width: 80px; text-align: right; margin-left: 10px; }
+    .warning { color: #ff6b6b; font-weight: bold; }
+    .good { color: #26de81; }
+    button { padding: 10px 20px; font-size: 16px; cursor: pointer; margin: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Skill Distribution Simulation (1000 Games)</h1>
+  <button onclick="runSimulation()">Run Simulation</button>
+  <button onclick="runSimulation(5000)">Run 5000 Games</button>
+  <div id="output"></div>
+
+  <script>
+    // TAG_COORDS (from skill-map-preview.html)
+    const TAG_COORDS = {
+      'Action': { x: 3, y: 2 }, 'Action-Adventure': { x: 2, y: 1 }, 'FPS': { x: 4, y: 3 },
+      'Shooter': { x: 4, y: 2 }, 'Third Person': { x: 3, y: 1 }, 'Third Person Shooter': { x: 4, y: 2 },
+      'Hack and Slash': { x: 4, y: 1 }, 'Fighting': { x: 4, y: 0 }, 'Beat em up': { x: 3, y: 0 },
+      'Souls-like': { x: 3, y: -2 }, 'Action RPG': { x: 2, y: -1 }, 'Bullet Hell': { x: 3, y: 4 },
+      'Shoot Em Up': { x: 3, y: 3 }, 'Top-Down Shooter': { x: 3, y: 2 }, 'Top-Down': { x: 1, y: 1 },
+      'Twin Stick Shooter': { x: 3, y: 3 }, 'Arena Shooter': { x: 4, y: 3 }, 'Tactical Shooter': { x: 2, y: 1 },
+      'Looter Shooter': { x: 3, y: 0 }, 'Hero Shooter': { x: 3, y: 2 }, 'Gore': { x: 4, y: -2 },
+      'Violent': { x: 4, y: -1 }, 'Roguelike': { x: 2, y: 1 }, 'Roguelite': { x: 2, y: 2 },
+      'Roguevania': { x: 2, y: 1 }, 'Traditional Roguelike': { x: 1, y: -1 }, 'Roguelike Deckbuilder': { x: 0, y: 0 },
+      'Difficult': { x: 2, y: -1 }, 'Permadeath': { x: 3, y: -1 }, 'First-Person': { x: 2, y: 1 },
+      'Melee': { x: 3, y: 0 }, 'Swordplay': { x: 3, y: 0 }, 'Dungeon Crawler': { x: 2, y: 0 },
+      'Side Scroller': { x: 2, y: 2 }, 'Character Action Game': { x: 4, y: 1 }, 'Spectacle fighter': { x: 4, y: 1 },
+      'Mature': { x: 3, y: -2 }, 'Adult': { x: 2, y: -2 }, 'NSFW': { x: 2, y: -2 },
+      'Sexual Content': { x: 1, y: -2 }, 'Nudity': { x: 1, y: -2 },
+
+      'Strategy': { x: -2, y: -2 }, 'Turn-Based': { x: -3, y: -3 }, 'Turn-Based Strategy': { x: -3, y: -2 },
+      'Turn-Based Tactics': { x: -2, y: -2 }, 'Turn-Based Combat': { x: -2, y: -2 }, 'Real Time Tactics': { x: -1, y: 1 },
+      'RTS': { x: -1, y: 2 }, 'Tower Defense': { x: -3, y: 0 }, 'Card Game': { x: -2, y: -1 },
+      'Card Battler': { x: -1, y: -1 }, 'Deckbuilding': { x: -2, y: -1 }, 'Trading Card Game': { x: -2, y: -1 },
+      'Collectible Card Game': { x: -2, y: -1 }, 'Tactical': { x: -2, y: -1 }, 'Tactical RPG': { x: -1, y: -2 },
+      'Grand Strategy': { x: -3, y: -4 }, '4X': { x: -2, y: -4 }, 'Stealth': { x: 1, y: 1 },
+      'Military': { x: -1, y: -1 }, 'War': { x: 0, y: -1 }, 'Wargame': { x: -2, y: -2 },
+      'Auto Battler': { x: -1, y: 0 }, 'MOBA': { x: 1, y: 2 },
+
+      'RPG': { x: 0, y: -3 }, 'JRPG': { x: 1, y: -3 }, 'CRPG': { x: -1, y: -3 },
+      'MMORPG': { x: 1, y: -2 }, 'MMO': { x: 0, y: -2 }, 'Party-Based RPG': { x: 0, y: -3 },
+      'Adventure': { x: 0, y: -1 }, 'Story Rich': { x: -1, y: -2 }, 'Narrative': { x: -1, y: -2 },
+      'Choices Matter': { x: -1, y: -3 }, 'Visual Novel': { x: -2, y: -2 }, 'Interactive Fiction': { x: -2, y: -3 },
+      'Walking Simulator': { x: -1, y: -1 }, 'Exploration': { x: 0, y: 0 }, 'Open World': { x: 1, y: -1 },
+      'Sandbox': { x: 1, y: 0 }, 'Singleplayer': { x: 0, y: -1 }, 'Sci-fi': { x: 1, y: 1 },
+      'Fantasy': { x: 0, y: -2 }, 'Dark Fantasy': { x: 1, y: -2 }, 'Survival': { x: 1, y: -2 },
+      'Open World Survival Craft': { x: 1, y: -1 }, '3D': { x: 1, y: 0 }, 'Point & Click': { x: -1, y: -1 },
+      'Choose Your Own Adventure': { x: -1, y: -2 }, 'Drama': { x: -1, y: -2 }, 'Emotional': { x: -1, y: -2 },
+      'Conversation': { x: -2, y: -2 }, 'Dialogue': { x: -2, y: -2 }, 'Character Customization': { x: 0, y: -2 },
+      'Space': { x: 1, y: 0 }, 'Cyberpunk': { x: 2, y: 0 }, 'Steampunk': { x: 1, y: -1 },
+      'Post-apocalyptic': { x: 1, y: -2 }, 'Dystopian': { x: 0, y: -2 }, 'Historical': { x: -1, y: -2 },
+      'Medieval': { x: 0, y: -2 }, 'Western': { x: 1, y: 0 }, 'Pirates': { x: 2, y: 1 },
+      'Mythology': { x: 0, y: -2 }, 'Cinematic': { x: 0, y: -1 }, 'Immersive Sim': { x: 0, y: -1 },
+
+      'Horror': { x: -2, y: -1 }, 'Psychological Horror': { x: -3, y: -2 }, 'Survival Horror': { x: -2, y: -2 },
+      'Lovecraftian': { x: -3, y: -3 }, 'Dark': { x: -1, y: -2 }, 'Gothic': { x: -2, y: -2 },
+      'Atmospheric': { x: -1, y: -1 }, 'Mystery': { x: -2, y: -2 }, 'Thriller': { x: -1, y: 0 },
+      'Supernatural': { x: -2, y: -1 }, 'Vampire': { x: -1, y: -1 }, 'Zombies': { x: 1, y: 0 },
+      'Aliens': { x: 1, y: 0 }, 'Dark Comedy': { x: -1, y: 0 }, 'Dark Humor': { x: -1, y: 0 },
+      'Noir': { x: -2, y: -1 },
+
+      'Casual': { x: 0, y: 1 }, 'Relaxing': { x: -1, y: 0 }, 'Cozy': { x: -2, y: 0 },
+      'Wholesome': { x: -2, y: 0 }, 'Cute': { x: -1, y: 1 }, 'Colorful': { x: 0, y: 1 },
+      'Puzzle': { x: -1, y: -1 }, 'Puzzle Platformer': { x: 0, y: 0 }, 'Logic': { x: -2, y: -2 },
+      'Match 3': { x: -1, y: 1 }, 'Hidden Object': { x: -2, y: -1 }, 'Programming': { x: -2, y: -2 },
+      'Hacking': { x: 0, y: 0 }, 'Physics': { x: 0, y: 0 }, 'Platformer': { x: 2, y: 2 },
+      'Precision Platformer': { x: 2, y: 2 }, 'Cinematic Platformer': { x: 1, y: 1 }, '3D Platformer': { x: 2, y: 2 },
+      '2D Platformer': { x: 2, y: 2 }, 'Metroidvania': { x: 2, y: 1 }, 'Indie': { x: 0, y: 0 },
+      'Anime': { x: 0, y: 0 }, 'Cartoon': { x: -1, y: 1 }, 'Pixel Graphics': { x: 0, y: 1 },
+      'Retro': { x: 1, y: 1 }, 'Classic': { x: 0, y: 0 }, 'Minimalist': { x: -1, y: 0 },
+      'Hand-drawn': { x: -1, y: 0 }, 'Stylized': { x: 0, y: 0 }, '2D': { x: 0, y: 1 },
+      '2.5D': { x: 1, y: 1 }, 'Early Access': { x: 0, y: 2 }, 'Family Friendly': { x: -1, y: 1 },
+      'Education': { x: -2, y: -1 }, 'Educational': { x: -2, y: -1 }, 'Comedy': { x: 0, y: 1 },
+      'Satire': { x: -1, y: 0 }, 'Parody': { x: 0, y: 1 }, 'Memes': { x: 0, y: 2 },
+      'Clicker': { x: -1, y: 1 }, 'Idle': { x: -2, y: 0 }, 'Incremental': { x: -2, y: 0 },
+
+      'Multiplayer': { x: 1, y: 2 }, 'Online Multiplayer': { x: 1, y: 2 }, 'Co-op': { x: 0, y: 1 },
+      'Online Co-Op': { x: 0, y: 2 }, 'Local Co-Op': { x: -1, y: 1 }, 'Local Multiplayer': { x: -1, y: 2 },
+      'Split Screen': { x: -1, y: 1 }, 'PvP': { x: 3, y: 3 }, 'PvE': { x: 1, y: 1 },
+      'Competitive': { x: 2, y: 3 }, 'Battle Royale': { x: 3, y: 4 }, 'Team-Based': { x: 1, y: 2 },
+      'Massively Multiplayer': { x: 0, y: -1 }, 'Asynchronous Multiplayer': { x: 0, y: 0 }, 'Free to Play': { x: 0, y: 1 },
+      'Party Game': { x: 0, y: 2 }, 'Board Game': { x: -1, y: -1 }, 'Tabletop': { x: -1, y: -1 },
+      'Tabletop RPG': { x: -1, y: -2 }, 'Trivia': { x: -1, y: 1 }, 'Word Game': { x: -1, y: 0 },
+
+      'Simulation': { x: -1, y: -2 }, 'Building': { x: -2, y: -1 }, 'City Builder': { x: -3, y: -2 },
+      'Base Building': { x: -2, y: -1 }, 'Colony Sim': { x: -2, y: -2 }, 'Management': { x: -2, y: -2 },
+      'Tycoon': { x: -2, y: -2 }, 'Economy': { x: -2, y: -3 }, 'Crafting': { x: 0, y: -1 },
+      'Farming Sim': { x: -2, y: -1 }, 'Life Sim': { x: -1, y: -1 }, 'Dating Sim': { x: -1, y: -1 },
+      'Otome': { x: -1, y: -1 }, 'Boys Love': { x: -1, y: -1 }, 'Resource Management': { x: -2, y: -2 },
+      'Automation': { x: -2, y: -2 }, 'Political Sim': { x: -3, y: -3 }, 'Political': { x: -2, y: -2 },
+      'Medical Sim': { x: -2, y: -2 }, 'Flight': { x: 0, y: 2 }, 'Procedural Generation': { x: 1, y: 0 },
+      'Hunting': { x: 1, y: 0 }, 'Fishing': { x: -1, y: 0 }, 'Nature': { x: -1, y: 0 },
+
+      'Racing': { x: 2, y: 4 }, 'Racing Sim': { x: 1, y: 3 }, 'Arcade Racing': { x: 2, y: 4 },
+      'Sports': { x: 2, y: 3 }, 'Driving': { x: 1, y: 3 }, 'Offroad': { x: 2, y: 3 },
+      'Arcade': { x: 2, y: 2 }, 'Fast-Paced': { x: 3, y: 4 }, 'Soccer': { x: 2, y: 3 },
+      'Football': { x: 2, y: 2 }, 'Basketball': { x: 2, y: 3 }, 'Baseball': { x: 1, y: 2 },
+      'Tennis': { x: 2, y: 3 }, 'Golf': { x: 0, y: 1 }, 'Boxing': { x: 3, y: 2 },
+      'Martial Arts': { x: 3, y: 1 }, 'Wrestling': { x: 3, y: 1 }, 'Cycling': { x: 1, y: 3 },
+      'Skateboarding': { x: 2, y: 3 }, 'Snowboarding': { x: 2, y: 3 }, 'Skiing': { x: 2, y: 3 },
+      'eSports': { x: 2, y: 3 }, 'Parkour': { x: 3, y: 4 }, 'Music': { x: 0, y: 2 },
+      'Rhythm': { x: 1, y: 3 }, 'VR': { x: 1, y: 1 },
+    };
+
+    // SKILL_COORDS - タグ平均の到達可能範囲に合わせて最終調整
+    // タグ平均: X=0.67, Y=-0.10 付近に収束 - 全スキル2-7%の出現率達成
+    const SKILL_COORDS = {
+      // 右上エリア (攻撃+速度)
+      'ambush': { x: 1.1, y: 0.7 }, 'training': { x: 0.7, y: 0.9 }, 'firstStrike': { x: 1.3, y: 1.15 },
+      // 右エリア (攻撃系)
+      'buff': { x: 1.3, y: 0.28 }, 'brutal': { x: 1.2, y: -0.15 }, 'gore': { x: 0.9, y: -0.4 }, 'mature': { x: 0.6, y: -0.65 },
+      // 上エリア (速度系)
+      'speed': { x: 0.2, y: 0.85 }, 'earlybird': { x: -0.1, y: 0.6 }, 'soundwave': { x: 0.4, y: 0.7 },
+      // 中央上エリア (防御+速度)
+      'tutorial': { x: -0.15, y: 0.4 }, 'freebie': { x: -0.3, y: 0.18 },
+      // 左エリア (防御系)
+      'utility': { x: -0.4, y: 0 }, 'defense': { x: -0.55, y: -0.18 }, 'fear': { x: -0.38, y: -0.42 }, 'docu': { x: -0.7, y: -0.55 },
+      // 下エリア (耐久/回復系)
+      'retouch': { x: -0.08, y: -0.7 }, 'party': { x: -0.6, y: -1.3 }, 'study': { x: 0.4, y: -0.95 },
+      'absorb': { x: 0.45, y: -0.5 }, 'teamwork': { x: 0.25, y: -0.28 },
+      // 中央エリア (特殊系)
+      'lucky': { x: 0.75, y: 0.48 }, 'publish': { x: 0.95, y: 0.35 }, 'develop': { x: 0.9, y: -0.02 },
+      'expose': { x: 0.75, y: -0.18 }, 'explore': { x: 0.5, y: 0.1 }, 'design': { x: 0.18, y: 0.25 },
+      'calculate': { x: -0.15, y: -0.22 }, 'reflect': { x: 0.08, y: -0.48 }, 'produce': { x: 0.02, y: 0.1 },
+    };
+
+    const allTags = Object.keys(TAG_COORDS);
+
+    function getRandomTags(min = 3, max = 15) {
+      const count = Math.floor(Math.random() * (max - min + 1)) + min;
+      const shuffled = [...allTags].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, count);
+    }
+
+    function calculateSkill(tags) {
+      let totalX = 0, totalY = 0, count = 0;
+      tags.forEach(tag => {
+        if (TAG_COORDS[tag]) {
+          totalX += TAG_COORDS[tag].x;
+          totalY += TAG_COORDS[tag].y;
+          count++;
+        }
+      });
+
+      if (count === 0) return null;
+
+      const avgX = totalX / count;
+      const avgY = totalY / count;
+
+      let nearestSkill = null;
+      let nearestDist = Infinity;
+
+      Object.entries(SKILL_COORDS).forEach(([name, data]) => {
+        const dist = Math.sqrt(Math.pow(data.x - avgX, 2) + Math.pow(data.y - avgY, 2));
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestSkill = name;
+        }
+      });
+
+      return { skill: nearestSkill, avgX, avgY };
+    }
+
+    function runSimulation(gameCount = 1000) {
+      const skillCounts = {};
+      const coordSamples = [];
+
+      // Initialize counts
+      Object.keys(SKILL_COORDS).forEach(skill => {
+        skillCounts[skill] = 0;
+      });
+
+      // Run simulation
+      for (let i = 0; i < gameCount; i++) {
+        const tags = getRandomTags(3, 15);
+        const result = calculateSkill(tags);
+        if (result) {
+          skillCounts[result.skill]++;
+          if (coordSamples.length < 100) {
+            coordSamples.push({ x: result.avgX, y: result.avgY });
+          }
+        }
+      }
+
+      // Sort by count
+      const sorted = Object.entries(skillCounts).sort((a, b) => b[1] - a[1]);
+      const maxCount = sorted[0][1];
+      const minCount = sorted[sorted.length - 1][1];
+      const totalSkills = Object.keys(SKILL_COORDS).length;
+      const expectedAvg = gameCount / totalSkills;
+
+      // Count zeros
+      const zeroSkills = sorted.filter(([, count]) => count === 0);
+      const lowSkills = sorted.filter(([, count]) => count < expectedAvg * 0.3);
+
+      // Output
+      let html = `<div class="result">
+        <h2>Simulation Results (${gameCount} games)</h2>
+        <p>Total skills: ${totalSkills}</p>
+        <p>Expected average per skill: ${expectedAvg.toFixed(1)}</p>
+        <p>Actual range: ${minCount} - ${maxCount}</p>
+        <p class="${zeroSkills.length > 0 ? 'warning' : 'good'}">
+          Skills with 0 occurrences: ${zeroSkills.length} ${zeroSkills.length > 0 ? '(PROBLEM!)' : '(Good!)'}
+        </p>
+        <p class="${lowSkills.length > 5 ? 'warning' : 'good'}">
+          Skills below 30% of expected: ${lowSkills.length}
+        </p>
+        <hr>
+        <h3>Distribution:</h3>`;
+
+      sorted.forEach(([skill, count]) => {
+        const percent = (count / gameCount * 100).toFixed(1);
+        const barWidth = (count / maxCount * 300);
+        const isLow = count < expectedAvg * 0.3;
+        const isZero = count === 0;
+        html += `
+          <div class="skill-row">
+            <span class="skill-name ${isZero ? 'warning' : isLow ? 'warning' : ''}">${skill}</span>
+            <div class="bar" style="width: ${barWidth}px; ${isZero ? 'background: #ff6b6b;' : isLow ? 'background: #ffa502;' : ''}"></div>
+            <span class="skill-count">${count} (${percent}%)</span>
+          </div>`;
+      });
+
+      // Coordinate distribution analysis
+      html += `<hr><h3>Coordinate Distribution (first 100 samples):</h3>`;
+      const xValues = coordSamples.map(c => c.x);
+      const yValues = coordSamples.map(c => c.y);
+      const avgX = xValues.reduce((a, b) => a + b, 0) / xValues.length;
+      const avgY = yValues.reduce((a, b) => a + b, 0) / yValues.length;
+      const minX = Math.min(...xValues);
+      const maxX = Math.max(...xValues);
+      const minY = Math.min(...yValues);
+      const maxY = Math.max(...yValues);
+
+      html += `
+        <p>X range: ${minX.toFixed(2)} to ${maxX.toFixed(2)} (avg: ${avgX.toFixed(2)})</p>
+        <p>Y range: ${minY.toFixed(2)} to ${maxY.toFixed(2)} (avg: ${avgY.toFixed(2)})</p>
+        <p class="${Math.abs(avgX) > 1 || Math.abs(avgY) > 1 ? 'warning' : 'good'}">
+          Center bias: ${Math.abs(avgX) < 0.5 && Math.abs(avgY) < 0.5 ? 'Good (near center)' : 'Slightly off-center'}
+        </p>
+      `;
+
+      // Problem skills list
+      if (zeroSkills.length > 0) {
+        html += `<hr><h3 class="warning">Problem Skills (never selected):</h3>`;
+        zeroSkills.forEach(([skill]) => {
+          const coord = SKILL_COORDS[skill];
+          html += `<p>- ${skill} at (${coord.x}, ${coord.y})</p>`;
+        });
+      }
+
+      html += `</div>`;
+      document.getElementById('output').innerHTML = html;
+    }
+  </script>
+</body>
+</html>

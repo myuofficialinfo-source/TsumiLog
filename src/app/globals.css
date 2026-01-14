@@ -8,6 +8,7 @@
 
   /* ポップカラー */
   --pop-red: #E63946;
+  --pop-orange: #E76F51;
   --pop-green: #2A9D8F;
   --pop-blue: #457B9D;
   --pop-yellow: #F4A261;
@@ -72,4 +73,259 @@ body {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+}
+
+/* カードバトル用アニメーション */
+@keyframes pulse-glow {
+  0%, 100% {
+    filter: brightness(1);
+    transform: scale(1);
+  }
+  50% {
+    filter: brightness(1.1);
+    transform: scale(1.02);
+  }
+}
+
+@keyframes rainbow-border {
+  0% { border-color: #E63946; }
+  17% { border-color: #F4A261; }
+  33% { border-color: #F59E0B; }
+  50% { border-color: #22C55E; }
+  67% { border-color: #3B82F6; }
+  83% { border-color: #A855F7; }
+  100% { border-color: #E63946; }
+}
+
+@keyframes shimmer {
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+}
+
+/* ウルトラレアカード（虹色） */
+.legendary-card {
+  animation: rainbow-border 3s linear infinite;
+}
+
+/* UCバッジ（虹色） */
+.uc-badge {
+  background: linear-gradient(
+    90deg,
+    #E63946,
+    #F4A261,
+    #F59E0B,
+    #22C55E,
+    #3B82F6,
+    #A855F7,
+    #E63946
+  );
+  background-size: 300% 100%;
+  animation: rainbow-badge 2s linear infinite;
+}
+
+@keyframes rainbow-badge {
+  0% { background-position: 0% 50%; }
+  100% { background-position: 100% 50%; }
+}
+
+.legendary-card::before {
+  content: '';
+  position: absolute;
+  inset: -2px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+  border-radius: 12px;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.legendary-border {
+  background: linear-gradient(
+    45deg,
+    #E63946,
+    #F4A261,
+    #F59E0B,
+    #22C55E,
+    #3B82F6,
+    #A855F7,
+    #E63946
+  );
+  background-size: 400% 400%;
+  animation: gradient-rotate 3s ease infinite;
+  opacity: 0.3;
+}
+
+@keyframes gradient-rotate {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* バトルアニメーション */
+@keyframes attack-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+@keyframes damage-flash {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(2) saturate(0); }
+}
+
+.attack-animation {
+  animation: attack-shake 0.3s ease-in-out;
+}
+
+.damage-animation {
+  animation: damage-flash 0.2s ease-in-out;
+}
+
+/* ポップアップアニメーション */
+@keyframes bounce-in {
+  0% {
+    opacity: 0;
+    transform: scale(0.3);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.05);
+  }
+  70% {
+    transform: scale(0.9);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* ダメージポップアニメーション（長めに表示、上に浮く） */
+@keyframes damage-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(0) scale(0.5);
+  }
+  10% {
+    opacity: 1;
+    transform: translateY(-15px) scale(1.2);
+  }
+  20% {
+    opacity: 1;
+    transform: translateY(-20px) scale(1);
+  }
+  70% {
+    opacity: 1;
+    transform: translateY(-40px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-60px) scale(0.9);
+  }
+}
+
+/* シェイクアニメーション */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  10% { transform: translateX(-8px); }
+  20% { transform: translateX(8px); }
+  30% { transform: translateX(-8px); }
+  40% { transform: translateX(8px); }
+  50% { transform: translateX(-4px); }
+  60% { transform: translateX(4px); }
+  70% { transform: translateX(-2px); }
+  80% { transform: translateX(2px); }
+  90% { transform: translateX(-1px); }
+}
+
+.animate-shake {
+  animation: shake 0.5s ease-in-out;
+}
+
+/* スキル発動エフェクト */
+@keyframes skill-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.5);
+  }
+  20% {
+    opacity: 1;
+    transform: scale(1.1);
+  }
+  80% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1);
+  }
+}
+
+/* 火花エフェクト */
+@keyframes spark {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--spark-x), var(--spark-y)) scale(0);
+  }
+}
+
+@keyframes spark-burst {
+  0% {
+    opacity: 1;
+    transform: scale(0);
+  }
+  50% {
+    opacity: 1;
+    transform: scale(1.5);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(2);
+  }
+}
+
+.spark-particle {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  animation: spark 0.6s ease-out forwards;
+}
+
+.spark-burst {
+  position: absolute;
+  width: 70px;
+  height: 70px;
+  border-radius: 50%;
+  animation: spark-burst 0.4s ease-out forwards;
+}
+
+/* 紙吹雪アニメーション */
+@keyframes confetti {
+  0% {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(100vh) rotate(720deg);
+  }
+}
+
+.animate-confetti {
+  animation: confetti 5s ease-out infinite;
 }

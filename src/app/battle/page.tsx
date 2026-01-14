@@ -1,0 +1,868 @@
+'use client';
+
+import { useState, useEffect, Suspense, useMemo } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import DeckBuilder from '@/components/DeckBuilder';
+import BattleArena from '@/components/BattleArena';
+import {
+  BattleCard as BattleCardType,
+  Deck,
+  BattleResult,
+  calculateAttack,
+  calculateHP,
+  GenreSkill,
+  OpponentInfo,
+  convertDefenseDeckToCards,
+  calculateRarityFromReviews,
+  generateEnemyDeck,
+  calculateSkillFromTags,
+  SPECIAL_GAME_IDS,
+} from '@/types/cardBattle';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Loader2, X, AlertTriangle } from 'lucide-react';
+import { Header, Footer } from '@/components/Layout';
+
+interface Game {
+  appid: number;
+  name: string;
+  playtime_forever: number;
+  playtimeHours: number;
+  isBacklog: boolean;
+  headerImage: string;
+}
+
+interface GameDetail {
+  genres: { description: string }[];
+  tags?: string[];        // SteamSpyからのユーザータグ
+  userTags?: string[];    // 別名
+  developers?: string[];
+  publishers?: string[];
+  recommendations?: { total: number };
+  positiveRate?: number;
+}
+
+interface WishlistItem {
+  appid: number;
+  name: string;
+}
+
+interface SteamData {
+  profile: {
+    personaName: string;
+    avatarUrl: string;
+    profileUrl: string;
+  };
+  stats: {
+    totalGames: number;
+    backlogCount: number;
+    totalPlaytimeHours: number;
+    playedGames: number;
+  };
+  games: Game[];
+  wishlist?: WishlistItem[];
+}
+
+
+// テスト用ダミーゲームを生成
+function generateDummyGames(count: number): Game[] {
+  const dummyGames: Game[] = [];
+  const sampleAppIds = [
+    730, 570, 440, 304930, 292030, 271590, 620, 227300, 49520,
+    8930, 105600, 289070, 252490, 311210, 374320, 377160, 435150,
+    582010, 632360, 892970, 1174180, 1245620, 1091500, 367520,
+    550, 413150, 219740, 286160, 322330, 242760, 261640, 274170,
+    285900, 294100, 289130, 230410, 236390, 245620, 250900, 255220,
+  ];
+
+  const genres = ['Action', 'RPG', 'Indie', 'Strategy', 'Simulation', 'Puzzle', 'Horror'];
+
+  for (let i = 0; i < count; i++) {
+    const baseAppId = sampleAppIds[i % sampleAppIds.length];
+    const appid = baseAppId + Math.floor(i / sampleAppIds.length) * 10000;
+    // ランダムなプレイ時間（0〜29分）= 積みゲー
+    const playtime = Math.floor(Math.random() * 30);
+
+    dummyGames.push({
+      appid,
+      name: `Dummy Game ${i + 1}`,
+      playtime_forever: playtime,
+      playtimeHours: playtime / 60,
+      isBacklog: true,
+      headerImage: `https://cdn.cloudflare.steamstatic.com/steam/apps/${baseAppId}/header.jpg`,
+    });
+  }
+  return dummyGames;
+}
+
+// ダミーゲーム詳細を生成
+function generateDummyGameDetails(games: Game[]): Map<number, GameDetail> {
+  const details = new Map<number, GameDetail>();
+  const genres = ['Action', 'RPG', 'Indie', 'Strategy', 'Simulation', 'Puzzle', 'Horror'];
+  const developers = ['Dummy Dev A', 'Dummy Dev B', 'Dummy Dev C', 'Dummy Dev D'];
+  const publishers = ['Dummy Pub X', 'Dummy Pub Y', 'Dummy Pub Z'];
+
+  games.forEach((game, index) => {
+    const genreCount = 1 + Math.floor(Math.random() * 3);
+    const gameGenres = [];
+    for (let i = 0; i < genreCount; i++) {
+      gameGenres.push({ description: genres[(index + i) % genres.length] });
+    }
+
+    details.set(game.appid, {
+      genres: gameGenres,
+      developers: [developers[index % developers.length]],
+      publishers: [publishers[index % publishers.length]],
+      recommendations: { total: Math.floor(Math.random() * 100000) },
+      positiveRate: 50 + Math.floor(Math.random() * 50),
+    });
+  });
+
+  return details;
+}
+
+// ゲームからバトルカードを生成
+function createBattleCard(
+  game: Game,
+  details: GameDetail | undefined
+): BattleCardType {
+  // レビュー数からレアリティを決定（取得できない場合は中間値=R）
+  const reviewCount = details?.recommendations?.total ?? 5000;
+  const rarity = calculateRarityFromReviews(reviewCount);
+
+  const genres = details?.genres?.map(g => g.description) || [];
+  // タグ（SteamSpyのユーザータグ）も取得
+  const tags = details?.tags || details?.userTags || [];
+
+  // ジャンルとタグの組み合わせから座標ベースでスキルを計算
+  const allSources = [...genres, ...tags];
+  const calculatedSkill = calculateSkillFromTags(allSources);
+  const skills: GenreSkill[] = calculatedSkill ? [calculatedSkill] : [];
+
+  // 特別なゲームに隠しスキルを付与
+  if (game.appid === SPECIAL_GAME_IDS.DEVELOPER_BUFF) {
+    skills.push('developerBuff');
+  }
+
+  // 高評価率でHP決定（取得できない場合はnullを渡してデフォルトHP200）
+  const positiveRate = details?.positiveRate ?? null;
+
+  return {
+    appid: game.appid,
+    name: game.name,
+    headerImage: game.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${game.appid}/header.jpg`,
+    hp: calculateHP(positiveRate),
+    maxHp: calculateHP(positiveRate),
+    attack: calculateAttack(game.playtime_forever, rarity),
+    rarity,
+    genres,
+    skills: [...new Set(skills)],
+    developer: details?.developers?.[0],
+    publisher: details?.publishers?.[0],
+    tags,
+    playtimeMinutes: game.playtime_forever,
+    reviewCount,
+  };
+}
+
+// sessionStorageから初期データを取得（SSR対応）
+function getInitialSteamData(): { steamId: string | null; steamData: SteamData | null; gameDetails: Map<number, GameDetail> } {
+  if (typeof window === 'undefined') {
+    return { steamId: null, steamData: null, gameDetails: new Map() };
+  }
+  try {
+    const savedSteamId = localStorage.getItem('steamId');
+    if (!savedSteamId) {
+      return { steamId: null, steamData: null, gameDetails: new Map() };
+    }
+
+    const cacheKey = `battleSteamData_${savedSteamId}`;
+    const cachedData = sessionStorage.getItem(cacheKey);
+    let steamData: SteamData | null = null;
+    if (cachedData) {
+      steamData = JSON.parse(cachedData);
+    }
+
+    // ゲーム詳細のキャッシュ（言語に依存するが、日本語をデフォルトで試す）
+    const detailsCacheKey = `battleGameDetails_${savedSteamId}_ja`;
+    const detailsCacheKeyEn = `battleGameDetails_${savedSteamId}_en`;
+    const cachedDetails = sessionStorage.getItem(detailsCacheKey) || sessionStorage.getItem(detailsCacheKeyEn);
+    let gameDetails = new Map<number, GameDetail>();
+    if (cachedDetails) {
+      const parsed = JSON.parse(cachedDetails);
+      gameDetails = new Map(Object.entries(parsed).map(([k, v]) => [Number(k), v as GameDetail]));
+    }
+
+    return { steamId: savedSteamId, steamData, gameDetails };
+  } catch {
+    return { steamId: null, steamData: null, gameDetails: new Map() };
+  }
+}
+
+function BattleContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const { language } = useLanguage();
+
+  // 初期データを同期的に取得
+  const initialData = useMemo(() => getInitialSteamData(), []);
+  const hasCachedData = initialData.steamData !== null && initialData.gameDetails.size > 0;
+
+  const [isLoading, setIsLoading] = useState(!hasCachedData);
+  // キャッシュがあっても一瞬ローディング画面を表示（100%で）
+  const [isLoadingDetails, setIsLoadingDetails] = useState(true);
+  const [loadingProgress, setLoadingProgress] = useState(
+    hasCachedData ? { current: 100, total: 100 } : { current: 0, total: 0 }
+  );
+  const [steamId, setSteamId] = useState<string | null>(initialData.steamId);
+  const [steamData, setSteamData] = useState<SteamData | null>(initialData.steamData);
+  const [gameDetails, setGameDetails] = useState<Map<number, GameDetail>>(initialData.gameDetails);
+  const [phase, setPhase] = useState<'deck' | 'matching' | 'battle' | 'result'>('deck');
+  const [playerDeck, setPlayerDeck] = useState<Deck | null>(null);
+  const [opponentDeck, setOpponentDeck] = useState<Deck | null>(null);
+  const [, setBattleResult] = useState<BattleResult | null>(null);
+  const [opponentInfo, setOpponentInfo] = useState<OpponentInfo | null>(null);
+  const [enemyName, setEnemyName] = useState<string | null>(null);
+  const [playerScore, setPlayerScore] = useState<number>(0);
+  // ユーザースタッツがプリロード済みかどうか
+  const [userStatsPreloaded, setUserStatsPreloaded] = useState<boolean>(() => {
+    // 初期化時にキャッシュがあればプリロード済みとする
+    if (typeof window !== 'undefined' && initialData.steamId) {
+      const cached = localStorage.getItem(`userStats_${initialData.steamId}`);
+      return cached !== null;
+    }
+    return false;
+  });
+  // デッキデータがプリロード済みかどうか
+  const [deckDataPreloaded, setDeckDataPreloaded] = useState<boolean>(() => {
+    // 初期化時にキャッシュがあればプリロード済みとする
+    if (typeof window !== 'undefined' && initialData.steamId) {
+      const cached = localStorage.getItem(`deckData_${initialData.steamId}`);
+      return cached !== null;
+    }
+    return false;
+  });
+  // プリロードしたデッキデータ
+  const [preloadedDeckData, setPreloadedDeckData] = useState<any>(null);
+  // サーバーサイドバトル結果
+  const [serverBattleResult, setServerBattleResult] = useState<any>(null);
+  // βテストポップアップ
+  const [showBetaPopup, setShowBetaPopup] = useState(true);
+
+  // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用（本番環境では無効）
+  const dummyCount = searchParams.get('dummyBacklog');
+  const dummyCountNum = process.env.NODE_ENV === 'production' ? 0 : (dummyCount ? parseInt(dummyCount, 10) : 0);
+
+  // ダミーデータをメモ化
+  const dummyGames = useMemo(() => {
+    if (dummyCountNum > 0) {
+      return generateDummyGames(dummyCountNum);
+    }
+    return null;
+  }, [dummyCountNum]);
+
+  const dummyDetails = useMemo(() => {
+    if (dummyGames) {
+      return generateDummyGameDetails(dummyGames);
+    }
+    return null;
+  }, [dummyGames]);
+
+  // Steam IDの取得とデータ読み込み（キャッシュ対応）
+  useEffect(() => {
+    // ダミーモードの場合はSteamデータ取得をスキップ
+    if (dummyGames && dummyDetails) {
+      setSteamId('dummy');
+      setSteamData({
+        profile: {
+          personaName: 'Test User',
+          avatarUrl: '',
+          profileUrl: '',
+        },
+        stats: {
+          totalGames: dummyGames.length,
+          backlogCount: dummyGames.length,
+          totalPlaytimeHours: 0,
+          playedGames: 0,
+        },
+        games: dummyGames,
+      });
+      setGameDetails(dummyDetails);
+      setIsLoading(false);
+      setIsLoadingDetails(false);
+      return;
+    }
+
+    // 初期化時にキャッシュから読み込み済みの場合はスキップ
+    if (hasCachedData && steamData) {
+      return;
+    }
+
+    const savedSteamId = localStorage.getItem('steamId');
+    if (!savedSteamId) {
+      router.push('/');
+      return;
+    }
+    setSteamId(savedSteamId);
+
+    // セッションキャッシュを確認
+    const cacheKey = `battleSteamData_${savedSteamId}`;
+    const cachedData = sessionStorage.getItem(cacheKey);
+    if (cachedData) {
+      try {
+        const parsed = JSON.parse(cachedData);
+        setSteamData(parsed);
+        setIsLoading(false);
+        return;
+      } catch {
+        sessionStorage.removeItem(cacheKey);
+      }
+    }
+
+    const fetchData = async () => {
+      try {
+        // wishlist=true でウィッシュリストも取得
+        const response = await fetch(`/api/steam/games?steamId=${encodeURIComponent(savedSteamId)}&wishlist=true`);
+        const data = await response.json();
+        if (response.ok) {
+          setSteamData(data);
+          // セッションにキャッシュ
+          sessionStorage.setItem(cacheKey, JSON.stringify(data));
+          // ゲームリストをlocalStorageにキャッシュ（カレンダー等で使用）
+          if (data.games && Array.isArray(data.games) && data.games.length > 0) {
+            localStorage.setItem('cachedGames', JSON.stringify(data.games));
+          }
+        } else {
+          router.push('/');
+        }
+      } catch {
+        router.push('/');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router, dummyGames, dummyDetails]);
+
+  // キャッシュがある場合、一瞬100%のプログレスバーを表示してから消す
+  useEffect(() => {
+    if (hasCachedData && isLoadingDetails) {
+      const timer = setTimeout(() => {
+        setIsLoadingDetails(false);
+      }, 500); // 500ms後にローディング画面を消す
+      return () => clearTimeout(timer);
+    }
+  }, [hasCachedData, isLoadingDetails]);
+
+  // ゲーム詳細の取得（キャッシュ対応、全部読み込んでから表示）
+  useEffect(() => {
+    if (!steamData?.games || !steamId) return;
+    // ダミーモードでは既に設定済み
+    if (dummyGames) return;
+    // 初期化時にキャッシュから読み込み済みの場合はスキップ
+    if (hasCachedData && gameDetails.size > 0) return;
+
+    const detailsCacheKey = `battleGameDetails_${steamId}_${language}`;
+
+    // キャッシュを確認
+    const cachedDetails = sessionStorage.getItem(detailsCacheKey);
+    if (cachedDetails) {
+      try {
+        const parsed = JSON.parse(cachedDetails);
+        setGameDetails(new Map(Object.entries(parsed).map(([k, v]) => [Number(k), v as GameDetail])));
+        setIsLoadingDetails(false);
+        return;
+      } catch {
+        sessionStorage.removeItem(detailsCacheKey);
+      }
+    }
+
+    const fetchDetails = async () => {
+      setIsLoadingDetails(true);
+      // 積みゲー（バトルで使用するゲーム）のみを取得対象にする
+      const backlogGames = steamData.games.filter(g => g.isBacklog);
+      const gamesToFetch = backlogGames;
+      const batchSize = 10; // バッチサイズを増やして高速化
+      setLoadingProgress({ current: 0, total: gamesToFetch.length });
+
+      const allDetails = new Map<number, GameDetail>();
+
+      for (let i = 0; i < gamesToFetch.length; i += batchSize) {
+        const batch = gamesToFetch.slice(i, i + batchSize);
+        const appIds = batch.map(g => g.appid).join(',');
+
+        try {
+          const response = await fetch(`/api/steam/details?appIds=${appIds}&language=${language}`);
+          const data = await response.json();
+
+          if (data.details) {
+            data.details.forEach((detail: GameDetail & { appid: number }) => {
+              allDetails.set(detail.appid, detail);
+            });
+          }
+        } catch {
+          console.error('Failed to fetch game details');
+        }
+
+        // 進捗を更新
+        setLoadingProgress({ current: Math.min(i + batchSize, gamesToFetch.length), total: gamesToFetch.length });
+
+        // 最後のバッチ以外は遅延（レート制限対策）
+        if (i + batchSize < gamesToFetch.length) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+      }
+
+      // 全部読み込んでから一括で設定
+      setGameDetails(allDetails);
+      setIsLoadingDetails(false);
+
+      // キャッシュに保存
+      const detailsObj: Record<number, GameDetail> = {};
+      allDetails.forEach((v, k) => { detailsObj[k] = v; });
+      sessionStorage.setItem(detailsCacheKey, JSON.stringify(detailsObj));
+    };
+
+    fetchDetails();
+  }, [steamData?.games, steamId, language, dummyGames]);
+
+  // プレイヤーのスコアを取得（エネミー強度調整用）+ ユーザースタッツをプリフェッチ
+  useEffect(() => {
+    if (!steamId || steamId === 'dummy') {
+      setUserStatsPreloaded(true); // ダミーモードではプリロード完了とする
+      return;
+    }
+
+    const fetchScore = async () => {
+      try {
+        const response = await fetch(`/api/battle?steamId=${encodeURIComponent(steamId)}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPlayerScore(data.score || 0);
+          // userStatsをlocalStorageにキャッシュ（DeckBuilderで使用）
+          const stats = {
+            sublimations: data.sublimations || 0,
+            wins: data.wins || 0,
+            score: data.score || 0,
+            rank: data.rank,
+          };
+          localStorage.setItem(`userStats_${steamId}`, JSON.stringify(stats));
+        }
+      } catch (error) {
+        console.error('Failed to fetch player score:', error);
+      } finally {
+        setUserStatsPreloaded(true);
+      }
+    };
+
+    fetchScore();
+  }, [steamId]);
+
+  // デッキデータをプリフェッチ
+  useEffect(() => {
+    if (!steamId || steamId === 'dummy') {
+      setDeckDataPreloaded(true); // ダミーモードではプリロード完了とする
+      return;
+    }
+
+    // キャッシュがあればそれを使用
+    const cached = localStorage.getItem(`deckData_${steamId}`);
+    if (cached) {
+      try {
+        setPreloadedDeckData(JSON.parse(cached));
+        setDeckDataPreloaded(true);
+        return;
+      } catch {
+        localStorage.removeItem(`deckData_${steamId}`);
+      }
+    }
+
+    const fetchDeckData = async () => {
+      try {
+        const response = await fetch(`/api/deck?steamId=${steamId}`);
+        if (response.ok) {
+          const data = await response.json();
+          setPreloadedDeckData(data);
+          // キャッシュに保存
+          localStorage.setItem(`deckData_${steamId}`, JSON.stringify(data));
+        }
+      } catch (error) {
+        console.error('Failed to fetch deck data:', error);
+      } finally {
+        setDeckDataPreloaded(true);
+      }
+    };
+
+    fetchDeckData();
+  }, [steamId]);
+
+  // 昇華同期（スナップショットベース）+ ゲーム情報同期
+  // 初回：積みゲー（30分未満かつトロコンしていない）をスナップショットとして保存
+  // 以降：スナップショット内のゲームで30分以上になったものを昇華としてカウント
+  useEffect(() => {
+    if (!steamId || steamId === 'dummy' || !steamData?.games) return;
+
+    const syncData = async () => {
+      // 全ゲームリスト（playtime + isBacklog + isCompleted付き）を送信
+      // isBacklog = 30分未満 かつ トロコンしていない（Steam APIで判定済み）
+      // isCompleted = トロコン済み（実績100%）
+      const allGames = steamData.games.map(g => ({
+        appid: g.appid,
+        name: g.name,
+        playtime: g.playtime_forever,
+        isBacklog: g.isBacklog, // トロコン判定含む
+        isCompleted: (g as any).isCompleted || false, // トロコン状態
+      }));
+
+      if (allGames.length === 0) return;
+
+      try {
+        // 昇華同期と同時にゲーム情報も同期
+        await Promise.all([
+          // 昇華同期
+          fetch('/api/sublimation', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              steamId,
+              personaName: steamData.profile?.personaName,
+              avatarUrl: steamData.profile?.avatarUrl,
+              allGames,
+            }),
+          }),
+          // ゲーム情報同期（DB保存）- ウィッシュリストも含む
+          fetch('/api/user-games', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              steamId,
+              personaName: steamData.profile?.personaName,
+              avatarUrl: steamData.profile?.avatarUrl,
+              games: allGames,
+              wishlist: steamData.wishlist || [],
+            }),
+          }),
+        ]);
+      } catch (error) {
+        console.error('Failed to sync data:', error);
+      }
+    };
+
+    syncData();
+  }, [steamId, steamData]);
+
+  // デッキ完成時 - サーバーでバトルを実行
+  const handleDeckComplete = async (deck: Deck) => {
+    setPlayerDeck(deck);
+    setPhase('matching');
+
+    try {
+      // サーバーサイドでバトルを実行
+      // ※防衛デッキが設定されていない場合のフォールバックとしてデッキデータも送信
+      const playerDeckData = {
+        frontLine: deck.frontLine.map(card => card ? {
+          appid: card.appid,
+          name: card.name,
+          attack: card.attack,
+          hp: card.hp,
+          maxHp: card.maxHp,
+          rarity: card.rarity,
+          skills: card.skills,
+          genres: card.genres,
+          playtimeMinutes: card.playtimeMinutes,
+          developer: card.developer,
+          publisher: card.publisher,
+          headerImage: card.headerImage,
+        } : null),
+        backLine: deck.backLine.map(card => card ? {
+          appid: card.appid,
+          name: card.name,
+          attack: card.attack,
+          hp: card.hp,
+          maxHp: card.maxHp,
+          rarity: card.rarity,
+          skills: card.skills,
+          genres: card.genres,
+          playtimeMinutes: card.playtimeMinutes,
+          developer: card.developer,
+          publisher: card.publisher,
+          headerImage: card.headerImage,
+        } : null),
+      };
+
+      const response = await fetch('/api/battle/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steamId: steamId || 'dummy',
+          personaName: steamData?.profile?.personaName,
+          avatarUrl: steamData?.profile?.avatarUrl,
+          playerDeckData, // 防衛デッキがない場合のフォールバック
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Battle execution failed');
+      }
+
+      const data = await response.json();
+
+      // サーバーから返されたデッキ情報を使用
+      const serverPlayerDeck = data.playerDeck;
+      const serverOpponentDeck = data.opponentDeck;
+
+      // プレイヤーデッキをDeck形式に変換
+      setPlayerDeck({
+        frontLine: serverPlayerDeck.frontLine.map((card: any) => card ? {
+          ...card,
+          headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+        } : null),
+        backLine: serverPlayerDeck.backLine.map((card: any) => card ? {
+          ...card,
+          headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+        } : null),
+        synergies: deck.synergies, // シナジーは元のデッキから引き継ぐ
+      });
+
+      // 相手デッキをDeck形式に変換
+      setOpponentDeck({
+        frontLine: serverOpponentDeck.frontLine.map((card: any) => card ? {
+          ...card,
+          headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+        } : null),
+        backLine: serverOpponentDeck.backLine.map((card: any) => card ? {
+          ...card,
+          headerImage: card.headerImage || `https://cdn.cloudflare.steamstatic.com/steam/apps/${card.appid}/header.jpg`,
+        } : null),
+        synergies: [], // 相手のシナジーは計算しない（表示用）
+      });
+
+      // 相手情報を設定
+      if (data.isPvp && data.opponentSteamId) {
+        setOpponentInfo({
+          steamId: data.opponentSteamId,
+          personaName: data.opponentName,
+          avatarUrl: '', // PvP相手のアバターは未取得
+          frontLine: serverOpponentDeck.frontLine,
+          backLine: serverOpponentDeck.backLine,
+        });
+        setEnemyName(null);
+      } else {
+        setOpponentInfo(null);
+        setEnemyName(data.opponentName || 'AI');
+      }
+
+      // サーバーバトル結果を保存
+      setServerBattleResult(data.battleResult);
+
+      setPhase('battle');
+    } catch (error) {
+      console.error('Battle execution error:', error);
+      // エラー時はクライアントサイドバトルにフォールバック
+      // 他プレイヤーの防衛デッキを検索
+      let opponent: OpponentInfo | null = null;
+      try {
+        const response = await fetch(`/api/matchmaking?steamId=${encodeURIComponent(steamId || '')}`);
+        const matchData = await response.json();
+        if (matchData.found && matchData.opponent) {
+          opponent = matchData.opponent as OpponentInfo;
+        }
+      } catch (matchError) {
+        console.error('Matchmaking error:', matchError);
+      }
+
+      if (opponent) {
+        setOpponentInfo(opponent);
+        setEnemyName(null);
+        const frontLine = convertDefenseDeckToCards(opponent.frontLine);
+        const backLine = convertDefenseDeckToCards(opponent.backLine);
+        setOpponentDeck({ frontLine, backLine, synergies: [] });
+      } else {
+        const { deck: enemyDeck, enemyName: name } = generateEnemyDeck(playerScore);
+        setOpponentDeck(enemyDeck);
+        setEnemyName(name);
+        setOpponentInfo(null);
+      }
+
+      setServerBattleResult(null); // クライアントサイドバトルにフォールバック
+      setPhase('battle');
+    }
+  };
+
+  // バトル終了時
+  const handleBattleEnd = (result: BattleResult) => {
+    setBattleResult(result);
+    setPhase('result');
+  };
+
+  // 再戦
+  const handleRematch = () => {
+    setPlayerDeck(null);
+    setOpponentDeck(null);
+    setBattleResult(null);
+    setServerBattleResult(null); // サーバーバトル結果もリセット
+    setPhase('deck');
+  };
+
+  // キャンセル
+  const handleCancel = () => {
+    router.push('/');
+  };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
+        <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--pop-blue)' }} />
+      </div>
+    );
+  }
+
+  if (!steamData) {
+    return null;
+  }
+
+  // ゲーム詳細読み込み中、またはユーザースタッツ/デッキデータのプリロード中
+  if ((isLoadingDetails || !userStatsPreloaded || !deckDataPreloaded) && phase === 'deck') {
+    const progressPercent = loadingProgress.total > 0
+      ? Math.round((loadingProgress.current / loadingProgress.total) * 100)
+      : 0;
+
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center gap-4" style={{ backgroundColor: 'var(--background)' }}>
+        <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--pop-blue)' }} />
+        <div className="text-center">
+          <p className="text-lg font-medium" style={{ color: 'var(--foreground)' }}>
+            {language === 'ja' ? 'ゲームデータを読み込み中...' : 'Loading game data...'}
+          </p>
+          <p className="text-sm mt-2" style={{ color: 'var(--muted-foreground)' }}>
+            {progressPercent}%
+          </p>
+          <p className="text-xs mt-3 opacity-60" style={{ color: 'var(--muted-foreground)' }}>
+            {language === 'ja'
+              ? '※積みゲーの数が多いと読み込みに時間がかかる場合がございます。'
+              : '※Loading may take longer if you have many backlog games.'}
+          </p>
+          <div className="w-64 h-2 bg-gray-700 rounded-full mt-3 overflow-hidden mx-auto">
+            <div
+              className="h-full rounded-full transition-all duration-300"
+              style={{
+                width: `${progressPercent}%`,
+                backgroundColor: 'var(--pop-blue)'
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
+      <Header showBack backHref="/" />
+
+      {/* βテストポップアップ */}
+      {showBetaPopup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div
+            className="relative max-w-md w-full rounded-2xl p-6 shadow-xl"
+            style={{ backgroundColor: 'var(--card-bg)' }}
+          >
+            <button
+              onClick={() => setShowBetaPopup(false)}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors"
+            >
+              <X className="w-5 h-5" style={{ color: 'var(--foreground)' }} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="w-8 h-8 text-yellow-500 flex-shrink-0" />
+              <h2 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
+                βテスト中
+              </h2>
+            </div>
+
+            <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--foreground)' }}>
+              現在はβテスト中です。バトルやデッキ編成表示がおかしくなったり、バグったりスコアが変動しても許してください。。。
+            </p>
+
+            <p className="text-xs leading-relaxed mb-6" style={{ color: 'var(--muted-foreground)' }}>
+              ※積みゲーバトルは、積みゲー消化のモチベーションを高めるための「エンターテイメント機能」です。スコアや順位にとらわれすぎず、ゲームを起動する&quot;きっかけ&quot;としてお楽しみいただければ幸いです。
+            </p>
+
+            <button
+              onClick={() => setShowBetaPopup(false)}
+              className="w-full py-3 rounded-xl font-bold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'var(--pop-blue)' }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
+
+      <main className="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
+        {/* デッキ構築フェーズ */}
+        {phase === 'deck' && (
+          <DeckBuilder
+            games={steamData.games}
+            gameDetails={gameDetails}
+            onDeckComplete={handleDeckComplete}
+            onCancel={handleCancel}
+            steamId={steamId || undefined}
+            personaName={steamData?.profile?.personaName}
+            avatarUrl={steamData?.profile?.avatarUrl}
+            preloadedDeckData={preloadedDeckData}
+            isLoadingDetails={isLoadingDetails}
+          />
+        )}
+
+        {/* マッチング中 */}
+        {phase === 'matching' && (
+          <div className="flex flex-col items-center justify-center gap-4 py-20">
+            <Loader2 className="w-12 h-12 animate-spin" style={{ color: 'var(--pop-blue)' }} />
+            <p className="text-lg font-bold" style={{ color: 'var(--foreground)' }}>
+              {language === 'ja' ? '対戦相手を探しています...' : 'Finding opponent...'}
+            </p>
+          </div>
+        )}
+
+        {/* バトルフェーズ */}
+        {phase === 'battle' && playerDeck && opponentDeck && (
+          <BattleArena
+            playerDeck={playerDeck}
+            opponentDeck={opponentDeck}
+            onBattleEnd={handleBattleEnd}
+            onRematch={handleRematch}
+            onBackToLobby={handleCancel}
+            steamId={steamId || undefined}
+            personaName={steamData?.profile?.personaName}
+            avatarUrl={steamData?.profile?.avatarUrl}
+            opponentName={opponentInfo?.personaName || enemyName || 'Enemy'}
+            opponentAvatarUrl={opponentInfo?.avatarUrl}
+            opponentSteamId={opponentInfo?.steamId}
+            serverBattleResult={serverBattleResult}
+          />
+        )}
+      </main>
+
+      <Footer />
+    </div>
+  );
+}
+
+function LoadingFallback() {
+  return (
+    <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
+      <Loader2 className="w-8 h-8 animate-spin" style={{ color: 'var(--pop-blue)' }} />
+    </div>
+  );
+}
+
+export default function BattlePage() {
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      <BattleContent />
+    </Suspense>
+  );
+}

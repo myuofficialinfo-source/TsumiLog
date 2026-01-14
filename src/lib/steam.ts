@@ -42,6 +42,60 @@ export async function getOwnedGames(steamId: string): Promise<SteamGame[]> {
   return data.response.games || [];
 }
 
+// SteamSpyからゲーム情報を取得（ユーザータグ、高評価率）
+export async function getSteamSpyData(appId: number): Promise<{
+  tags: string[];
+  positiveRate: number;
+} | null> {
+  try {
+    const response = await fetch(
+      `https://steamspy.com/api.php?request=appdetails&appid=${appId}`
+    );
+    if (!response.ok) return null;
+
+    const data = await response.json();
+
+    // タグはオブジェクト形式 { "Roguelike": 1234, "Action": 567 } で、数値は投票数
+    const tags = data.tags ? Object.keys(data.tags).slice(0, 10) : [];
+
+    // 高評価率を計算
+    const positive = data.positive || 0;
+    const negative = data.negative || 0;
+    const total = positive + negative;
+    const positiveRate = total > 0 ? Math.round((positive / total) * 100) : 75;
+
+    return { tags, positiveRate };
+  } catch {
+    return null;
+  }
+}
+
+// Steam Reviews APIからレビュー数を取得（フォールバック用）
+async function getReviewCount(appId: number): Promise<{ total: number } | undefined> {
+  try {
+    // language=allで全言語のレビュー合計を取得
+    const response = await fetch(
+      `https://store.steampowered.com/appreviews/${appId}?json=1&num_per_page=0&language=all`
+    );
+    if (!response.ok) {
+      console.log(`[getReviewCount] appId=${appId}: response not ok (${response.status})`);
+      return undefined;
+    }
+    const data = await response.json();
+    console.log(`[getReviewCount] appId=${appId}: success=${data.success}, total_reviews=${data.query_summary?.total_reviews}`);
+    if (data.success === 1 && data.query_summary) {
+      const total = data.query_summary.total_reviews || 0;
+      if (total > 0) {
+        return { total };
+      }
+    }
+    return undefined;
+  } catch (error) {
+    console.error(`[getReviewCount] appId=${appId}: error`, error);
+    return undefined;
+  }
+}
+
 export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'): Promise<SteamGameDetails | null> {
   try {
     const steamLang = language === 'ja' ? 'japanese' : 'english';
@@ -53,15 +107,43 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
     if (!data[appId]?.success) return null;
 
     const gameData = data[appId].data;
+
+    // SteamSpyからタグと高評価率を取得
+    const steamSpyData = await getSteamSpyData(appId);
+
+    // レビュー数を取得
+    let recommendations = gameData.recommendations;
+    console.log(`[getGameDetails] appId=${appId}: Store API recommendations=${JSON.stringify(recommendations)}, type=${gameData.type}`);
+
+    // Demoの場合は常に本体のレビュー数を使用（一貫性のため）
+    if (gameData.type === 'demo' && gameData.fullgame?.appid) {
+      const fullGameAppId = parseInt(gameData.fullgame.appid, 10);
+      console.log(`[getGameDetails] appId=${appId}: Demo detected, using full game (${fullGameAppId}) reviews`);
+      recommendations = await getReviewCount(fullGameAppId);
+      console.log(`[getGameDetails] appId=${appId}: Full game reviews result=${JSON.stringify(recommendations)}`);
+    } else if (!recommendations) {
+      // 通常ゲームでrecommendationsがない場合はReviews APIから取得
+      console.log(`[getGameDetails] appId=${appId}: No recommendations from Store API, calling Reviews API fallback...`);
+      recommendations = await getReviewCount(appId);
+      console.log(`[getGameDetails] appId=${appId}: Reviews API fallback result=${JSON.stringify(recommendations)}`);
+    }
+
     return {
       appid: gameData.steam_appid,
       name: gameData.name,
       description: gameData.short_description,
       genres: gameData.genres || [],
       categories: gameData.categories || [],
+      tags: steamSpyData?.tags,  // SteamSpyからのユーザータグ
       header_image: gameData.header_image,
       release_date: gameData.release_date,
       price_overview: gameData.price_overview,
+      recommendations,  // レビュー数（Store APIまたはReviews APIから）
+      metacritic: gameData.metacritic,
+      positiveRate: steamSpyData?.positiveRate,  // 高評価率
+      userTags: steamSpyData?.tags,  // ユーザータグ（別名保存）
+      developers: gameData.developers || [],  // 開発元
+      publishers: gameData.publishers || [],  // パブリッシャー
     };
   } catch {
     return null;
@@ -70,36 +152,49 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
 
 export async function getWishlist(steamId: string): Promise<WishlistGame[]> {
   try {
-    // Wishlist APIはページネーションが必要
+    // 新しいSteam IWishlistService APIを使用
+    const response = await fetch(
+      `${STEAM_API_BASE}/IWishlistService/GetWishlist/v1/?steamid=${steamId}&key=${STEAM_API_KEY}`
+    );
+
+    if (!response.ok) {
+      console.error('[Steam] Wishlist API error:', response.status);
+      return [];
+    }
+
+    const data = await response.json();
+    const items = data.response?.items || [];
+
+    // ゲーム名を取得するため、各ゲームの詳細を取得
     const games: WishlistGame[] = [];
-    let page = 0;
+    for (const item of items) {
+      // ゲーム名はStore APIから取得する必要がある
+      try {
+        const detailsResponse = await fetch(
+          `${STEAM_STORE_API}/appdetails?appids=${item.appid}&l=japanese`
+        );
+        const detailsData = await detailsResponse.json();
+        const gameData = detailsData[item.appid]?.data;
 
-    while (true) {
-      const response = await fetch(
-        `https://store.steampowered.com/wishlist/profiles/${steamId}/wishlistdata/?p=${page}`
-      );
-
-      if (!response.ok) break;
-
-      const data = await response.json();
-      if (!data || Object.keys(data).length === 0) break;
-
-      for (const [appid, info] of Object.entries(data)) {
-        const gameInfo = info as { name: string; priority: number; added: number };
         games.push({
-          appid: parseInt(appid),
-          name: gameInfo.name,
-          priority: gameInfo.priority,
-          added: gameInfo.added,
+          appid: item.appid,
+          name: gameData?.name || `Game ${item.appid}`,
+          priority: item.priority || 0,
+          added: item.date_added || 0,
+        });
+      } catch {
+        games.push({
+          appid: item.appid,
+          name: `Game ${item.appid}`,
+          priority: item.priority || 0,
+          added: item.date_added || 0,
         });
       }
-
-      page++;
-      if (page > 10) break; // 安全のため上限
     }
 
     return games;
-  } catch {
+  } catch (error) {
+    console.error('[Steam] Wishlist fetch error:', error);
     return [];
   }
 }
@@ -333,6 +428,112 @@ export async function getNewReleases(userGenres: string[] = []): Promise<NewRele
     }
 
     return validResults;
+  } catch {
+    return [];
+  }
+}
+
+// フレンド情報の型
+export interface SteamFriend {
+  steamid: string;
+  personaname: string;
+  avatar: string;
+  avatarmedium: string;
+  avatarfull: string;
+  personastate: number; // 0=Offline, 1=Online, 2=Busy, 3=Away, 4=Snooze, 5=looking to trade, 6=looking to play
+  gameextrainfo?: string; // 現在プレイ中のゲーム名
+  gameid?: string; // 現在プレイ中のゲームID
+}
+
+// 最近プレイしたゲームの型
+export interface RecentlyPlayedGame {
+  appid: number;
+  name: string;
+  playtime_2weeks: number; // 過去2週間のプレイ時間（分）
+  playtime_forever: number;
+  img_icon_url: string;
+}
+
+// フレンドリストを取得
+export async function getFriendList(steamId: string): Promise<{ steamid: string; friend_since: number }[]> {
+  try {
+    const response = await fetch(
+      `${STEAM_API_BASE}/ISteamUser/GetFriendList/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&relationship=friend`
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data.friendslist?.friends || [];
+  } catch {
+    return [];
+  }
+}
+
+// 複数ユーザーのプロフィールを一括取得
+export async function getPlayerSummaries(steamIds: string[]): Promise<SteamFriend[]> {
+  if (steamIds.length === 0) return [];
+
+  try {
+    // 一度に100人まで取得可能
+    const response = await fetch(
+      `${STEAM_API_BASE}/ISteamUser/GetPlayerSummaries/v2/?key=${STEAM_API_KEY}&steamids=${steamIds.join(',')}`
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data.response?.players || [];
+  } catch {
+    return [];
+  }
+}
+
+// ユーザーの最近プレイしたゲームを取得
+export async function getRecentlyPlayedGames(steamId: string, count: number = 10): Promise<RecentlyPlayedGame[]> {
+  try {
+    const response = await fetch(
+      `${STEAM_API_BASE}/IPlayerService/GetRecentlyPlayedGames/v1/?key=${STEAM_API_KEY}&steamid=${steamId}&count=${count}`
+    );
+
+    if (!response.ok) return [];
+
+    const data = await response.json();
+    return data.response?.games || [];
+  } catch {
+    return [];
+  }
+}
+
+// フレンドの最近のプレイ履歴を取得（アイコン付き）
+export async function getFriendsRecentActivity(steamId: string, limit: number = 20): Promise<{
+  friend: SteamFriend;
+  recentGames: RecentlyPlayedGame[];
+}[]> {
+  try {
+    // フレンドリストを取得
+    const friendsList = await getFriendList(steamId);
+    if (friendsList.length === 0) return [];
+
+    // フレンドのSteamIDを取得（最大100人）
+    const friendIds = friendsList.slice(0, 100).map(f => f.steamid);
+
+    // フレンドのプロフィールを取得
+    const friends = await getPlayerSummaries(friendIds);
+
+    // 各フレンドの最近のプレイ履歴を取得（上位20人のみ、API負荷軽減）
+    const activeFriends = friends
+      .filter(f => f.personastate > 0 || f.gameextrainfo) // オンラインまたはゲーム中
+      .slice(0, limit);
+
+    const results = await Promise.all(
+      activeFriends.map(async (friend) => {
+        const recentGames = await getRecentlyPlayedGames(friend.steamid, 5);
+        return { friend, recentGames };
+      })
+    );
+
+    return results.filter(r => r.recentGames.length > 0);
   } catch {
     return [];
   }

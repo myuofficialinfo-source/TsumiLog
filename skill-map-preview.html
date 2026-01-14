@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Skill Map Preview - User Tags Edition</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #1a1a2e;
+      color: #eee;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+    .subtitle {
+      text-align: center;
+      color: #888;
+      margin-bottom: 20px;
+    }
+    .container {
+      display: flex;
+      gap: 20px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+    .map-container {
+      flex: 1;
+      background: #16213e;
+      border-radius: 12px;
+      padding: 20px;
+      position: relative;
+    }
+    .map {
+      position: relative;
+      width: 700px;
+      height: 700px;
+      margin: 0 auto;
+      background: linear-gradient(to right, rgba(100,149,237,0.1) 0%, rgba(100,149,237,0) 50%, rgba(255,99,71,0.1) 100%),
+                  linear-gradient(to bottom, rgba(255,215,0,0.1) 0%, rgba(255,215,0,0) 50%, rgba(138,43,226,0.1) 100%);
+      border: 2px solid #333;
+      border-radius: 8px;
+    }
+    .axis {
+      position: absolute;
+      background: #444;
+    }
+    .axis-x {
+      width: 100%;
+      height: 2px;
+      top: 50%;
+      left: 0;
+    }
+    .axis-y {
+      width: 2px;
+      height: 100%;
+      left: 50%;
+      top: 0;
+    }
+    .axis-label {
+      position: absolute;
+      font-size: 12px;
+      color: #888;
+      font-weight: bold;
+    }
+    .label-top { top: 5px; left: 50%; transform: translateX(-50%); color: #ffd700; }
+    .label-bottom { bottom: 5px; left: 50%; transform: translateX(-50%); color: #8a2be2; }
+    .label-left { left: 5px; top: 50%; transform: translateY(-50%); color: #6495ed; }
+    .label-right { right: 5px; top: 50%; transform: translateY(-50%); color: #ff6347; }
+
+    .point {
+      position: absolute;
+      transform: translate(-50%, -50%);
+      cursor: pointer;
+      transition: all 0.2s;
+      z-index: 10;
+    }
+    .point:hover {
+      z-index: 100;
+      transform: translate(-50%, -50%) scale(1.3);
+    }
+    .skill-point {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9px;
+      font-weight: bold;
+      border: 2px solid #fff;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    }
+    .tag-point {
+      width: 14px;
+      height: 14px;
+      border-radius: 3px;
+      border: 1px solid rgba(255,255,255,0.5);
+      opacity: 0.8;
+    }
+    .tag-point:hover {
+      opacity: 1;
+    }
+
+    .tooltip {
+      position: absolute;
+      background: #000;
+      color: #fff;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 12px;
+      pointer-events: none;
+      white-space: nowrap;
+      z-index: 1000;
+      display: none;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+    }
+
+    .sidebar {
+      width: 500px;
+      background: #16213e;
+      border-radius: 12px;
+      padding: 20px;
+      max-height: 850px;
+      overflow-y: auto;
+    }
+    .sidebar h2 {
+      font-size: 16px;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #333;
+    }
+    .legend-section {
+      margin-bottom: 20px;
+    }
+    .legend-title {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 0;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .legend-item:hover {
+      background: rgba(255,255,255,0.05);
+    }
+    .legend-color {
+      width: 16px;
+      height: 16px;
+      border-radius: 4px;
+      flex-shrink: 0;
+    }
+    .legend-skill-color {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid #fff;
+    }
+
+    .controls {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+    }
+    .controls label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      cursor: pointer;
+      margin-bottom: 8px;
+    }
+    .controls input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+    }
+
+    .test-section {
+      margin-top: 20px;
+      padding: 15px;
+      background: rgba(0,0,0,0.2);
+      border-radius: 8px;
+    }
+    .test-section h3 {
+      font-size: 14px;
+      margin-bottom: 10px;
+    }
+    .tag-category {
+      margin-bottom: 12px;
+    }
+    .tag-category-title {
+      font-size: 11px;
+      color: #666;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+    .tag-select {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+    .tag-btn {
+      padding: 3px 6px;
+      font-size: 10px;
+      background: #333;
+      border: 1px solid #555;
+      color: #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .tag-btn.selected {
+      background: #4a90d9;
+      border-color: #4a90d9;
+      color: #fff;
+    }
+    .result-box {
+      margin-top: 10px;
+      padding: 10px;
+      background: #0a0a1a;
+      border-radius: 6px;
+      font-size: 12px;
+    }
+    .result-box .coord {
+      color: #4a90d9;
+    }
+    .result-box .skill-result {
+      color: #ffd700;
+      font-weight: bold;
+    }
+
+    .calculated-point {
+      width: 30px;
+      height: 30px;
+      border: 3px dashed #ff0;
+      border-radius: 50%;
+      background: rgba(255,255,0,0.2);
+      animation: pulse 1s infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.2); }
+    }
+
+    .stats {
+      margin-top: 15px;
+      padding: 10px;
+      background: rgba(0,0,0,0.3);
+      border-radius: 6px;
+      font-size: 11px;
+      color: #888;
+    }
+  </style>
+</head>
+<body>
+  <h1>Skill Map Preview - User Tags Edition</h1>
+  <p class="subtitle">X: Attack(+) / Defense(-) | Y: Speed(+) / Endurance(-) | 400+ Steam User Tags (日本語完全対応)</p>
+
+  <div class="container">
+    <div class="map-container">
+      <div class="map" id="map">
+        <div class="axis axis-x"></div>
+        <div class="axis axis-y"></div>
+        <div class="axis-label label-top">Speed (+Y)</div>
+        <div class="axis-label label-bottom">Endurance (-Y)</div>
+        <div class="axis-label label-left">Defense (-X)</div>
+        <div class="axis-label label-right">Attack (+X)</div>
+      </div>
+      <div class="tooltip" id="tooltip"></div>
+    </div>
+
+    <div class="sidebar">
+      <div class="controls">
+        <label><input type="checkbox" id="showSkills" checked> Show Skills (circles)</label>
+        <label><input type="checkbox" id="showTags" checked> Show User Tags (squares)</label>
+        <label><input type="checkbox" id="showLabels"> Show Labels</label>
+      </div>
+
+      <div class="legend-section">
+        <div class="legend-title">SKILL TYPES (29 skills)</div>
+        <div class="legend-item"><div class="legend-skill-color" style="background:#ff6347"></div> Attack Skills</div>
+        <div class="legend-item"><div class="legend-skill-color" style="background:#ffd700"></div> Speed Skills</div>
+        <div class="legend-item"><div class="legend-skill-color" style="background:#6495ed"></div> Defense Skills</div>
+        <div class="legend-item"><div class="legend-skill-color" style="background:#8a2be2"></div> Heal/Endurance Skills</div>
+        <div class="legend-item"><div class="legend-skill-color" style="background:#32cd32"></div> Special Skills</div>
+      </div>
+
+      <div class="legend-section">
+        <div class="legend-title">TAG CATEGORIES</div>
+        <div class="legend-item"><div class="legend-color" style="background:#ff6b6b"></div> Combat / Action</div>
+        <div class="legend-item"><div class="legend-color" style="background:#ffa502"></div> Strategy / Tactical</div>
+        <div class="legend-item"><div class="legend-color" style="background:#4ecdc4"></div> Story / RPG</div>
+        <div class="legend-item"><div class="legend-color" style="background:#a55eea"></div> Horror / Dark</div>
+        <div class="legend-item"><div class="legend-color" style="background:#26de81"></div> Casual / Relaxing</div>
+        <div class="legend-item"><div class="legend-color" style="background:#45aaf2"></div> Multiplayer / Social</div>
+        <div class="legend-item"><div class="legend-color" style="background:#fed330"></div> Simulation / Building</div>
+        <div class="legend-item"><div class="legend-color" style="background:#fd9644"></div> Sports / Racing</div>
+      </div>
+
+      <div class="test-section">
+        <h3>Test: Select User Tags (日本語タグ完全対応)</h3>
+        <div id="tagSelectContainer"></div>
+        <div class="result-box" id="resultBox">
+          Select tags to see the calculated skill
+        </div>
+        <div class="stats" id="stats">
+          Total tags: 0 | Selected: 0
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // 日本語タグ→英語タグ変換マップ（Steam全タグ網羅）
+    const JA_TO_EN = {
+      // === アクション・戦闘系 ===
+      'アクション': 'Action',
+      'アドベンチャー': 'Adventure',
+      'アクションアドベンチャー': 'Action-Adventure',
+      'アクションRPG': 'Action RPG',
+      'アーケード': 'Arcade',
+      'シューター': 'Shooter',
+      'シューティング': 'Shooter',
+      'FPS': 'FPS',
+      'TPS': 'Third Person Shooter',
+      'サードパーソン': 'Third Person',
+      'サードパーソンシューター': 'Third Person Shooter',
+      '一人称視点': 'First-Person',
+      '三人称視点': 'Third Person',
+      'ハクスラ': 'Hack and Slash',
+      'ハックアンドスラッシュ': 'Hack and Slash',
+      '格闘': 'Fighting',
+      '格闘ゲーム': 'Fighting',
+      'ベルトスクロール': 'Beat \'em up',
+      'ベルトスクロールアクション': 'Beat \'em up',
+      'ソウルライク': 'Souls-like',
+      'ソウルズライク': 'Souls-like',
+      '弾幕': 'Bullet Hell',
+      '弾幕シューティング': 'Bullet Hell',
+      'シュート・エム・アップ': 'Shoot \'Em Up',
+      'スクロールシューター': 'Shoot \'Em Up',
+      '縦スクロール': 'Shoot \'Em Up',
+      '横スクロール': 'Side Scroller',
+      'トップダウンシューター': 'Top-Down Shooter',
+      'トップダウン': 'Top-Down',
+      'ツインスティックシューター': 'Twin Stick Shooter',
+      'アリーナシューター': 'Arena Shooter',
+      'タクティカルシューター': 'Tactical Shooter',
+      'ルートシューター': 'Looter Shooter',
+      'ヒーローシューター': 'Hero Shooter',
+      '銃撃戦': 'Gun Combat',
+      '剣戟': 'Swordplay',
+      '近接戦闘': 'Melee',
+      '銃': 'Shooter',
+      '暴力': 'Violent',
+      '暴力的': 'Violent',
+      'ゴア': 'Gore',
+      '流血': 'Gore',
+      '残酷': 'Gore',
+      '成人向け': 'Mature',
+      'アダルト': 'Adult',
+      'NSFW': 'NSFW',
+      '性的コンテンツ': 'Sexual Content',
+      'ヌード': 'Nudity',
+
+      // === ローグライク系 ===
+      'ローグライク': 'Roguelike',
+      'ローグライト': 'Roguelite',
+      'ローグヴァニア': 'Roguevania',
+      '伝統的ローグライク': 'Traditional Roguelike',
+      'ローグライクデッキビルダー': 'Roguelike Deckbuilder',
+      '高難易度': 'Difficult',
+      '難しい': 'Difficult',
+      '鬼畜': 'Difficult',
+      'パーマデス': 'Permadeath',
+      '永久死': 'Permadeath',
+      'ダンジョン探索': 'Dungeon Crawler',
+      'ダンジョンクローラー': 'Dungeon Crawler',
+      'ダンジョン': 'Dungeon Crawler',
+      'プロシージャル生成': 'Procedural Generation',
+      '手続き生成': 'Procedural Generation',
+      'ランダム生成': 'Procedural Generation',
+
+      // === 戦略・タクティカル系 ===
+      'ストラテジー': 'Strategy',
+      '戦略': 'Strategy',
+      'ターン制': 'Turn-Based',
+      'ターンベース': 'Turn-Based',
+      'ターン制ストラテジー': 'Turn-Based Strategy',
+      'ターン制戦術': 'Turn-Based Tactics',
+      'ターン制戦闘': 'Turn-Based Combat',
+      'リアルタイムストラテジー': 'RTS',
+      'リアルタイム戦略': 'RTS',
+      'RTS': 'RTS',
+      'リアルタイム戦術': 'Real Time Tactics',
+      'タワーディフェンス': 'Tower Defense',
+      'タワーディフェンス要素': 'Tower Defense',
+      'カードゲーム': 'Card Game',
+      'カードバトラー': 'Card Battler',
+      'デッキ構築': 'Deckbuilding',
+      'トレーディングカードゲーム': 'Trading Card Game',
+      'コレクタブルカードゲーム': 'Collectible Card Game',
+      'タクティカル': 'Tactical',
+      '戦術': 'Tactical',
+      'タクティカルRPG': 'Tactical RPG',
+      '大戦略': 'Grand Strategy',
+      'グランドストラテジー': 'Grand Strategy',
+      '4X': '4X',
+      '軍事': 'Military',
+      '戦争': 'War',
+      '戦争ゲーム': 'Wargame',
+      'オートバトラー': 'Auto Battler',
+      'オートチェス': 'Auto Battler',
+      'MOBA': 'MOBA',
+
+      // === RPG・ストーリー系 ===
+      'RPG': 'RPG',
+      'ロールプレイング': 'RPG',
+      'JRPG': 'JRPG',
+      'CRPG': 'CRPG',
+      'ARPG': 'Action RPG',
+      'MMORPG': 'MMORPG',
+      'MMO': 'MMO',
+      'MORPG': 'MMORPG',
+      'オープンワールド': 'Open World',
+      'サンドボックス': 'Sandbox',
+      '箱庭': 'Sandbox',
+      '探索': 'Exploration',
+      '探検': 'Exploration',
+      'パーティベースRPG': 'Party-Based RPG',
+      'パーティ制': 'Party-Based RPG',
+      'キャラクタークリエイター': 'Character Customization',
+      'キャラメイク': 'Character Customization',
+      'キャラクターカスタマイズ': 'Character Customization',
+      'クラスベース': 'Class-Based',
+      '物語性': 'Story Rich',
+      'ストーリー重視': 'Story Rich',
+      'ストーリーリッチ': 'Story Rich',
+      '濃厚なストーリー': 'Story Rich',
+      'ナラティブ': 'Narrative',
+      'マルチエンディング': 'Choices Matter',
+      '選択が重要': 'Choices Matter',
+      '分岐': 'Choices Matter',
+      'ビジュアルノベル': 'Visual Novel',
+      'ノベルゲーム': 'Visual Novel',
+      'インタラクティブフィクション': 'Interactive Fiction',
+      'ポイント&クリック': 'Point & Click',
+      'ポイントアンドクリック': 'Point & Click',
+      '選択方式アドベンチャー': 'Choose Your Own Adventure',
+      'ウォーキングシミュレーター': 'Walking Simulator',
+      'ウォーキングシム': 'Walking Simulator',
+      '会話': 'Conversation',
+      '対話': 'Dialogue',
+
+      // === ホラー・ダーク系 ===
+      'ホラー': 'Horror',
+      'サバイバルホラー': 'Survival Horror',
+      '精神的恐怖': 'Psychological Horror',
+      'サイコホラー': 'Psychological Horror',
+      'サイコロジカルホラー': 'Psychological Horror',
+      'コズミックホラー': 'Lovecraftian',
+      'クトゥルフ': 'Lovecraftian',
+      'ラヴクラフト的': 'Lovecraftian',
+      'ダーク': 'Dark',
+      '暗い': 'Dark',
+      'ダークファンタジー': 'Dark Fantasy',
+      'ダークコメディ': 'Dark Comedy',
+      'ゴシック': 'Gothic',
+      '雰囲気': 'Atmospheric',
+      '雰囲気重視': 'Atmospheric',
+      'ミステリー': 'Mystery',
+      '探偵': 'Mystery',
+      '謎解き': 'Mystery',
+      'スリラー': 'Thriller',
+      'サスペンス': 'Thriller',
+      '超常現象': 'Supernatural',
+      '怪談': 'Supernatural',
+
+      // === カジュアル・パズル系 ===
+      'カジュアル': 'Casual',
+      'リラックス': 'Relaxing',
+      'のんびり': 'Relaxing',
+      '癒し': 'Relaxing',
+      '居心地の良い': 'Cozy',
+      'ほのぼの': 'Cozy',
+      'コージー': 'Cozy',
+      '心温まる': 'Wholesome',
+      'かわいい': 'Cute',
+      'キュート': 'Cute',
+      '可愛い': 'Cute',
+      'カラフル': 'Colorful',
+      'パズル': 'Puzzle',
+      'パズルプラットフォーマー': 'Puzzle Platformer',
+      'ロジック': 'Logic',
+      '論理': 'Logic',
+      'マッチ3': 'Match 3',
+      '隠しオブジェクト': 'Hidden Object',
+      'プログラミング': 'Programming',
+      'ハッキング': 'Hacking',
+      'コーディング': 'Programming',
+      '物理演算': 'Physics',
+      '物理パズル': 'Physics',
+      'プラットフォーマー': 'Platformer',
+      'プラットフォームアクション': 'Platformer',
+      '精密プラットフォーマー': 'Precision Platformer',
+      'シネマティックプラットフォーマー': 'Cinematic Platformer',
+      '3Dプラットフォーマー': '3D Platformer',
+      '2Dプラットフォーマー': '2D Platformer',
+      'メトロイドヴァニア': 'Metroidvania',
+      'メトロイドバニア': 'Metroidvania',
+
+      // === マルチプレイ系 ===
+      'マルチプレイヤー': 'Multiplayer',
+      'マルチプレイ': 'Multiplayer',
+      'マルチ': 'Multiplayer',
+      'シングルプレイヤー': 'Singleplayer',
+      'シングルプレイ': 'Singleplayer',
+      '一人用': 'Singleplayer',
+      'オンライン協力プレイ': 'Online Co-Op',
+      'オンラインCo-op': 'Online Co-Op',
+      'オンラインマルチ': 'Online Multiplayer',
+      'ローカル協力プレイ': 'Local Co-Op',
+      'ローカルCo-op': 'Local Co-Op',
+      'ローカルマルチ': 'Local Multiplayer',
+      '協力プレイ': 'Co-op',
+      'Co-op': 'Co-op',
+      'コープ': 'Co-op',
+      '分割画面': 'Split Screen',
+      '画面分割': 'Split Screen',
+      'PvP': 'PvP',
+      'PvE': 'PvE',
+      '対戦': 'Competitive',
+      '競争': 'Competitive',
+      'ランク戦': 'Competitive',
+      'バトルロイヤル': 'Battle Royale',
+      'バトロワ': 'Battle Royale',
+      'チームベース': 'Team-Based',
+      '大人数マルチプレイ': 'Massively Multiplayer',
+      '非同期マルチプレイ': 'Asynchronous Multiplayer',
+      '基本プレイ無料': 'Free to Play',
+      '基本無料': 'Free to Play',
+      'F2P': 'Free to Play',
+
+      // === シミュレーション系 ===
+      'シミュレーション': 'Simulation',
+      'シム': 'Simulation',
+      '建設': 'Building',
+      '建築': 'Building',
+      '街づくり': 'City Builder',
+      '都市建設': 'City Builder',
+      'シティビルダー': 'City Builder',
+      '拠点建設': 'Base Building',
+      'コロニーシム': 'Colony Sim',
+      'マネジメント': 'Management',
+      '経営': 'Management',
+      '経営シミュレーション': 'Management',
+      'タイクーン': 'Tycoon',
+      '経済': 'Economy',
+      'クラフト': 'Crafting',
+      '製作': 'Crafting',
+      '作成': 'Crafting',
+      '農業': 'Farming Sim',
+      '農業シミュレーション': 'Farming Sim',
+      '農場': 'Farming Sim',
+      'ライフシム': 'Life Sim',
+      '生活シム': 'Life Sim',
+      '恋愛シミュレーション': 'Dating Sim',
+      '恋愛': 'Dating Sim',
+      '乙女ゲーム': 'Otome',
+      '乙女': 'Otome',
+      'BL': 'Boys Love',
+      '資源管理': 'Resource Management',
+      '自動化': 'Automation',
+      'オートメーション': 'Automation',
+      '工場': 'Automation',
+      '政治シミュレーション': 'Political Sim',
+      '政治': 'Political',
+      '医療': 'Medical Sim',
+      '飛行': 'Flight',
+      'フライトシム': 'Flight',
+
+      // === サバイバル系 ===
+      'サバイバル': 'Survival',
+      'サバイバルクラフト': 'Survival',
+      'オープンワールドサバイバルクラフト': 'Open World Survival Craft',
+      '狩り': 'Hunting',
+      'ハンティング': 'Hunting',
+      '釣り': 'Fishing',
+      'フィッシング': 'Fishing',
+      '自然': 'Nature',
+      '環境': 'Nature',
+
+      // === スポーツ・レース系 ===
+      'スポーツ': 'Sports',
+      'レース': 'Racing',
+      'レーシング': 'Racing',
+      'ドライビング': 'Driving',
+      '運転': 'Driving',
+      'アーケードレース': 'Arcade Racing',
+      'レースシム': 'Racing Sim',
+      'オフロード': 'Offroad',
+      '自転車': 'Cycling',
+      'サイクリング': 'Cycling',
+      'ゴルフ': 'Golf',
+      'サッカー': 'Soccer',
+      'フットボール': 'Football',
+      'バスケットボール': 'Basketball',
+      '野球': 'Baseball',
+      'テニス': 'Tennis',
+      'ボクシング': 'Boxing',
+      '格闘技': 'Martial Arts',
+      'レスリング': 'Wrestling',
+      'スケートボード': 'Skateboarding',
+      'スノーボード': 'Snowboarding',
+      'スキー': 'Skiing',
+      'eスポーツ': 'eSports',
+
+      // === 音楽・リズム系 ===
+      '音楽': 'Music',
+      'リズム': 'Rhythm',
+      'リズムゲーム': 'Rhythm',
+      '音ゲー': 'Rhythm',
+      'サウンドトラック': 'Soundtrack',
+
+      // === 世界観・設定系 ===
+      'ファンタジー': 'Fantasy',
+      'ハイファンタジー': 'Fantasy',
+      'SF': 'Sci-fi',
+      'サイエンスフィクション': 'Sci-fi',
+      '宇宙': 'Space',
+      'スペース': 'Space',
+      '宇宙船': 'Space',
+      'サイバーパンク': 'Cyberpunk',
+      'スチームパンク': 'Steampunk',
+      'ディーゼルパンク': 'Dieselpunk',
+      '終末世界': 'Post-apocalyptic',
+      'ポストアポカリプス': 'Post-apocalyptic',
+      '終末': 'Post-apocalyptic',
+      'ディストピア': 'Dystopian',
+      'ユートピア': 'Utopian',
+      '歴史': 'Historical',
+      '歴史的': 'Historical',
+      '中世': 'Medieval',
+      '西部劇': 'Western',
+      'ウエスタン': 'Western',
+      '海賊': 'Pirates',
+      '忍者': 'Ninja',
+      '侍': 'Samurai',
+      '神話': 'Mythology',
+      '神話的': 'Mythology',
+      '北欧神話': 'Norse Mythology',
+      'ギリシャ神話': 'Greek Mythology',
+      'ヴァンパイア': 'Vampire',
+      '吸血鬼': 'Vampire',
+      'ゾンビ': 'Zombies',
+      'エイリアン': 'Aliens',
+      '宇宙人': 'Aliens',
+      'ロボット': 'Robots',
+      'メカ': 'Mechs',
+      'ドラゴン': 'Dragons',
+      '魔法': 'Magic',
+      '錬金術': 'Alchemy',
+      '軍用機': 'Military',
+      '潜水艦': 'Submarine',
+      '海軍': 'Naval',
+      '海戦': 'Naval Combat',
+      '航空': 'Aviation',
+      '列車': 'Trains',
+      '鉄道': 'Trains',
+      '車両': 'Vehicular Combat',
+
+      // === スタイル・グラフィック系 ===
+      'インディー': 'Indie',
+      'インディーズ': 'Indie',
+      'インディーゲーム': 'Indie',
+      'アニメ': 'Anime',
+      'カートゥーン': 'Cartoon',
+      'アニメ風': 'Anime',
+      'ピクセルグラフィック': 'Pixel Graphics',
+      'ピクセル': 'Pixel Graphics',
+      'ドット絵': 'Pixel Graphics',
+      'レトロ': 'Retro',
+      'クラシック': 'Classic',
+      'ミニマル': 'Minimalist',
+      'ミニマリスト': 'Minimalist',
+      '手描き': 'Hand-drawn',
+      'スタイリッシュ': 'Stylized',
+      '美しい': 'Beautiful',
+      'フォトリアル': 'Photorealistic',
+      'リアル': 'Realistic',
+      'リアリスティック': 'Realistic',
+      '実験的': 'Experimental',
+      'アート': 'Artistic',
+      '芸術的': 'Artistic',
+      'サイケデリック': 'Psychedelic',
+      '抽象的': 'Abstract',
+      'モノクロ': 'Noir',
+      'ノワール': 'Noir',
+      '2D': '2D',
+      '2.5D': '2.5D',
+      '3D': '3D',
+      'VR': 'VR',
+      'バーチャルリアリティ': 'VR',
+      'VR対応': 'VR',
+      'VR専用': 'VR Only',
+
+      // === ゲームプレイ要素 ===
+      'アーリーアクセス': 'Early Access',
+      '早期アクセス': 'Early Access',
+      'ベータ': 'Early Access',
+      'MOD対応': 'Moddable',
+      'MOD': 'Moddable',
+      'レベルエディター': 'Level Editor',
+      'マップエディター': 'Level Editor',
+      'ワークショップ': 'Steam Workshop',
+      '実績': 'Achievements',
+      'コントローラー対応': 'Controller',
+      'キーボード': 'Keyboard',
+      'タッチ': 'Touch',
+      'トラックIR': 'TrackIR',
+      'クラウドセーブ': 'Cloud Saves',
+      'リーダーボード': 'Leaderboards',
+      'ランキング': 'Leaderboards',
+      'リプレイ': 'Replay Value',
+      '繰り返し遊べる': 'Replay Value',
+      'やり込み': 'Replay Value',
+      '周回': 'Replay Value',
+      'チュートリアル': 'Tutorial',
+      '学習曲線': 'Tutorial',
+      'ルート': 'Loot',
+      'ハクスラ要素': 'Loot',
+      '収集': 'Collectathon',
+      'コレクション': 'Collectathon',
+      'アンロック': 'Unlockables',
+      'スキルツリー': 'Skill Tree',
+      '成長': 'Character Development',
+      'レベルアップ': 'Leveling',
+      'インベントリ管理': 'Inventory Management',
+      '時間管理': 'Time Management',
+      '時間制限': 'Time Attack',
+      'タイムアタック': 'Time Attack',
+      'スコアアタック': 'Score Attack',
+      'ボス戦': 'Boss Rush',
+      'ボスラッシュ': 'Boss Rush',
+      'ウェーブ': 'Waves',
+      '防衛': 'Tower Defense',
+      'クイックタイムイベント': 'Quick-Time Events',
+      'QTE': 'Quick-Time Events',
+      'ステルス': 'Stealth',
+      '隠密': 'Stealth',
+      'パルクール': 'Parkour',
+      '壁走り': 'Parkour',
+      'グラップリングフック': 'Grappling Hook',
+      'アスレチック': 'Parkour',
+      'キャラクターアクションゲーム': 'Character Action Game',
+      'スペクタクルファイター': 'Spectacle fighter',
+      'コンボ': 'Combo',
+      'コンボ重視': 'Combo',
+      '反射神経': 'Twitch',
+      'クリッカー': 'Clicker',
+      '放置': 'Idle',
+      '放置ゲー': 'Idle',
+      'インクリメンタル': 'Incremental',
+      'ファストトラベル': 'Fast Travel',
+      '移動': 'Movement',
+      'フリーランニング': 'Free Running',
+
+      // === 感情・雰囲気系 ===
+      '感動的': 'Emotional',
+      '泣ける': 'Emotional',
+      'エモーショナル': 'Emotional',
+      'ドラマ': 'Drama',
+      'ドラマチック': 'Drama',
+      '映画的': 'Cinematic',
+      'シネマティック': 'Cinematic',
+      '没入感': 'Immersive',
+      'イマーシブ': 'Immersive Sim',
+      'イマーシブシム': 'Immersive Sim',
+      'テンポが速い': 'Fast-Paced',
+      'スピード感': 'Fast-Paced',
+      'アドレナリン': 'Fast-Paced',
+      'スローペース': 'Slow-paced',
+      'ゆっくり': 'Slow-paced',
+      'コメディ': 'Comedy',
+      'コメディー': 'Comedy',
+      'ギャグ': 'Comedy',
+      '風刺': 'Satire',
+      'ブラックユーモア': 'Dark Humor',
+      'ブラックコメディ': 'Dark Comedy',
+      'パロディ': 'Parody',
+      'ミーム': 'Memes',
+      'ファミリーフレンドリー': 'Family Friendly',
+      '全年齢': 'Family Friendly',
+      '子供向け': 'Family Friendly',
+      '教育': 'Education',
+      '教育的': 'Educational',
+
+      // === ジャンル混合・特殊 ===
+      'ボードゲーム': 'Board Game',
+      'ボドゲ': 'Board Game',
+      'テーブルトップ': 'Tabletop',
+      'TRPG': 'Tabletop RPG',
+      'テーブルトップRPG': 'Tabletop RPG',
+      'パーティーゲーム': 'Party Game',
+      'パーティー': 'Party Game',
+      'トリビア': 'Trivia',
+      'クイズ': 'Trivia',
+      'ワードゲーム': 'Word Game',
+      '言葉遊び': 'Word Game',
+      '子供': 'Kid-Friendly',
+      '女性主人公': 'Female Protagonist',
+      '男性主人公': 'Male Protagonist',
+      '動物': 'Animals',
+      '恐竜': 'Dinosaurs',
+      '犬': 'Dogs',
+      '猫': 'Cats',
+      '馬': 'Horses',
+
+      // === その他 ===
+      'デモ': 'Demo',
+      '体験版': 'Demo',
+      'ソフトウェア': 'Software',
+      'ツール': 'Utilities',
+      'ユーティリティ': 'Utilities',
+      '動画制作': 'Video Production',
+      '写真編集': 'Photo Editing',
+      'オーディオ制作': 'Audio Production',
+      'ゲーム開発': 'Game Development',
+      'デザイン': 'Design & Illustration',
+      'アニメーション': 'Animation & Modeling',
+      'ドキュメンタリー': 'Documentary',
+      'エピソード': 'Episodic',
+      'エピソード形式': 'Episodic',
+      '短編': 'Short',
+      'ショート': 'Short',
+      '長編': 'Long',
+      'サントラ': 'Soundtrack',
+    };
+
+    // User Tag coordinates (英語タグ座標)
+    const TAG_COORDS = {
+      // Combat / Action (red) - 攻撃的・アクション系
+      'Action': { x: 3, y: 2, cat: 'combat', color: '#ff6b6b' },
+      'Action-Adventure': { x: 2, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'FPS': { x: 4, y: 3, cat: 'combat', color: '#ff6b6b' },
+      'Shooter': { x: 4, y: 2, cat: 'combat', color: '#ff6b6b' },
+      'Third Person': { x: 3, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Third Person Shooter': { x: 4, y: 2, cat: 'combat', color: '#ff6b6b' },
+      'Hack and Slash': { x: 4, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Fighting': { x: 4, y: 0, cat: 'combat', color: '#ff6b6b' },
+      'Beat \'em up': { x: 3, y: 0, cat: 'combat', color: '#ff6b6b' },
+      'Souls-like': { x: 3, y: -2, cat: 'combat', color: '#ff6b6b' },
+      'Action RPG': { x: 2, y: -1, cat: 'combat', color: '#ff6b6b' },
+      'Bullet Hell': { x: 3, y: 4, cat: 'combat', color: '#ff6b6b' },
+      'Shoot \'Em Up': { x: 3, y: 3, cat: 'combat', color: '#ff6b6b' },
+      'Top-Down Shooter': { x: 3, y: 2, cat: 'combat', color: '#ff6b6b' },
+      'Top-Down': { x: 1, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Twin Stick Shooter': { x: 3, y: 3, cat: 'combat', color: '#ff6b6b' },
+      'Arena Shooter': { x: 4, y: 3, cat: 'combat', color: '#ff6b6b' },
+      'Tactical Shooter': { x: 2, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Looter Shooter': { x: 3, y: 0, cat: 'combat', color: '#ff6b6b' },
+      'Hero Shooter': { x: 3, y: 2, cat: 'combat', color: '#ff6b6b' },
+      'Gore': { x: 4, y: -2, cat: 'combat', color: '#ff6b6b' },
+      'Violent': { x: 4, y: -1, cat: 'combat', color: '#ff6b6b' },
+      'Roguelike': { x: 2, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Roguelite': { x: 2, y: 2, cat: 'combat', color: '#ff6b6b' },
+      'Roguevania': { x: 2, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Traditional Roguelike': { x: 1, y: -1, cat: 'combat', color: '#ff6b6b' },
+      'Roguelike Deckbuilder': { x: 0, y: 0, cat: 'combat', color: '#ff6b6b' },
+      'Difficult': { x: 2, y: -1, cat: 'combat', color: '#ff6b6b' },
+      'Permadeath': { x: 3, y: -1, cat: 'combat', color: '#ff6b6b' },
+      'First-Person': { x: 2, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Melee': { x: 3, y: 0, cat: 'combat', color: '#ff6b6b' },
+      'Swordplay': { x: 3, y: 0, cat: 'combat', color: '#ff6b6b' },
+      'Dungeon Crawler': { x: 2, y: 0, cat: 'combat', color: '#ff6b6b' },
+      'Side Scroller': { x: 2, y: 2, cat: 'combat', color: '#ff6b6b' },
+      'Character Action Game': { x: 4, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Spectacle fighter': { x: 4, y: 1, cat: 'combat', color: '#ff6b6b' },
+      'Mature': { x: 3, y: -2, cat: 'combat', color: '#ff6b6b' },
+      'Adult': { x: 2, y: -2, cat: 'combat', color: '#ff6b6b' },
+      'NSFW': { x: 2, y: -2, cat: 'combat', color: '#ff6b6b' },
+      'Sexual Content': { x: 1, y: -2, cat: 'combat', color: '#ff6b6b' },
+      'Nudity': { x: 1, y: -2, cat: 'combat', color: '#ff6b6b' },
+
+      // Strategy / Tactical (orange) - 戦略・戦術系
+      'Strategy': { x: -2, y: -2, cat: 'strategy', color: '#ffa502' },
+      'Turn-Based': { x: -3, y: -3, cat: 'strategy', color: '#ffa502' },
+      'Turn-Based Strategy': { x: -3, y: -2, cat: 'strategy', color: '#ffa502' },
+      'Turn-Based Tactics': { x: -2, y: -2, cat: 'strategy', color: '#ffa502' },
+      'Turn-Based Combat': { x: -2, y: -2, cat: 'strategy', color: '#ffa502' },
+      'Real Time Tactics': { x: -1, y: 1, cat: 'strategy', color: '#ffa502' },
+      'RTS': { x: -1, y: 2, cat: 'strategy', color: '#ffa502' },
+      'Tower Defense': { x: -3, y: 0, cat: 'strategy', color: '#ffa502' },
+      'Card Game': { x: -2, y: -1, cat: 'strategy', color: '#ffa502' },
+      'Card Battler': { x: -1, y: -1, cat: 'strategy', color: '#ffa502' },
+      'Deckbuilding': { x: -2, y: -1, cat: 'strategy', color: '#ffa502' },
+      'Trading Card Game': { x: -2, y: -1, cat: 'strategy', color: '#ffa502' },
+      'Collectible Card Game': { x: -2, y: -1, cat: 'strategy', color: '#ffa502' },
+      'Tactical': { x: -2, y: -1, cat: 'strategy', color: '#ffa502' },
+      'Tactical RPG': { x: -1, y: -2, cat: 'strategy', color: '#ffa502' },
+      'Grand Strategy': { x: -3, y: -4, cat: 'strategy', color: '#ffa502' },
+      '4X': { x: -2, y: -4, cat: 'strategy', color: '#ffa502' },
+      'Stealth': { x: 1, y: 1, cat: 'strategy', color: '#ffa502' },
+      'Military': { x: -1, y: -1, cat: 'strategy', color: '#ffa502' },
+      'War': { x: 0, y: -1, cat: 'strategy', color: '#ffa502' },
+      'Wargame': { x: -2, y: -2, cat: 'strategy', color: '#ffa502' },
+      'Auto Battler': { x: -1, y: 0, cat: 'strategy', color: '#ffa502' },
+      'MOBA': { x: 1, y: 2, cat: 'strategy', color: '#ffa502' },
+
+      // Story / RPG (cyan) - ストーリー・RPG系
+      'RPG': { x: 0, y: -3, cat: 'story', color: '#4ecdc4' },
+      'JRPG': { x: 1, y: -3, cat: 'story', color: '#4ecdc4' },
+      'CRPG': { x: -1, y: -3, cat: 'story', color: '#4ecdc4' },
+      'MMORPG': { x: 1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'MMO': { x: 0, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Party-Based RPG': { x: 0, y: -3, cat: 'story', color: '#4ecdc4' },
+      'Adventure': { x: 0, y: -1, cat: 'story', color: '#4ecdc4' },
+      'Story Rich': { x: -1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Narrative': { x: -1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Choices Matter': { x: -1, y: -3, cat: 'story', color: '#4ecdc4' },
+      'Visual Novel': { x: -2, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Interactive Fiction': { x: -2, y: -3, cat: 'story', color: '#4ecdc4' },
+      'Walking Simulator': { x: -1, y: -1, cat: 'story', color: '#4ecdc4' },
+      'Exploration': { x: 0, y: 0, cat: 'story', color: '#4ecdc4' },
+      'Open World': { x: 1, y: -1, cat: 'story', color: '#4ecdc4' },
+      'Sandbox': { x: 1, y: 0, cat: 'story', color: '#4ecdc4' },
+      'Singleplayer': { x: 0, y: -1, cat: 'story', color: '#4ecdc4' },
+      'Sci-fi': { x: 1, y: 1, cat: 'story', color: '#4ecdc4' },
+      'Fantasy': { x: 0, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Dark Fantasy': { x: 1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Survival': { x: 1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Open World Survival Craft': { x: 1, y: -1, cat: 'story', color: '#4ecdc4' },
+      '3D': { x: 1, y: 0, cat: 'story', color: '#4ecdc4' },
+      'Point & Click': { x: -1, y: -1, cat: 'story', color: '#4ecdc4' },
+      'Choose Your Own Adventure': { x: -1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Drama': { x: -1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Emotional': { x: -1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Conversation': { x: -2, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Dialogue': { x: -2, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Character Customization': { x: 0, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Space': { x: 1, y: 0, cat: 'story', color: '#4ecdc4' },
+      'Cyberpunk': { x: 2, y: 0, cat: 'story', color: '#4ecdc4' },
+      'Steampunk': { x: 1, y: -1, cat: 'story', color: '#4ecdc4' },
+      'Post-apocalyptic': { x: 1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Dystopian': { x: 0, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Historical': { x: -1, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Medieval': { x: 0, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Western': { x: 1, y: 0, cat: 'story', color: '#4ecdc4' },
+      'Pirates': { x: 2, y: 1, cat: 'story', color: '#4ecdc4' },
+      'Mythology': { x: 0, y: -2, cat: 'story', color: '#4ecdc4' },
+      'Cinematic': { x: 0, y: -1, cat: 'story', color: '#4ecdc4' },
+      'Immersive Sim': { x: 0, y: -1, cat: 'story', color: '#4ecdc4' },
+
+      // Horror / Dark (purple) - ホラー・ダーク系
+      'Horror': { x: -2, y: -1, cat: 'horror', color: '#a55eea' },
+      'Psychological Horror': { x: -3, y: -2, cat: 'horror', color: '#a55eea' },
+      'Survival Horror': { x: -2, y: -2, cat: 'horror', color: '#a55eea' },
+      'Lovecraftian': { x: -3, y: -3, cat: 'horror', color: '#a55eea' },
+      'Dark': { x: -1, y: -2, cat: 'horror', color: '#a55eea' },
+      'Gothic': { x: -2, y: -2, cat: 'horror', color: '#a55eea' },
+      'Atmospheric': { x: -1, y: -1, cat: 'horror', color: '#a55eea' },
+      'Mystery': { x: -2, y: -2, cat: 'horror', color: '#a55eea' },
+      'Thriller': { x: -1, y: 0, cat: 'horror', color: '#a55eea' },
+      'Supernatural': { x: -2, y: -1, cat: 'horror', color: '#a55eea' },
+      'Vampire': { x: -1, y: -1, cat: 'horror', color: '#a55eea' },
+      'Zombies': { x: 1, y: 0, cat: 'horror', color: '#a55eea' },
+      'Aliens': { x: 1, y: 0, cat: 'horror', color: '#a55eea' },
+      'Dark Comedy': { x: -1, y: 0, cat: 'horror', color: '#a55eea' },
+      'Dark Humor': { x: -1, y: 0, cat: 'horror', color: '#a55eea' },
+      'Noir': { x: -2, y: -1, cat: 'horror', color: '#a55eea' },
+
+      // Casual / Relaxing (green) - カジュアル・リラックス系
+      'Casual': { x: 0, y: 1, cat: 'casual', color: '#26de81' },
+      'Relaxing': { x: -1, y: 0, cat: 'casual', color: '#26de81' },
+      'Cozy': { x: -2, y: 0, cat: 'casual', color: '#26de81' },
+      'Wholesome': { x: -2, y: 0, cat: 'casual', color: '#26de81' },
+      'Cute': { x: -1, y: 1, cat: 'casual', color: '#26de81' },
+      'Colorful': { x: 0, y: 1, cat: 'casual', color: '#26de81' },
+      'Puzzle': { x: -1, y: -1, cat: 'casual', color: '#26de81' },
+      'Puzzle Platformer': { x: 0, y: 0, cat: 'casual', color: '#26de81' },
+      'Logic': { x: -2, y: -2, cat: 'casual', color: '#26de81' },
+      'Match 3': { x: -1, y: 1, cat: 'casual', color: '#26de81' },
+      'Hidden Object': { x: -2, y: -1, cat: 'casual', color: '#26de81' },
+      'Programming': { x: -2, y: -2, cat: 'casual', color: '#26de81' },
+      'Hacking': { x: 0, y: 0, cat: 'casual', color: '#26de81' },
+      'Physics': { x: 0, y: 0, cat: 'casual', color: '#26de81' },
+      'Platformer': { x: 2, y: 2, cat: 'casual', color: '#26de81' },
+      'Precision Platformer': { x: 2, y: 2, cat: 'casual', color: '#26de81' },
+      'Cinematic Platformer': { x: 1, y: 1, cat: 'casual', color: '#26de81' },
+      '3D Platformer': { x: 2, y: 2, cat: 'casual', color: '#26de81' },
+      '2D Platformer': { x: 2, y: 2, cat: 'casual', color: '#26de81' },
+      'Metroidvania': { x: 2, y: 1, cat: 'casual', color: '#26de81' },
+      'Indie': { x: 0, y: 0, cat: 'casual', color: '#26de81' },
+      'Anime': { x: 0, y: 0, cat: 'casual', color: '#26de81' },
+      'Cartoon': { x: -1, y: 1, cat: 'casual', color: '#26de81' },
+      'Pixel Graphics': { x: 0, y: 1, cat: 'casual', color: '#26de81' },
+      'Retro': { x: 1, y: 1, cat: 'casual', color: '#26de81' },
+      'Classic': { x: 0, y: 0, cat: 'casual', color: '#26de81' },
+      'Minimalist': { x: -1, y: 0, cat: 'casual', color: '#26de81' },
+      'Hand-drawn': { x: -1, y: 0, cat: 'casual', color: '#26de81' },
+      'Stylized': { x: 0, y: 0, cat: 'casual', color: '#26de81' },
+      '2D': { x: 0, y: 1, cat: 'casual', color: '#26de81' },
+      '2.5D': { x: 1, y: 1, cat: 'casual', color: '#26de81' },
+      'Early Access': { x: 0, y: 2, cat: 'casual', color: '#26de81' },
+      'Family Friendly': { x: -1, y: 1, cat: 'casual', color: '#26de81' },
+      'Education': { x: -2, y: -1, cat: 'casual', color: '#26de81' },
+      'Educational': { x: -2, y: -1, cat: 'casual', color: '#26de81' },
+      'Comedy': { x: 0, y: 1, cat: 'casual', color: '#26de81' },
+      'Satire': { x: -1, y: 0, cat: 'casual', color: '#26de81' },
+      'Parody': { x: 0, y: 1, cat: 'casual', color: '#26de81' },
+      'Memes': { x: 0, y: 2, cat: 'casual', color: '#26de81' },
+      'Clicker': { x: -1, y: 1, cat: 'casual', color: '#26de81' },
+      'Idle': { x: -2, y: 0, cat: 'casual', color: '#26de81' },
+      'Incremental': { x: -2, y: 0, cat: 'casual', color: '#26de81' },
+
+      // Multiplayer / Social (blue) - マルチプレイ・ソーシャル系
+      'Multiplayer': { x: 1, y: 2, cat: 'multi', color: '#45aaf2' },
+      'Online Multiplayer': { x: 1, y: 2, cat: 'multi', color: '#45aaf2' },
+      'Co-op': { x: 0, y: 1, cat: 'multi', color: '#45aaf2' },
+      'Online Co-Op': { x: 0, y: 2, cat: 'multi', color: '#45aaf2' },
+      'Local Co-Op': { x: -1, y: 1, cat: 'multi', color: '#45aaf2' },
+      'Local Multiplayer': { x: -1, y: 2, cat: 'multi', color: '#45aaf2' },
+      'Split Screen': { x: -1, y: 1, cat: 'multi', color: '#45aaf2' },
+      'PvP': { x: 3, y: 3, cat: 'multi', color: '#45aaf2' },
+      'PvE': { x: 1, y: 1, cat: 'multi', color: '#45aaf2' },
+      'Competitive': { x: 2, y: 3, cat: 'multi', color: '#45aaf2' },
+      'Battle Royale': { x: 3, y: 4, cat: 'multi', color: '#45aaf2' },
+      'Team-Based': { x: 1, y: 2, cat: 'multi', color: '#45aaf2' },
+      'Massively Multiplayer': { x: 0, y: -1, cat: 'multi', color: '#45aaf2' },
+      'Asynchronous Multiplayer': { x: 0, y: 0, cat: 'multi', color: '#45aaf2' },
+      'Free to Play': { x: 0, y: 1, cat: 'multi', color: '#45aaf2' },
+      'Party Game': { x: 0, y: 2, cat: 'multi', color: '#45aaf2' },
+      'Board Game': { x: -1, y: -1, cat: 'multi', color: '#45aaf2' },
+      'Tabletop': { x: -1, y: -1, cat: 'multi', color: '#45aaf2' },
+      'Tabletop RPG': { x: -1, y: -2, cat: 'multi', color: '#45aaf2' },
+      'Trivia': { x: -1, y: 1, cat: 'multi', color: '#45aaf2' },
+      'Word Game': { x: -1, y: 0, cat: 'multi', color: '#45aaf2' },
+
+      // Simulation / Building (yellow) - シミュレーション・建設系
+      'Simulation': { x: -1, y: -2, cat: 'sim', color: '#fed330' },
+      'Building': { x: -2, y: -1, cat: 'sim', color: '#fed330' },
+      'City Builder': { x: -3, y: -2, cat: 'sim', color: '#fed330' },
+      'Base Building': { x: -2, y: -1, cat: 'sim', color: '#fed330' },
+      'Colony Sim': { x: -2, y: -2, cat: 'sim', color: '#fed330' },
+      'Management': { x: -2, y: -2, cat: 'sim', color: '#fed330' },
+      'Tycoon': { x: -2, y: -2, cat: 'sim', color: '#fed330' },
+      'Economy': { x: -2, y: -3, cat: 'sim', color: '#fed330' },
+      'Crafting': { x: 0, y: -1, cat: 'sim', color: '#fed330' },
+      'Farming Sim': { x: -2, y: -1, cat: 'sim', color: '#fed330' },
+      'Life Sim': { x: -1, y: -1, cat: 'sim', color: '#fed330' },
+      'Dating Sim': { x: -1, y: -1, cat: 'sim', color: '#fed330' },
+      'Otome': { x: -1, y: -1, cat: 'sim', color: '#fed330' },
+      'Boys Love': { x: -1, y: -1, cat: 'sim', color: '#fed330' },
+      'Resource Management': { x: -2, y: -2, cat: 'sim', color: '#fed330' },
+      'Automation': { x: -2, y: -2, cat: 'sim', color: '#fed330' },
+      'Political Sim': { x: -3, y: -3, cat: 'sim', color: '#fed330' },
+      'Political': { x: -2, y: -2, cat: 'sim', color: '#fed330' },
+      'Medical Sim': { x: -2, y: -2, cat: 'sim', color: '#fed330' },
+      'Flight': { x: 0, y: 2, cat: 'sim', color: '#fed330' },
+      'Procedural Generation': { x: 1, y: 0, cat: 'sim', color: '#fed330' },
+      'Hunting': { x: 1, y: 0, cat: 'sim', color: '#fed330' },
+      'Fishing': { x: -1, y: 0, cat: 'sim', color: '#fed330' },
+      'Nature': { x: -1, y: 0, cat: 'sim', color: '#fed330' },
+
+      // Sports / Racing (orange-red) - スポーツ・レース系
+      'Racing': { x: 2, y: 4, cat: 'sports', color: '#fd9644' },
+      'Racing Sim': { x: 1, y: 3, cat: 'sports', color: '#fd9644' },
+      'Arcade Racing': { x: 2, y: 4, cat: 'sports', color: '#fd9644' },
+      'Sports': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'Driving': { x: 1, y: 3, cat: 'sports', color: '#fd9644' },
+      'Offroad': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'Arcade': { x: 2, y: 2, cat: 'sports', color: '#fd9644' },
+      'Fast-Paced': { x: 3, y: 4, cat: 'sports', color: '#fd9644' },
+      'Soccer': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'Football': { x: 2, y: 2, cat: 'sports', color: '#fd9644' },
+      'Basketball': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'Baseball': { x: 1, y: 2, cat: 'sports', color: '#fd9644' },
+      'Tennis': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'Golf': { x: 0, y: 1, cat: 'sports', color: '#fd9644' },
+      'Boxing': { x: 3, y: 2, cat: 'sports', color: '#fd9644' },
+      'Martial Arts': { x: 3, y: 1, cat: 'sports', color: '#fd9644' },
+      'Wrestling': { x: 3, y: 1, cat: 'sports', color: '#fd9644' },
+      'Cycling': { x: 1, y: 3, cat: 'sports', color: '#fd9644' },
+      'Skateboarding': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'Snowboarding': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'Skiing': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'eSports': { x: 2, y: 3, cat: 'sports', color: '#fd9644' },
+      'Parkour': { x: 3, y: 4, cat: 'sports', color: '#fd9644' },
+      'Music': { x: 0, y: 2, cat: 'sports', color: '#fd9644' },
+      'Rhythm': { x: 1, y: 3, cat: 'sports', color: '#fd9644' },
+      'VR': { x: 1, y: 1, cat: 'sports', color: '#fd9644' },
+    };
+
+    // Skill coordinates (29 skills) - タグ平均の到達可能範囲に合わせて最終調整
+    // タグ平均: X=0.67, Y=-0.10 付近に収束 - 全スキル2-7%の出現率達成
+    const SKILL_COORDS = {
+      // 右上エリア (攻撃+速度) - アクションゲーム向け
+      'ambush': { x: 1.1, y: 0.7, type: 'ATK', color: '#ff6347', desc: '奇襲: 25%で2倍ダメージ' },
+      'training': { x: 0.7, y: 0.9, type: 'ATK', color: '#ff6347', desc: 'トレーニング: 初撃2倍' },
+      'firstStrike': { x: 1.3, y: 1.15, type: 'SPD', color: '#ffd700', desc: '先制: 間隔-500ms' },
+
+      // 右エリア (攻撃系) - シューター/格闘向け
+      'buff': { x: 1.3, y: 0.28, type: 'ATK', color: '#ff6347', desc: 'バフ: 攻撃+15%' },
+      'brutal': { x: 1.2, y: -0.15, type: 'ATK', color: '#ff6347', desc: 'ブルータル: +25%ダメージ' },
+      'gore': { x: 0.9, y: -0.4, type: 'ATK', color: '#ff6347', desc: 'ゴア: 敵HP低いほど火力UP' },
+      'mature': { x: 0.6, y: -0.65, type: 'ATK', color: '#ff6347', desc: 'マチュア: 攻撃+20%/防御-10%' },
+
+      // 上エリア (速度系) - スポーツ/レース向け
+      'speed': { x: 0.2, y: 0.85, type: 'SPD', color: '#ffd700', desc: '加速: 間隔-300ms' },
+      'earlybird': { x: -0.1, y: 0.6, type: 'SPD', color: '#ffd700', desc: 'アーリーバード: 間隔-800ms' },
+      'soundwave': { x: 0.4, y: 0.7, type: 'SP', color: '#32cd32', desc: '音波: 全体攻撃50%' },
+
+      // 中央上エリア - カジュアル向け
+      'tutorial': { x: -0.15, y: 0.4, type: 'DEF', color: '#6495ed', desc: 'チュートリアル: 初回被ダメ無効' },
+      'freebie': { x: -0.3, y: 0.18, type: 'DEF', color: '#6495ed', desc: 'フリービー: 10%回避' },
+
+      // 左エリア (防御系) - ストラテジー/シム向け
+      'utility': { x: -0.4, y: 0, type: 'DEF', color: '#6495ed', desc: 'ユーティリティ: 状態異常耐性' },
+      'defense': { x: -0.55, y: -0.18, type: 'DEF', color: '#6495ed', desc: '防御: 被ダメ-30%' },
+      'fear': { x: -0.38, y: -0.42, type: 'DEF', color: '#6495ed', desc: '恐怖: 敵攻撃-20%' },
+      'docu': { x: -0.7, y: -0.55, type: 'DEF', color: '#6495ed', desc: 'ドキュメント: 敵スキル-20%' },
+
+      // 下エリア (耐久/回復系) - RPG/ストーリー向け
+      'retouch': { x: -0.08, y: -0.7, type: 'DEF', color: '#6495ed', desc: 'レタッチ: HP20%以下で防御2倍' },
+      'party': { x: -0.6, y: -1.3, type: 'HEAL', color: '#8a2be2', desc: 'パーティ: 味方多いほど攻撃UP' },
+      'study': { x: 0.4, y: -0.95, type: 'HEAL', color: '#8a2be2', desc: '学習: 戦闘中攻撃UP' },
+      'absorb': { x: 0.45, y: -0.5, type: 'HEAL', color: '#8a2be2', desc: '吸収: 与ダメの30%回復' },
+      'teamwork': { x: 0.25, y: -0.28, type: 'HEAL', color: '#8a2be2', desc: '連携: 攻撃時味方回復' },
+
+      // 中央エリア (特殊系) - 汎用
+      'lucky': { x: 0.75, y: 0.48, type: 'SP', color: '#32cd32', desc: '幸運: 20%で1.5倍' },
+      'publish': { x: 0.95, y: 0.35, type: 'SP', color: '#32cd32', desc: 'パブリッシュ: 弱点+10%' },
+      'develop': { x: 0.9, y: -0.02, type: 'SP', color: '#32cd32', desc: '開発: ランダムボーナス' },
+      'expose': { x: 0.75, y: -0.18, type: 'ATK', color: '#ff6347', desc: 'エクスポーズ: 敵防御-20%' },
+      'explore': { x: 0.5, y: 0.1, type: 'SP', color: '#32cd32', desc: '探索: 防御20%無視' },
+      'design': { x: 0.18, y: 0.25, type: 'SP', color: '#32cd32', desc: 'デザイン: スキル効果+10%' },
+      'calculate': { x: -0.15, y: -0.22, type: 'SP', color: '#32cd32', desc: '計算: クリティカル+10%' },
+      'reflect': { x: 0.08, y: -0.48, type: 'SP', color: '#32cd32', desc: '反射: 被ダメの20%返し' },
+      'produce': { x: 0.02, y: 0.1, type: 'SP', color: '#32cd32', desc: 'プロデュース: 味方スキル率UP' },
+    };
+
+    // 日本語タグを英語に変換する関数
+    function normalizeTag(tag) {
+      return JA_TO_EN[tag] || tag;
+    }
+
+    const map = document.getElementById('map');
+    const tooltip = document.getElementById('tooltip');
+    const mapSize = 700;
+    const range = 6; // -6 to +6
+
+    function coordToPixel(x, y) {
+      const px = (x + range) / (range * 2) * mapSize;
+      const py = (range - y) / (range * 2) * mapSize;
+      return { px, py };
+    }
+
+    // Render points
+    function renderPoints() {
+      document.querySelectorAll('.point').forEach(el => el.remove());
+
+      const showSkills = document.getElementById('showSkills').checked;
+      const showTags = document.getElementById('showTags').checked;
+      const showLabels = document.getElementById('showLabels').checked;
+
+      // Render tags
+      if (showTags) {
+        Object.entries(TAG_COORDS).forEach(([name, data]) => {
+          const { px, py } = coordToPixel(data.x, data.y);
+          const point = document.createElement('div');
+          point.className = 'point tag-point';
+          point.style.left = px + 'px';
+          point.style.top = py + 'px';
+          point.style.background = data.color;
+          point.dataset.name = name;
+          point.dataset.type = 'tag';
+          point.dataset.info = `${name} (${data.x}, ${data.y})`;
+
+          if (showLabels) {
+            point.style.width = 'auto';
+            point.style.height = 'auto';
+            point.style.padding = '2px 4px';
+            point.style.fontSize = '8px';
+            point.style.borderRadius = '2px';
+            point.textContent = name.substring(0, 4);
+          }
+
+          map.appendChild(point);
+        });
+      }
+
+      // Render skills
+      if (showSkills) {
+        Object.entries(SKILL_COORDS).forEach(([name, data]) => {
+          const { px, py } = coordToPixel(data.x, data.y);
+          const point = document.createElement('div');
+          point.className = 'point';
+          point.innerHTML = `<div class="skill-point" style="background:${data.color}">${name.substring(0, 3).toUpperCase()}</div>`;
+          point.style.left = px + 'px';
+          point.style.top = py + 'px';
+          point.dataset.name = name;
+          point.dataset.type = 'skill';
+          point.dataset.info = `${name} (${data.x}, ${data.y})\n${data.desc}`;
+          map.appendChild(point);
+        });
+      }
+    }
+
+    // Tooltip
+    map.addEventListener('mousemove', (e) => {
+      const point = e.target.closest('.point');
+      if (point) {
+        tooltip.style.display = 'block';
+        tooltip.style.left = (e.pageX + 10) + 'px';
+        tooltip.style.top = (e.pageY + 10) + 'px';
+        tooltip.innerHTML = point.dataset.info.replace('\n', '<br>');
+      } else {
+        tooltip.style.display = 'none';
+      }
+    });
+
+    // Controls
+    document.getElementById('showSkills').addEventListener('change', renderPoints);
+    document.getElementById('showTags').addEventListener('change', renderPoints);
+    document.getElementById('showLabels').addEventListener('change', renderPoints);
+
+    // Tag selection test - grouped by category
+    const tagSelectContainer = document.getElementById('tagSelectContainer');
+    const resultBox = document.getElementById('resultBox');
+    const statsBox = document.getElementById('stats');
+    let selectedTags = [];
+
+    const categories = {
+      'combat': 'Combat / Action (戦闘系)',
+      'strategy': 'Strategy / Tactical (戦略系)',
+      'story': 'Story / RPG (ストーリー系)',
+      'horror': 'Horror / Dark (ホラー系)',
+      'casual': 'Casual / Relaxing (カジュアル系)',
+      'multi': 'Multiplayer (マルチ系)',
+      'sim': 'Simulation (シミュレーション系)',
+      'sports': 'Sports / Racing (スポーツ系)',
+    };
+
+    const tagsByCategory = {};
+    Object.entries(TAG_COORDS).forEach(([name, data]) => {
+      if (!tagsByCategory[data.cat]) tagsByCategory[data.cat] = [];
+      tagsByCategory[data.cat].push(name);
+    });
+
+    Object.entries(categories).forEach(([catKey, catName]) => {
+      const categoryDiv = document.createElement('div');
+      categoryDiv.className = 'tag-category';
+
+      const titleDiv = document.createElement('div');
+      titleDiv.className = 'tag-category-title';
+      titleDiv.textContent = catName;
+      categoryDiv.appendChild(titleDiv);
+
+      const selectDiv = document.createElement('div');
+      selectDiv.className = 'tag-select';
+
+      (tagsByCategory[catKey] || []).forEach(tag => {
+        const btn = document.createElement('button');
+        btn.className = 'tag-btn';
+        btn.textContent = tag;
+        btn.onclick = () => {
+          btn.classList.toggle('selected');
+          if (btn.classList.contains('selected')) {
+            selectedTags.push(tag);
+          } else {
+            selectedTags = selectedTags.filter(t => t !== tag);
+          }
+          calculateSkill();
+        };
+        selectDiv.appendChild(btn);
+      });
+
+      categoryDiv.appendChild(selectDiv);
+      tagSelectContainer.appendChild(categoryDiv);
+    });
+
+    let calculatedPoint = null;
+
+    function calculateSkill() {
+      if (calculatedPoint) {
+        calculatedPoint.remove();
+        calculatedPoint = null;
+      }
+
+      statsBox.innerHTML = `Total EN tags: ${Object.keys(TAG_COORDS).length} | JA mappings: ${Object.keys(JA_TO_EN).length} | Selected: ${selectedTags.length}`;
+
+      if (selectedTags.length === 0) {
+        resultBox.innerHTML = 'Select tags to see the calculated skill';
+        return;
+      }
+
+      // Calculate average coordinates (平均を使用)
+      let totalX = 0, totalY = 0, count = 0;
+      selectedTags.forEach(tag => {
+        const normalizedTag = normalizeTag(tag);
+        if (TAG_COORDS[normalizedTag]) {
+          totalX += TAG_COORDS[normalizedTag].x;
+          totalY += TAG_COORDS[normalizedTag].y;
+          count++;
+        }
+      });
+
+      // 平均座標を計算（タグ数で割る）
+      const avgX = count > 0 ? totalX / count : 0;
+      const avgY = count > 0 ? totalY / count : 0;
+
+      // Find nearest skill
+      let nearestSkill = null;
+      let nearestDist = Infinity;
+
+      Object.entries(SKILL_COORDS).forEach(([name, data]) => {
+        const dist = Math.sqrt(Math.pow(data.x - avgX, 2) + Math.pow(data.y - avgY, 2));
+        if (dist < nearestDist) {
+          nearestDist = dist;
+          nearestSkill = { name, ...data };
+        }
+      });
+
+      // Show result
+      resultBox.innerHTML = `
+        <div style="margin-bottom:5px"><strong>Selected:</strong> ${selectedTags.join(', ')}</div>
+        <div>Avg Coord: <span class="coord">(${avgX.toFixed(1)}, ${avgY.toFixed(1)})</span></div>
+        <div>Nearest Skill: <span class="skill-result">${nearestSkill.name}</span> (${nearestSkill.x}, ${nearestSkill.y})</div>
+        <div>Distance: ${nearestDist.toFixed(2)}</div>
+        <div style="color:#aaa;margin-top:5px">${nearestSkill.desc}</div>
+      `;
+
+      // Show calculated point on map
+      const { px, py } = coordToPixel(avgX, avgY);
+      calculatedPoint = document.createElement('div');
+      calculatedPoint.className = 'point calculated-point';
+      calculatedPoint.style.left = px + 'px';
+      calculatedPoint.style.top = py + 'px';
+      map.appendChild(calculatedPoint);
+    }
+
+    // Initial render
+    renderPoints();
+
+    // Stats output
+    console.log(`=== Tag Stats ===`);
+    console.log(`English tags: ${Object.keys(TAG_COORDS).length}`);
+    console.log(`Japanese mappings: ${Object.keys(JA_TO_EN).length}`);
+  </script>
+</body>
+</html>

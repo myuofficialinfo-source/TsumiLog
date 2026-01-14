@@ -9,7 +9,7 @@ import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
 import AIRecommend from '@/components/AIRecommend';
 import BacklogTower from '@/components/BacklogTower';
-import { Loader2, LogOut, Globe } from 'lucide-react';
+import { Loader2, Settings, LogOut, Globe, Swords, Calendar, X, Trash2 } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
@@ -57,6 +57,11 @@ function HomeContent() {
   const [gameDetails, setGameDetails] = useState<Map<number, { genres: { description: string }[] }>>(new Map());
   const [gameDetailsTimedOut, setGameDetailsTimedOut] = useState(false);
   const [steamId, setSteamId] = useState<string | null>(null);
+  const [showAccountPopup, setShowAccountPopup] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showMaintenancePopup, setShowMaintenancePopup] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState('');
 
   // 起動時にlocalStorageからsteamIdを復元
   useEffect(() => {
@@ -101,6 +106,11 @@ function HomeContent() {
       }
 
       setSteamData(data);
+
+      // ゲームリストをlocalStorageにキャッシュ（カレンダー等で使用）
+      if (data.games && Array.isArray(data.games) && data.games.length > 0) {
+        localStorage.setItem('cachedGames', JSON.stringify(data.games));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'エラーが発生しました');
     } finally {
@@ -108,7 +118,21 @@ function HomeContent() {
     }
   };
 
-  const handleSteamLogin = () => {
+  const handleSteamLogin = async () => {
+    // メンテナンスモードチェック（保存済みSteamIDがあればホワイトリストチェック）
+    try {
+      const savedId = localStorage.getItem('steamId');
+      const url = savedId ? `/api/maintenance?steamId=${savedId}` : '/api/maintenance';
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.maintenance) {
+        setMaintenanceMessage(data.message);
+        setShowMaintenancePopup(true);
+        return;
+      }
+    } catch {
+      // APIエラー時はログインを続行
+    }
     window.location.href = '/api/auth/steam?action=login';
   };
 
@@ -117,6 +141,33 @@ function HomeContent() {
     setSteamId(null);
     setSteamData(null);
     setGameDetails(new Map());
+  };
+
+  const handleDeleteAccount = async () => {
+    if (!steamId) return;
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/user?steamId=${encodeURIComponent(steamId)}`, {
+        method: 'DELETE',
+      });
+      if (response.ok) {
+        // 削除成功したらログアウト処理
+        localStorage.removeItem('steamId');
+        localStorage.removeItem('cachedGames');
+        localStorage.removeItem('calendarEvents');
+        setSteamId(null);
+        setSteamData(null);
+        setGameDetails(new Map());
+        setShowDeleteConfirm(false);
+        setShowAccountPopup(false);
+      } else {
+        alert(language === 'ja' ? '削除に失敗しました' : 'Failed to delete account');
+      }
+    } catch {
+      alert(language === 'ja' ? '削除に失敗しました' : 'Failed to delete account');
+    } finally {
+      setIsDeleting(false);
+    }
   };
 
   // ゲーム詳細を少しずつ取得（言語変更時も再取得）
@@ -203,14 +254,128 @@ function HomeContent() {
               {language === 'ja' ? 'EN' : 'JA'}
             </button>
             {steamId && (
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
-                style={{ backgroundColor: 'var(--card-bg)' }}
-              >
-                <LogOut className="w-4 h-4" />
-                {t('header.logout')}
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setShowAccountPopup(!showAccountPopup)}
+                  className="flex items-center gap-1 sm:gap-2 px-2 sm:px-4 py-2.5 sm:py-2 text-sm font-medium rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 transition-colors"
+                  style={{ backgroundColor: 'var(--card-bg)' }}
+                >
+                  <Settings className="w-4 h-4" />
+                  <span className="hidden sm:inline">{language === 'ja' ? 'アカウント' : 'Account'}</span>
+                </button>
+
+                {/* アカウントポップアップ */}
+                {showAccountPopup && (
+                  <>
+                    {/* オーバーレイ */}
+                    <div
+                      className="fixed inset-0 z-40"
+                      onClick={() => setShowAccountPopup(false)}
+                    />
+                    {/* ポップアップ */}
+                    <div
+                      className="absolute right-0 top-full mt-2 w-72 rounded-xl border-3 border-[#3D3D3D] shadow-lg z-50 p-4"
+                      style={{ backgroundColor: 'var(--card-bg)' }}
+                    >
+                      <div className="flex justify-between items-start mb-3">
+                        <h3 className="font-bold text-lg">
+                          {language === 'ja' ? 'アカウント情報' : 'Account Info'}
+                        </h3>
+                        <button
+                          onClick={() => setShowAccountPopup(false)}
+                          className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {steamData?.profile ? (
+                        <div className="space-y-3">
+                          <div className="flex items-center gap-3">
+                            <Image
+                              src={steamData.profile.avatarUrl}
+                              alt={steamData.profile.personaName}
+                              width={48}
+                              height={48}
+                              className="rounded-lg border-2 border-[#3D3D3D]"
+                            />
+                            <div>
+                              <p className="font-bold">{steamData.profile.personaName}</p>
+                              <p className="text-xs text-gray-500">Steam ID: {steamId}</p>
+                            </div>
+                          </div>
+
+                          <hr className="border-gray-300" />
+
+                          <button
+                            onClick={() => {
+                              setShowAccountPopup(false);
+                              handleLogout();
+                            }}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors"
+                          >
+                            <LogOut className="w-4 h-4" />
+                            {language === 'ja' ? 'ログアウト' : 'Logout'}
+                          </button>
+
+                          <button
+                            onClick={() => setShowDeleteConfirm(true)}
+                            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium rounded-lg border-2 border-red-400 text-red-600 hover:bg-red-50 transition-colors"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            {language === 'ja' ? 'アカウント削除' : 'Delete Account'}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-500">
+                          {language === 'ja' ? '情報を取得中...' : 'Loading...'}
+                        </p>
+                      )}
+                    </div>
+                  </>
+                )}
+
+                {/* 削除確認ダイアログ */}
+                {showDeleteConfirm && (
+                  <>
+                    <div
+                      className="fixed inset-0 bg-black/50 z-50"
+                      onClick={() => setShowDeleteConfirm(false)}
+                    />
+                    <div
+                      className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 rounded-xl border-3 border-[#3D3D3D] shadow-lg z-50 p-5"
+                      style={{ backgroundColor: 'var(--card-bg)' }}
+                    >
+                      <h3 className="font-bold text-lg mb-3 text-center">
+                        {language === 'ja' ? 'アカウント削除' : 'Delete Account'}
+                      </h3>
+                      <p className="text-sm text-gray-600 mb-4 text-center">
+                        {language === 'ja'
+                          ? '※積みゲーバトルのランキングと昇華ボーナス、ゲームカレンダーが全て削除されます。'
+                          : '※Battle rankings, sublimation bonuses, and game calendar will all be deleted.'}
+                      </p>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setShowDeleteConfirm(false)}
+                          className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors"
+                          disabled={isDeleting}
+                        >
+                          {language === 'ja' ? 'いいえ' : 'No'}
+                        </button>
+                        <button
+                          onClick={handleDeleteAccount}
+                          className="flex-1 px-4 py-2 text-sm font-medium rounded-lg border-2 border-red-400 text-red-600 hover:bg-red-50 transition-colors"
+                          disabled={isDeleting}
+                        >
+                          {isDeleting
+                            ? (language === 'ja' ? '削除中...' : 'Deleting...')
+                            : (language === 'ja' ? 'はい' : 'Yes')}
+                        </button>
+                      </div>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
           </div>
         </div>
@@ -287,6 +452,7 @@ function HomeContent() {
                 {language === 'ja' ? 'リリースノート' : 'Release Notes'}
               </h3>
               <ul className="text-xs text-gray-600 space-y-1">
+                <li><span className="font-bold">v0.3.0</span> - {language === 'ja' ? '積みゲーバトル、カレンダー機能を追加' : 'Added Backlog Battle and Calendar features'}</li>
                 <li><span className="font-bold">v0.2.0</span> - {language === 'ja' ? '積みゲータワーの高さ調整、リリースノート追加' : 'Tower height adjustment, Release notes added'}</li>
                 <li><span className="font-bold">v0.1.1</span> - {language === 'ja' ? 'Steam API安定性向上、キャッシュ改善' : 'Steam API stability, cache improvements'}</li>
                 <li><span className="font-bold">v0.1.0</span> - {language === 'ja' ? '初回リリース' : 'Initial release'}</li>
@@ -316,6 +482,59 @@ function HomeContent() {
         {/* 結果表示 */}
         {steamData && !isLoading && (
           <div className="space-y-6">
+            {/* 機能へのリンク */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {/* バトルモードへのリンク */}
+              <Link
+                href="/battle"
+                className="pop-card p-4 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer block"
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--pop-red)' }}
+                  >
+                    <Swords className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-[#3D3D3D]">
+                      {language === 'ja' ? '積みゲーバトル' : 'Backlog Battle'}
+                      <span className="text-xs font-normal text-gray-400 ml-2">(New!)</span>
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {language === 'ja' ? '積みゲーでカードバトル！' : 'Battle with your backlog games!'}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-2xl">→</span>
+              </Link>
+
+              {/* カレンダーへのリンク */}
+              <Link
+                href="/calendar"
+                className="pop-card p-4 flex items-center justify-between hover:scale-[1.02] transition-transform cursor-pointer block"
+              >
+                <div className="flex items-center gap-4">
+                  <div
+                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    style={{ backgroundColor: 'var(--pop-blue)' }}
+                  >
+                    <Calendar className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-[#3D3D3D]">
+                      {language === 'ja' ? 'ゲームカレンダー' : 'Game Calendar'}
+                      <span className="text-xs font-normal text-gray-400 ml-2">(New!)</span>
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {language === 'ja' ? 'ゲームの予定を管理！' : 'Plan your gaming schedule!'}
+                    </p>
+                  </div>
+                </div>
+                <span className="text-2xl">→</span>
+              </Link>
+            </div>
+
             {/* 積みゲータワー */}
             <BacklogTower games={steamData.games} backlogCount={steamData.stats.backlogCount} />
 
@@ -336,6 +555,41 @@ function HomeContent() {
           </div>
         )}
       </main>
+
+      {/* メンテナンスポップアップ */}
+      {showMaintenancePopup && (
+        <>
+          <div
+            className="fixed inset-0 bg-black/50 z-50"
+            onClick={() => setShowMaintenancePopup(false)}
+          />
+          <div
+            className="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 rounded-xl border-3 border-[#3D3D3D] shadow-lg z-50 p-5"
+            style={{ backgroundColor: 'var(--card-bg)' }}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="font-bold text-lg">
+                {language === 'ja' ? 'メンテナンス中' : 'Under Maintenance'}
+              </h3>
+              <button
+                onClick={() => setShowMaintenancePopup(false)}
+                className="p-1 rounded-full hover:bg-gray-100 transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <p className="text-sm text-gray-600 text-center">
+              {maintenanceMessage}
+            </p>
+            <button
+              onClick={() => setShowMaintenancePopup(false)}
+              className="w-full mt-4 px-4 py-2 text-sm font-medium rounded-lg border-2 border-gray-300 hover:bg-gray-50 transition-colors"
+            >
+              {language === 'ja' ? '閉じる' : 'Close'}
+            </button>
+          </div>
+        </>
+      )}
 
       {/* フッター */}
       <footer className="border-t-3 border-[#3D3D3D] py-8 mt-auto" style={{ backgroundColor: 'var(--card-bg)' }}>
