@@ -119,9 +119,11 @@ function HomeContent() {
   };
 
   const handleSteamLogin = async () => {
-    // メンテナンスモードチェック
+    // メンテナンスモードチェック（保存済みSteamIDがあればホワイトリストチェック）
     try {
-      const res = await fetch('/api/maintenance');
+      const savedId = localStorage.getItem('steamId');
+      const url = savedId ? `/api/maintenance?steamId=${savedId}` : '/api/maintenance';
+      const res = await fetch(url);
       const data = await res.json();
       if (data.maintenance) {
         setMaintenanceMessage(data.message);
