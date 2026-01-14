@@ -375,6 +375,7 @@ export default function DeckBuilder({
     }
 
     const restoreDecksFromData = (data: { decks: any[] }) => {
+      console.log('[DeckBuilder] restoreDecksFromData called, availableCards count:', availableCards.length);
       const newDeckStates: typeof deckStates = {};
 
       // 保存されたデッキをappidからBattleCardに復元
@@ -385,14 +386,22 @@ export default function DeckBuilder({
         deck.frontLine.forEach((saved: { appid: number } | null, idx: number) => {
           if (idx < 5 && saved && saved.appid) {
             const card = availableCards.find(c => c.appid === saved.appid);
-            if (card) restoredFront[idx] = card;
+            if (card) {
+              restoredFront[idx] = card;
+            } else {
+              console.log('[DeckBuilder] Card not found in availableCards:', saved.appid);
+            }
           }
         });
 
         deck.backLine.forEach((saved: { appid: number } | null, idx: number) => {
           if (idx < 5 && saved && saved.appid) {
             const card = availableCards.find(c => c.appid === saved.appid);
-            if (card) restoredBack[idx] = card;
+            if (card) {
+              restoredBack[idx] = card;
+            } else {
+              console.log('[DeckBuilder] Card not found in availableCards:', saved.appid);
+            }
           }
         });
 
