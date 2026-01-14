@@ -202,6 +202,7 @@ export default function CalendarPage() {
       try {
         const response = await fetch(`/api/wishlist-releases?steamId=${encodeURIComponent(steamId)}`);
         const data = await response.json();
+        console.log('[Calendar] Wishlist releases API response:', JSON.stringify(data, null, 2));
         if (data.releases) {
           setWishlistReleases(data.releases);
         }
