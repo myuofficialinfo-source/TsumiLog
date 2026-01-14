@@ -246,9 +246,9 @@ function BattleContent() {
   // サーバーサイドバトル結果
   const [serverBattleResult, setServerBattleResult] = useState<any>(null);
 
-  // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用
+  // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用（本番環境では無効）
   const dummyCount = searchParams.get('dummyBacklog');
-  const dummyCountNum = dummyCount ? parseInt(dummyCount, 10) : 0;
+  const dummyCountNum = process.env.NODE_ENV === 'production' ? 0 : (dummyCount ? parseInt(dummyCount, 10) : 0);
 
   // ダミーデータをメモ化
   const dummyGames = useMemo(() => {

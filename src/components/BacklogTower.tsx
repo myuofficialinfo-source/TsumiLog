@@ -53,9 +53,9 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const [containerHeight, setContainerHeight] = useState(400);
   const { language } = useLanguage();
 
-  // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用
+  // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用（本番環境では無効）
   const dummyCount = searchParams.get('dummyBacklog');
-  const dummyCountNum = dummyCount ? parseInt(dummyCount, 10) : 0;
+  const dummyCountNum = process.env.NODE_ENV === 'production' ? 0 : (dummyCount ? parseInt(dummyCount, 10) : 0);
 
   // ダミーデータをメモ化して再生成を防ぐ
   const testGames = useMemo(() => {
