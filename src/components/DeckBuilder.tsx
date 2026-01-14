@@ -382,15 +382,15 @@ export default function DeckBuilder({
         const restoredFront: (BattleCardType | null)[] = [null, null, null, null, null];
         const restoredBack: (BattleCardType | null)[] = [null, null, null, null, null];
 
-        deck.frontLine.forEach((saved: { appid: number }, idx: number) => {
-          if (idx < 5) {
+        deck.frontLine.forEach((saved: { appid: number } | null, idx: number) => {
+          if (idx < 5 && saved && saved.appid) {
             const card = availableCards.find(c => c.appid === saved.appid);
             if (card) restoredFront[idx] = card;
           }
         });
 
-        deck.backLine.forEach((saved: { appid: number }, idx: number) => {
-          if (idx < 5) {
+        deck.backLine.forEach((saved: { appid: number } | null, idx: number) => {
+          if (idx < 5 && saved && saved.appid) {
             const card = availableCards.find(c => c.appid === saved.appid);
             if (card) restoredBack[idx] = card;
           }
@@ -464,8 +464,9 @@ export default function DeckBuilder({
 
     setIsSaving(true);
     try {
-      const frontLine = front.filter(c => c !== null).map(c => ({ appid: c!.appid }));
-      const backLine = back.filter(c => c !== null).map(c => ({ appid: c!.appid }));
+      // 位置情報を保持するため、nullも含めて保存（nullの場合はappid: null）
+      const frontLine = front.map(c => c ? { appid: c.appid } : null);
+      const backLine = back.map(c => c ? { appid: c.appid } : null);
 
       await fetch('/api/deck', {
         method: 'POST',
