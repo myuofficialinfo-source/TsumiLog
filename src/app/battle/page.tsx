@@ -782,8 +782,12 @@ function BattleContent() {
               </h2>
             </div>
 
-            <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--foreground)' }}>
+            <p className="text-sm leading-relaxed mb-4" style={{ color: 'var(--foreground)' }}>
               現在はβテスト中です。バトルやデッキ編成表示がおかしくなったり、バグったりスコアが変動しても許してください。。。
+            </p>
+
+            <p className="text-xs leading-relaxed mb-6" style={{ color: 'var(--muted-foreground)' }}>
+              ※積みゲーバトルは、積みゲー消化のモチベーションを高めるための「エンターテイメント機能」です。スコアや順位にとらわれすぎず、ゲームを起動する&quot;きっかけ&quot;としてお楽しみいただければ幸いです。
             </p>
 
             <button
