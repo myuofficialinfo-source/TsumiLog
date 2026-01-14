@@ -526,29 +526,34 @@ export default function DeckBuilder({
     // 切り替え時はユーザーアクションフラグをリセット（ロードされたデータで保存が発火しないように）
     isUserActionRef.current = false;
 
-    // 現在のデッキをローカル状態に保存
-    setDeckStates(prev => ({
-      ...prev,
-      [currentDeckNumber]: {
-        frontLine,
-        backLine,
-        isActive: prev[currentDeckNumber]?.isActive || false,
-      },
-    }));
+    // 現在のデッキをローカル状態に保存し、新しいデッキをロード（コールバック内で最新のstateを参照）
+    setDeckStates(prev => {
+      // 現在のデッキを保存
+      const updated = {
+        ...prev,
+        [currentDeckNumber]: {
+          frontLine,
+          backLine,
+          isActive: prev[currentDeckNumber]?.isActive || false,
+        },
+      };
 
-    // 新しいデッキをロード
-    const newDeck = deckStates[deckNum];
-    console.log('[DeckBuilder] switchDeck to', deckNum, 'deckStates keys:', Object.keys(deckStates), 'newDeck:', newDeck ? 'found' : 'not found');
-    if (newDeck) {
-      setFrontLine(newDeck.frontLine);
-      setBackLine(newDeck.backLine);
-    } else {
-      setFrontLine([null, null, null, null, null]);
-      setBackLine([null, null, null, null, null]);
-    }
+      // 新しいデッキをロード（updatedから読む）
+      const newDeck = updated[deckNum];
+      console.log('[DeckBuilder] switchDeck to', deckNum, 'updated keys:', Object.keys(updated), 'newDeck:', newDeck ? 'found' : 'not found');
+      if (newDeck) {
+        setFrontLine(newDeck.frontLine);
+        setBackLine(newDeck.backLine);
+      } else {
+        setFrontLine([null, null, null, null, null]);
+        setBackLine([null, null, null, null, null]);
+      }
+
+      return updated;
+    });
 
     setCurrentDeckNumber(deckNum);
-  }, [currentDeckNumber, frontLine, backLine, deckStates, saveDeckToServer]);
+  }, [currentDeckNumber, frontLine, backLine, saveDeckToServer]);
 
   // デッキをアクティブに設定（防衛デッキも同時に登録）
   const setDeckActive = useCallback(async (deckNum: number) => {
