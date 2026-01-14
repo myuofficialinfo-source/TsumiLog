@@ -508,13 +508,18 @@ export default function DeckBuilder({
 
       // 保存成功後、localStorageのキャッシュも更新
       // 現在のdeckStatesを元にキャッシュデータを構築
+      const cardCount = front.filter(c => c !== null).length + back.filter(c => c !== null).length;
       setDeckStates(prev => {
+        // 10枚未満になったらisActiveをfalseにする
+        const wasActive = prev[deckNum]?.isActive || false;
+        const shouldBeActive = wasActive && cardCount >= 10;
+
         const updatedDeckStates = {
           ...prev,
           [deckNum]: {
             frontLine: front,
             backLine: back,
-            isActive: prev[deckNum]?.isActive || false, // 既存のisActive状態を保持
+            isActive: shouldBeActive, // 10枚未満ならfalseに
           },
         };
 
@@ -524,7 +529,7 @@ export default function DeckBuilder({
             deck_number: parseInt(num),
             front_line: deck.frontLine.map(c => c ? { appid: c.appid } : null),
             back_line: deck.backLine.map(c => c ? { appid: c.appid } : null),
-            is_active: deck.isActive, // 既存のisActive状態を保持
+            is_active: deck.isActive, // 10枚未満なら自動でfalse
           })),
         };
         localStorage.setItem(`deckData_${steamId}`, JSON.stringify(cacheData));
@@ -573,14 +578,17 @@ export default function DeckBuilder({
     isUserActionRef.current = false;
 
     // 現在のデッキをローカル状態に保存し、新しいデッキをロード（コールバック内で最新のstateを参照）
+    const currentCardCount = frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length;
     setDeckStates(prev => {
-      // 現在のデッキを保存
+      // 現在のデッキを保存（10枚未満ならisActiveをfalseに）
+      const wasActive = prev[currentDeckNumber]?.isActive || false;
+      const shouldBeActive = wasActive && currentCardCount >= 10;
       const updated = {
         ...prev,
         [currentDeckNumber]: {
           frontLine,
           backLine,
-          isActive: prev[currentDeckNumber]?.isActive || false,
+          isActive: shouldBeActive,
         },
       };
 
@@ -709,9 +717,9 @@ export default function DeckBuilder({
     }
   }, [steamId, currentDeckNumber, frontLine, backLine, personaName, avatarUrl]);
 
-  // 現在のデッキがアクティブかどうか（カードがある場合のみ有効）
-  const currentDeckHasCards = frontLine.some(c => c !== null) || backLine.some(c => c !== null);
-  const isCurrentDeckActive = currentDeckHasCards && (deckStates[currentDeckNumber]?.isActive || false);
+  // 現在のデッキがアクティブかどうか（10枚揃っている場合のみ有効）
+  const currentDeckCardCount = frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length;
+  const isCurrentDeckActive = currentDeckCardCount >= 10 && (deckStates[currentDeckNumber]?.isActive || false);
 
   // 選択済みカードのappid
   const selectedAppIds = useMemo(() => {
@@ -1275,10 +1283,11 @@ export default function DeckBuilder({
                   const isSelected = num === currentDeckNumber;
                   const deckState = deckStates[num];
                   const isActive = deckState?.isActive || false;
-                  const hasCards = deckState && (
-                    deckState.frontLine.some(c => c !== null) ||
-                    deckState.backLine.some(c => c !== null)
-                  );
+                  const cardCount = deckState
+                    ? deckState.frontLine.filter(c => c !== null).length + deckState.backLine.filter(c => c !== null).length
+                    : 0;
+                  const hasCards = cardCount > 0;
+                  const isComplete = cardCount >= 10;
 
                   return (
                     <button
@@ -1293,8 +1302,8 @@ export default function DeckBuilder({
                       }`}
                     >
                       {num}
-                      {/* アクティブマーク（カードがある場合のみ表示） */}
-                      {isActive && hasCards && (
+                      {/* アクティブマーク（10枚揃っている場合のみ表示） */}
+                      {isActive && isComplete && (
                         <div
                           className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
                           style={{ backgroundColor: 'var(--pop-green)' }}
