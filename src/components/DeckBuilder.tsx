@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, DragEvent, TouchEvent, useRef } from 'react';
+import { useState, useMemo, useCallback, useEffect, DragEvent } from 'react';
 import BattleCard, { CardSlot } from './BattleCard';
 import {
   BattleCard as BattleCardType,
@@ -352,11 +352,8 @@ export default function DeckBuilder({
   const [sortBy, setSortBy] = useState<'rarity' | 'attack' | 'hp' | 'developer' | 'genre' | 'tag'>('rarity');
   const [sortOrder, setSortOrder] = useState<'desc' | 'asc'>('desc');
 
-  // タッチドラッグ用のstate
-  const [touchDragCard, setTouchDragCard] = useState<BattleCardType | null>(null);
-  const [touchDragFromSlot, setTouchDragFromSlot] = useState<{ line: 'front' | 'back'; index: number } | null>(null);
-  const [touchPosition, setTouchPosition] = useState<{ x: number; y: number } | null>(null);
-  const slotRefs = useRef<Map<string, HTMLDivElement>>(new Map());
+  // スマホ用：カード配置先選択ポップアップ
+  const [cardToPlace, setCardToPlace] = useState<BattleCardType | null>(null);
 
   // 保存されたデッキをロード（プリロードデータがあればそれを使用）
   useEffect(() => {
@@ -861,111 +858,31 @@ export default function DeckBuilder({
     setDragOverSlot(null);
   };
 
-  // タッチドラッグ開始（カードリストから）
-  const handleTouchStart = (card: BattleCardType, e: TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    setTouchDragCard(card);
-    setTouchDragFromSlot(null);
-    setTouchPosition({ x: touch.clientX, y: touch.clientY });
+  // スマホ用：カードをタップして配置先選択ポップアップを開く
+  const handleCardTap = (card: BattleCardType) => {
+    // すでにデッキにあるカードはタップ無効
+    if (selectedAppIds.has(card.appid)) return;
+    setCardToPlace(card);
   };
 
-  // タッチドラッグ開始（デッキスロットから）
-  const handleSlotTouchStart = (card: BattleCardType, line: 'front' | 'back', index: number, e: TouchEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    const touch = e.touches[0];
-    setTouchDragCard(card);
-    setTouchDragFromSlot({ line, index });
-    setTouchPosition({ x: touch.clientX, y: touch.clientY });
-  };
-
-  // タッチドラッグ移動
-  const handleTouchMove = useCallback((e: TouchEvent<HTMLDivElement>) => {
-    if (!touchDragCard) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    setTouchPosition({ x: touch.clientX, y: touch.clientY });
-
-    // どのスロットの上にいるかチェック
-    let foundSlot: { line: 'front' | 'back'; index: number } | null = null;
-    slotRefs.current.forEach((element, key) => {
-      const rect = element.getBoundingClientRect();
-      if (
-        touch.clientX >= rect.left &&
-        touch.clientX <= rect.right &&
-        touch.clientY >= rect.top &&
-        touch.clientY <= rect.bottom
-      ) {
-        const [line, indexStr] = key.split('-');
-        foundSlot = { line: line as 'front' | 'back', index: parseInt(indexStr, 10) };
-      }
-    });
-    setDragOverSlot(foundSlot);
-  }, [touchDragCard]);
-
-  // タッチドラッグ終了
-  const handleTouchEnd = useCallback(() => {
-    if (!touchDragCard) return;
-
-    if (dragOverSlot) {
-      const { line, index } = dragOverSlot;
-
-      if (touchDragFromSlot) {
-        // デッキ内のカード移動（スワップ）
-        const targetCard = line === 'front' ? frontLine[index] : backLine[index];
-
-        // 元のスロットに移動先のカードを配置
-        if (touchDragFromSlot.line === 'front') {
-          setFrontLine(prev => {
-            const newLine = [...prev];
-            newLine[touchDragFromSlot.index] = targetCard;
-            return newLine;
-          });
-        } else {
-          setBackLine(prev => {
-            const newLine = [...prev];
-            newLine[touchDragFromSlot.index] = targetCard;
-            return newLine;
-          });
-        }
-
-        // 移動先のスロットにドラッグしたカードを配置
-        if (line === 'front') {
-          setFrontLine(prev => {
-            const newLine = [...prev];
-            newLine[index] = touchDragCard;
-            return newLine;
-          });
-        } else {
-          setBackLine(prev => {
-            const newLine = [...prev];
-            newLine[index] = touchDragCard;
-            return newLine;
-          });
-        }
-      } else {
-        // カードリストからの配置
-        if (line === 'front') {
-          setFrontLine(prev => {
-            const newLine = [...prev];
-            newLine[index] = touchDragCard;
-            return newLine;
-          });
-        } else {
-          setBackLine(prev => {
-            const newLine = [...prev];
-            newLine[index] = touchDragCard;
-            return newLine;
-          });
-        }
-      }
+  // スマホ用：配置先を選択してカードを配置
+  const placeCardToSlot = (line: 'front' | 'back', index: number) => {
+    if (!cardToPlace) return;
+    if (line === 'front') {
+      setFrontLine(prev => {
+        const newLine = [...prev];
+        newLine[index] = cardToPlace;
+        return newLine;
+      });
+    } else {
+      setBackLine(prev => {
+        const newLine = [...prev];
+        newLine[index] = cardToPlace;
+        return newLine;
+      });
     }
-
-    setTouchDragCard(null);
-    setTouchDragFromSlot(null);
-    setTouchPosition(null);
-    setDragOverSlot(null);
-  }, [touchDragCard, touchDragFromSlot, dragOverSlot, frontLine, backLine]);
+    setCardToPlace(null);
+  };
 
   // スロットへのドラッグオーバー
   const handleDragOver = (e: DragEvent<HTMLDivElement>, line: 'front' | 'back', index: number) => {
@@ -1018,11 +935,6 @@ export default function DeckBuilder({
     setDraggedCard(null);
     setDraggedFromSlot(null);
     setDragOverSlot(null);
-  };
-
-  // カードをプレビュー（詳細ポップアップ表示）
-  const handleCardClick = (card: BattleCardType) => {
-    setPreviewCard(card);
   };
 
   // プレビューからデッキに追加
@@ -1336,7 +1248,6 @@ export default function DeckBuilder({
               {frontLine.map((card, index) => (
                 <div
                   key={`front-${index}`}
-                  ref={(el) => { if (el) slotRefs.current.set(`front-${index}`, el); }}
                   className={`relative transition-transform ${dragOverSlot?.line === 'front' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-red-400' : ''}`}
                   onDragOver={(e) => handleDragOver(e, 'front', index)}
                   onDragLeave={() => setDragOverSlot(null)}
@@ -1347,10 +1258,7 @@ export default function DeckBuilder({
                       draggable
                       onDragStart={() => handleSlotDragStart(card, 'front', index)}
                       onDragEnd={handleDragEnd}
-                      onTouchStart={(e) => handleSlotTouchStart(card, 'front', index, e)}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
-                      className={`cursor-grab active:cursor-grabbing ${(draggedCard?.appid === card.appid && draggedFromSlot) || (touchDragCard?.appid === card.appid && touchDragFromSlot) ? 'opacity-50' : ''}`}
+                      className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1390,7 +1298,6 @@ export default function DeckBuilder({
               {backLine.map((card, index) => (
                 <div
                   key={`back-${index}`}
-                  ref={(el) => { if (el) slotRefs.current.set(`back-${index}`, el); }}
                   className={`relative transition-transform ${dragOverSlot?.line === 'back' && dragOverSlot?.index === index ? 'scale-110 ring-2 ring-blue-400' : ''}`}
                   onDragOver={(e) => handleDragOver(e, 'back', index)}
                   onDragLeave={() => setDragOverSlot(null)}
@@ -1401,10 +1308,7 @@ export default function DeckBuilder({
                       draggable
                       onDragStart={() => handleSlotDragStart(card, 'back', index)}
                       onDragEnd={handleDragEnd}
-                      onTouchStart={(e) => handleSlotTouchStart(card, 'back', index, e)}
-                      onTouchMove={handleTouchMove}
-                      onTouchEnd={handleTouchEnd}
-                      className={`cursor-grab active:cursor-grabbing ${(draggedCard?.appid === card.appid && draggedFromSlot) || (touchDragCard?.appid === card.appid && touchDragFromSlot) ? 'opacity-50' : ''}`}
+                      className={`cursor-grab active:cursor-grabbing ${draggedCard?.appid === card.appid && draggedFromSlot ? 'opacity-50' : ''}`}
                     >
                       <BattleCard
                         card={card}
@@ -1649,16 +1553,9 @@ export default function DeckBuilder({
             )}
           </div>
         </div>
-        {!selectedSlot && !draggedCard && (
-          <p className="text-sm text-gray-500 mb-3">
-            {language === 'ja' ? 'ゲームをドラッグしてスロットにドロップ' : 'Drag games to slots'}
-          </p>
-        )}
-        {draggedCard && (
-          <p className="text-sm text-blue-500 mb-3 font-bold">
-            {language === 'ja' ? 'スロットにドロップしてください' : 'Drop on a slot'}
-          </p>
-        )}
+        <p className="text-sm text-gray-500 mb-3">
+          {language === 'ja' ? 'ゲームをタップして配置先を選択' : 'Tap a game to select placement'}
+        </p>
         <div className="max-h-96 overflow-y-auto py-3 px-2">
           {/* グループ化表示（開発元、ジャンル、タグ） */}
           {groupedCards ? (
@@ -1688,15 +1585,12 @@ export default function DeckBuilder({
                         draggable
                         onDragStart={() => handleDragStart(card)}
                         onDragEnd={handleDragEnd}
-                        onTouchStart={(e) => handleTouchStart(card, e)}
-                        onTouchMove={handleTouchMove}
-                        onTouchEnd={handleTouchEnd}
-                        className={`cursor-grab active:cursor-grabbing flex-shrink-0 ${draggedCard?.appid === card.appid || touchDragCard?.appid === card.appid ? 'opacity-50' : ''}`}
+                        className={`cursor-pointer flex-shrink-0 ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
                       >
                         <BattleCard
                           card={card}
                           size="small"
-                          onClick={() => handleCardClick(card)}
+                          onClick={() => handleCardTap(card)}
                           showStats={false}
                         />
                       </div>
@@ -1714,15 +1608,12 @@ export default function DeckBuilder({
                   draggable
                   onDragStart={() => handleDragStart(card)}
                   onDragEnd={handleDragEnd}
-                  onTouchStart={(e) => handleTouchStart(card, e)}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
-                  className={`cursor-grab active:cursor-grabbing flex-shrink-0 ${draggedCard?.appid === card.appid || touchDragCard?.appid === card.appid ? 'opacity-50' : ''}`}
+                  className={`cursor-pointer flex-shrink-0 ${draggedCard?.appid === card.appid ? 'opacity-50' : ''}`}
                 >
                   <BattleCard
                     card={card}
                     size="small"
-                    onClick={() => handleCardClick(card)}
+                    onClick={() => handleCardTap(card)}
                     showStats={false}
                   />
                 </div>
@@ -1871,16 +1762,100 @@ export default function DeckBuilder({
         </div>
       )}
 
-      {/* タッチドラッグ中のカード表示 */}
-      {touchDragCard && touchPosition && (
-        <div
-          className="fixed pointer-events-none z-50 opacity-80"
-          style={{
-            left: touchPosition.x - 40,
-            top: touchPosition.y - 60,
-          }}
-        >
-          <BattleCard card={touchDragCard} size="small" showStats={false} />
+      {/* 配置先選択ポップアップ（スマホ用） */}
+      {cardToPlace && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" onClick={() => setCardToPlace(null)}>
+          <div
+            className="pop-card p-4 max-w-sm w-full"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* 選択したカード情報 */}
+            <div className="flex items-center gap-3 mb-4">
+              <img
+                src={cardToPlace.headerImage}
+                alt={cardToPlace.name}
+                className="w-16 h-10 object-cover rounded border-2 border-[#3D3D3D]"
+              />
+              <div className="flex-1 min-w-0">
+                <p className="font-bold text-sm truncate">{cardToPlace.name}</p>
+                <div className="flex items-center gap-2 text-xs text-gray-500">
+                  <span className="flex items-center gap-1">
+                    <Swords className="w-3 h-3" style={{ color: 'var(--pop-red)' }} />
+                    {cardToPlace.attack}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <Heart className="w-3 h-3" style={{ color: 'var(--pop-green)' }} />
+                    {cardToPlace.hp}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <p className="text-sm font-bold text-gray-600 mb-3 text-center">
+              {language === 'ja' ? '配置先を選択' : 'Select Slot'}
+            </p>
+
+            {/* 前衛スロット */}
+            <div className="mb-3">
+              <p className="text-xs font-bold mb-2 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-red)' }}>
+                  {language === 'ja' ? '前衛' : 'Front'}
+                </span>
+                <span className="text-gray-500">ATK +20%</span>
+              </p>
+              <div className="flex gap-2 justify-center">
+                {frontLine.map((slot, index) => (
+                  <button
+                    key={`front-${index}`}
+                    onClick={() => placeCardToSlot('front', index)}
+                    disabled={slot !== null}
+                    className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
+                      slot === null
+                        ? 'border-red-400 bg-red-50 hover:bg-red-100 text-red-600'
+                        : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {slot ? '✓' : index + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 後衛スロット */}
+            <div className="mb-4">
+              <p className="text-xs font-bold mb-2 flex items-center gap-2">
+                <span className="px-2 py-0.5 rounded text-white text-xs" style={{ backgroundColor: 'var(--pop-blue)' }}>
+                  {language === 'ja' ? '後衛' : 'Back'}
+                </span>
+                <span className="text-gray-500">Skill x1.5</span>
+              </p>
+              <div className="flex gap-2 justify-center">
+                {backLine.map((slot, index) => (
+                  <button
+                    key={`back-${index}`}
+                    onClick={() => placeCardToSlot('back', index)}
+                    disabled={slot !== null}
+                    className={`w-12 h-12 rounded-lg border-2 flex items-center justify-center text-xs font-bold transition-all ${
+                      slot === null
+                        ? 'border-blue-400 bg-blue-50 hover:bg-blue-100 text-blue-600'
+                        : 'border-gray-300 bg-gray-100 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {slot ? '✓' : index + 1}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* 閉じるボタン */}
+            <button
+              onClick={() => setCardToPlace(null)}
+              className="w-full py-2 rounded-lg border-2 border-[#3D3D3D] text-sm font-bold hover:bg-gray-100"
+              style={{ backgroundColor: 'var(--card-bg)' }}
+            >
+              {language === 'ja' ? 'キャンセル' : 'Cancel'}
+            </button>
+          </div>
         </div>
       )}
 
