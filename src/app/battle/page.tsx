@@ -19,7 +19,7 @@ import {
   SPECIAL_GAME_IDS,
 } from '@/types/cardBattle';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Loader2 } from 'lucide-react';
+import { Loader2, X, AlertTriangle } from 'lucide-react';
 import { Header, Footer } from '@/components/Layout';
 
 interface Game {
@@ -245,6 +245,8 @@ function BattleContent() {
   const [preloadedDeckData, setPreloadedDeckData] = useState<any>(null);
   // サーバーサイドバトル結果
   const [serverBattleResult, setServerBattleResult] = useState<any>(null);
+  // βテストポップアップ
+  const [showBetaPopup, setShowBetaPopup] = useState(true);
 
   // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用（本番環境では無効）
   const dummyCount = searchParams.get('dummyBacklog');
@@ -758,6 +760,42 @@ function BattleContent() {
   return (
     <div className="min-h-screen flex flex-col" style={{ backgroundColor: 'var(--background)' }}>
       <Header showBack backHref="/" />
+
+      {/* βテストポップアップ */}
+      {showBetaPopup && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div
+            className="relative max-w-md w-full rounded-2xl p-6 shadow-xl"
+            style={{ backgroundColor: 'var(--card-bg)' }}
+          >
+            <button
+              onClick={() => setShowBetaPopup(false)}
+              className="absolute top-3 right-3 p-1 rounded-full hover:bg-gray-200 transition-colors"
+            >
+              <X className="w-5 h-5" style={{ color: 'var(--foreground)' }} />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <AlertTriangle className="w-8 h-8 text-yellow-500 flex-shrink-0" />
+              <h2 className="text-xl font-bold" style={{ color: 'var(--foreground)' }}>
+                βテスト中
+              </h2>
+            </div>
+
+            <p className="text-sm leading-relaxed mb-6" style={{ color: 'var(--foreground)' }}>
+              現在はβテスト中です。バトルやデッキ編成表示がおかしくなったり、バグったりスコアが変動しても許してください。。。
+            </p>
+
+            <button
+              onClick={() => setShowBetaPopup(false)}
+              className="w-full py-3 rounded-xl font-bold text-white transition-opacity hover:opacity-90"
+              style={{ backgroundColor: 'var(--pop-blue)' }}
+            >
+              OK
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="flex-grow max-w-7xl mx-auto px-4 py-8 w-full">
         {/* デッキ構築フェーズ */}
