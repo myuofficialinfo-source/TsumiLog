@@ -709,8 +709,9 @@ export default function DeckBuilder({
     }
   }, [steamId, currentDeckNumber, frontLine, backLine, personaName, avatarUrl]);
 
-  // 現在のデッキがアクティブかどうか
-  const isCurrentDeckActive = deckStates[currentDeckNumber]?.isActive || false;
+  // 現在のデッキがアクティブかどうか（カードがある場合のみ有効）
+  const currentDeckHasCards = frontLine.some(c => c !== null) || backLine.some(c => c !== null);
+  const isCurrentDeckActive = currentDeckHasCards && (deckStates[currentDeckNumber]?.isActive || false);
 
   // 選択済みカードのappid
   const selectedAppIds = useMemo(() => {
@@ -1292,8 +1293,8 @@ export default function DeckBuilder({
                       }`}
                     >
                       {num}
-                      {/* アクティブマーク */}
-                      {isActive && (
+                      {/* アクティブマーク（カードがある場合のみ表示） */}
+                      {isActive && hasCards && (
                         <div
                           className="absolute -top-1 -right-1 w-4 h-4 rounded-full flex items-center justify-center"
                           style={{ backgroundColor: 'var(--pop-green)' }}
