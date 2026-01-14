@@ -38,11 +38,14 @@ export async function GET(request: NextRequest) {
 
     // DBからウィッシュリストを取得
     let wishlist = await getUserWishlist(steamId);
+    console.log('[Wishlist API] DB wishlist count:', wishlist.length);
 
     // DBにウィッシュリストがない場合、Steam APIから取得して同期
     if (wishlist.length === 0) {
       try {
+        console.log('[Wishlist API] Fetching from Steam API...');
         const steamWishlist = await getWishlist(steamId);
+        console.log('[Wishlist API] Steam wishlist count:', steamWishlist.length);
         if (steamWishlist.length > 0) {
           await syncUserWishlist(
             steamId,
@@ -50,6 +53,7 @@ export async function GET(request: NextRequest) {
           );
           // 同期後に再取得
           wishlist = await getUserWishlist(steamId);
+          console.log('[Wishlist API] After sync, DB wishlist count:', wishlist.length);
         }
       } catch (error) {
         console.error('Failed to sync wishlist from Steam:', error);
@@ -57,6 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     if (wishlist.length === 0) {
+      console.log('[Wishlist API] No wishlist found, returning empty');
       return NextResponse.json({
         success: true,
         releases: [],
