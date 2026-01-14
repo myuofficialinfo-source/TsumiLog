@@ -75,6 +75,7 @@ interface DeckBuilderProps {
   personaName?: string;
   avatarUrl?: string;
   preloadedDeckData?: { decks: any[] } | null;
+  isLoadingDetails?: boolean;
 }
 
 // ゲームからバトルカードを生成
@@ -187,6 +188,7 @@ export default function DeckBuilder({
   personaName,
   avatarUrl,
   preloadedDeckData,
+  isLoadingDetails = false,
 }: DeckBuilderProps) {
   const { language } = useLanguage();
 
@@ -367,6 +369,12 @@ export default function DeckBuilder({
       return;
     }
 
+    // ゲーム詳細がロード中の場合は待機
+    if (isLoadingDetails) {
+      console.log('[DeckBuilder] Waiting for game details to load...');
+      return;
+    }
+
     // availableCardsがロードされてから実行
     if (availableCards.length === 0) {
       // カードがない場合もローディング完了にする（保存処理が動くように）
@@ -475,7 +483,7 @@ export default function DeckBuilder({
     };
 
     loadDecks();
-  }, [steamId, availableCards, preloadedDeckData]);
+  }, [steamId, availableCards, preloadedDeckData, isLoadingDetails]);
 
   // デッキを保存
   const saveDeckToServer = useCallback(async (deckNum: number, front: (BattleCardType | null)[], back: (BattleCardType | null)[]) => {
@@ -506,7 +514,7 @@ export default function DeckBuilder({
           [deckNum]: {
             frontLine: front,
             backLine: back,
-            isActive: true, // 現在編集中のデッキがアクティブ
+            isActive: prev[deckNum]?.isActive || false, // 既存のisActive状態を保持
           },
         };
 
@@ -516,7 +524,7 @@ export default function DeckBuilder({
             deck_number: parseInt(num),
             front_line: deck.frontLine.map(c => c ? { appid: c.appid } : null),
             back_line: deck.backLine.map(c => c ? { appid: c.appid } : null),
-            is_active: parseInt(num) === deckNum, // 現在保存中のデッキをアクティブに
+            is_active: deck.isActive, // 既存のisActive状態を保持
           })),
         };
         localStorage.setItem(`deckData_${steamId}`, JSON.stringify(cacheData));

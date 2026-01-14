@@ -771,6 +771,7 @@ function BattleContent() {
             personaName={steamData?.profile?.personaName}
             avatarUrl={steamData?.profile?.avatarUrl}
             preloadedDeckData={preloadedDeckData}
+            isLoadingDetails={isLoadingDetails}
           />
         )}
 
