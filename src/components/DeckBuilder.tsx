@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback, useEffect, DragEvent } from 'react';
+import { useState, useMemo, useCallback, useEffect, DragEvent, useRef } from 'react';
 import BattleCard, { CardSlot } from './BattleCard';
 import {
   BattleCard as BattleCardType,
@@ -339,8 +339,10 @@ export default function DeckBuilder({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingDecks, setIsLoadingDecks] = useState(true);
-  const [hasInitialLoaded, setHasInitialLoaded] = useState(false); // 初回ロード完了フラグ
   const [isSavingDefenseDeck, setIsSavingDefenseDeck] = useState(false);
+
+  // ユーザーによる変更かどうかを追跡するRef（初期ロード時の保存を防ぐ）
+  const isUserActionRef = useRef(false);
 
   // デッキ状態
   const [frontLine, setFrontLine] = useState<(BattleCardType | null)[]>([null, null, null, null, null]);
@@ -419,8 +421,6 @@ export default function DeckBuilder({
       });
       localStorage.setItem(`deckActiveStates_${steamId}`, JSON.stringify(activeStates));
       setIsLoadingDecks(false);
-      // 少し遅延してから初回ロード完了フラグを立てる（保存トリガーを避ける）
-      setTimeout(() => setHasInitialLoaded(true), 100);
     };
 
     // プリロードデータがあればそれを使用（APIコールをスキップ）
@@ -478,10 +478,12 @@ export default function DeckBuilder({
 
   // 現在のデッキを保存（デッキ変更時に自動保存）
   useEffect(() => {
-    console.log('[DeckBuilder] Save effect triggered:', { steamId, isLoadingDecks, hasInitialLoaded, cardCount: frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length });
-    // 初回ロード完了前は保存しない
-    if (!steamId || isLoadingDecks || !hasInitialLoaded) {
-      console.log('[DeckBuilder] Save skipped:', { steamId: !!steamId, isLoadingDecks, hasInitialLoaded });
+    const cardCount = frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length;
+    console.log('[DeckBuilder] Save effect triggered:', { steamId, isLoadingDecks, isUserAction: isUserActionRef.current, cardCount });
+
+    // ユーザーアクションでない場合は保存しない
+    if (!steamId || isLoadingDecks || !isUserActionRef.current) {
+      console.log('[DeckBuilder] Save skipped:', { steamId: !!steamId, isLoadingDecks, isUserAction: isUserActionRef.current });
       return;
     }
 
@@ -502,7 +504,7 @@ export default function DeckBuilder({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [frontLine, backLine, currentDeckNumber, steamId, saveDeckToServer, isLoadingDecks, hasInitialLoaded]);
+  }, [frontLine, backLine, currentDeckNumber, steamId, saveDeckToServer, isLoadingDecks]);
 
   // デッキ番号を切り替え
   const switchDeck = useCallback((deckNum: number) => {
@@ -826,6 +828,7 @@ export default function DeckBuilder({
     const targetSlot = slot || selectedSlot;
     if (!targetSlot) return;
 
+    isUserActionRef.current = true;
     const { line, index } = targetSlot;
 
     if (line === 'front') {
@@ -874,6 +877,7 @@ export default function DeckBuilder({
   // スマホ用：配置先を選択してカードを配置
   const placeCardToSlot = (line: 'front' | 'back', index: number) => {
     if (!cardToPlace) return;
+    isUserActionRef.current = true;
     if (line === 'front') {
       setFrontLine(prev => {
         const newLine = [...prev];
@@ -898,6 +902,7 @@ export default function DeckBuilder({
   // スマホ用：ゲーム選択ポップアップからカードを選んでスロットに配置
   const selectCardForSlot = (card: BattleCardType) => {
     if (!slotToFill) return;
+    isUserActionRef.current = true;
     if (slotToFill.line === 'front') {
       setFrontLine(prev => {
         const newLine = [...prev];
@@ -924,6 +929,7 @@ export default function DeckBuilder({
   const handleDrop = (e: DragEvent<HTMLDivElement>, line: 'front' | 'back', index: number) => {
     e.preventDefault();
     if (draggedCard) {
+      isUserActionRef.current = true;
       if (draggedFromSlot) {
         // デッキ内のカード移動（スワップ）
         const targetCard = line === 'front' ? frontLine[index] : backLine[index];
@@ -976,6 +982,7 @@ export default function DeckBuilder({
 
   // カードを削除
   const removeCard = useCallback((line: 'front' | 'back', index: number) => {
+    isUserActionRef.current = true;
     if (line === 'front') {
       setFrontLine(prev => {
         const newLine = [...prev];
@@ -993,6 +1000,7 @@ export default function DeckBuilder({
 
   // おまかせ編成
   const autoFill = useCallback(() => {
+    isUserActionRef.current = true;
     const shuffled = [...availableCards]
       .sort(() => Math.random() - 0.5);
 
@@ -1019,6 +1027,7 @@ export default function DeckBuilder({
 
   // シャッフル
   const shuffle = useCallback(() => {
+    isUserActionRef.current = true;
     const shuffled = [...availableCards]
       .sort(() => Math.random() - 0.5);
 
