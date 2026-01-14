@@ -470,10 +470,15 @@ export default function DeckBuilder({
 
   // 現在のデッキを保存（デッキ変更時に自動保存）
   useEffect(() => {
-    if (!steamId || isLoadingDecks) return;
+    console.log('[DeckBuilder] Save effect triggered:', { steamId, isLoadingDecks, cardCount: frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length });
+    if (!steamId || isLoadingDecks) {
+      console.log('[DeckBuilder] Save skipped:', { steamId: !!steamId, isLoadingDecks });
+      return;
+    }
 
     // デバウンス処理
     const timer = setTimeout(() => {
+      console.log('[DeckBuilder] Saving deck to server...');
       saveDeckToServer(currentDeckNumber, frontLine, backLine);
 
       // ローカル状態も更新
