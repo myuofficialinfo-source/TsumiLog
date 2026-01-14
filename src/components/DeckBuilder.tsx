@@ -339,6 +339,7 @@ export default function DeckBuilder({
   });
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingDecks, setIsLoadingDecks] = useState(true);
+  const [hasInitialLoaded, setHasInitialLoaded] = useState(false); // 初回ロード完了フラグ
   const [isSavingDefenseDeck, setIsSavingDefenseDeck] = useState(false);
 
   // デッキ状態
@@ -418,6 +419,8 @@ export default function DeckBuilder({
       });
       localStorage.setItem(`deckActiveStates_${steamId}`, JSON.stringify(activeStates));
       setIsLoadingDecks(false);
+      // 少し遅延してから初回ロード完了フラグを立てる（保存トリガーを避ける）
+      setTimeout(() => setHasInitialLoaded(true), 100);
     };
 
     // プリロードデータがあればそれを使用（APIコールをスキップ）
@@ -475,9 +478,10 @@ export default function DeckBuilder({
 
   // 現在のデッキを保存（デッキ変更時に自動保存）
   useEffect(() => {
-    console.log('[DeckBuilder] Save effect triggered:', { steamId, isLoadingDecks, cardCount: frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length });
-    if (!steamId || isLoadingDecks) {
-      console.log('[DeckBuilder] Save skipped:', { steamId: !!steamId, isLoadingDecks });
+    console.log('[DeckBuilder] Save effect triggered:', { steamId, isLoadingDecks, hasInitialLoaded, cardCount: frontLine.filter(c => c !== null).length + backLine.filter(c => c !== null).length });
+    // 初回ロード完了前は保存しない
+    if (!steamId || isLoadingDecks || !hasInitialLoaded) {
+      console.log('[DeckBuilder] Save skipped:', { steamId: !!steamId, isLoadingDecks, hasInitialLoaded });
       return;
     }
 
@@ -498,7 +502,7 @@ export default function DeckBuilder({
     }, 1000);
 
     return () => clearTimeout(timer);
-  }, [frontLine, backLine, currentDeckNumber, steamId, saveDeckToServer, isLoadingDecks]);
+  }, [frontLine, backLine, currentDeckNumber, steamId, saveDeckToServer, isLoadingDecks, hasInitialLoaded]);
 
   // デッキ番号を切り替え
   const switchDeck = useCallback((deckNum: number) => {
