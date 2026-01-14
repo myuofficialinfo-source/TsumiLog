@@ -522,6 +522,20 @@ export default function DeckBuilder({
 
     setIsSavingDefenseDeck(true);
     try {
+      // まずデッキを保存（DBにレコードがないとPUTが効かないため）
+      const frontLineForSave = frontLine.filter(c => c !== null).map(c => ({ appid: c!.appid }));
+      const backLineForSave = backLine.filter(c => c !== null).map(c => ({ appid: c!.appid }));
+      await fetch('/api/deck', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          steamId,
+          deckNumber: deckNum,
+          frontLine: frontLineForSave,
+          backLine: backLineForSave,
+        }),
+      });
+
       // アクティブデッキとして設定
       await fetch('/api/deck', {
         method: 'PUT',

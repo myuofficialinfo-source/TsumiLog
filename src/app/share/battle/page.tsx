@@ -1,11 +1,10 @@
 'use client';
 
-import { useEffect } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, Suspense } from 'react';
+import { useRouter } from 'next/navigation';
 
-export default function ShareBattlePage() {
+function ShareBattleContent() {
   const router = useRouter();
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     // シェアページにアクセスしたら、バトルページにリダイレクト
@@ -16,5 +15,13 @@ export default function ShareBattlePage() {
     <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: 'var(--background)' }}>
       <p>Redirecting...</p>
     </div>
+  );
+}
+
+export default function ShareBattlePage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><p>Loading...</p></div>}>
+      <ShareBattleContent />
+    </Suspense>
   );
 }
