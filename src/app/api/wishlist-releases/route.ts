@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getUserWishlist, initWishlistTable, initDatabase } from '@/lib/db';
-import { getGameDetails } from '@/lib/steam';
+import { getUserWishlist, initWishlistTable, initDatabase, syncUserWishlist } from '@/lib/db';
+import { getGameDetails, getWishlist } from '@/lib/steam';
 
 // DB初期化フラグ
 let dbInitialized = false;
@@ -36,8 +36,25 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    // ウィッシュリストを取得
-    const wishlist = await getUserWishlist(steamId);
+    // DBからウィッシュリストを取得
+    let wishlist = await getUserWishlist(steamId);
+
+    // DBにウィッシュリストがない場合、Steam APIから取得して同期
+    if (wishlist.length === 0) {
+      try {
+        const steamWishlist = await getWishlist(steamId);
+        if (steamWishlist.length > 0) {
+          await syncUserWishlist(
+            steamId,
+            steamWishlist.map(g => ({ appid: g.appid, name: g.name }))
+          );
+          // 同期後に再取得
+          wishlist = await getUserWishlist(steamId);
+        }
+      } catch (error) {
+        console.error('Failed to sync wishlist from Steam:', error);
+      }
+    }
 
     if (wishlist.length === 0) {
       return NextResponse.json({
