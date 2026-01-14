@@ -47,11 +47,8 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   const searchParams = useSearchParams();
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [isComplete, setIsComplete] = useState(false);
   const [showImageModal, setShowImageModal] = useState(false);
   const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
-  const [containerHeight, setContainerHeight] = useState(400);
-  const [cachedImageUrl, setCachedImageUrl] = useState<string | null>(null);
   const { language } = useLanguage();
 
   // テスト用：URLパラメータ ?dummyBacklog=100 でダミーデータを使用（本番環境では無効）
@@ -78,11 +75,31 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
   // キャッシュキー
   const cacheKey = `backlogTower_${backlogKey}`;
 
-  // 初期化済みキーを保持（同じデータでの再実行を防ぐ）
-  const initializedKeyRef = useRef<string | null>(null);
+  // キャッシュを同期的に取得（初期レンダリング時に使用）
+  const getInitialCache = () => {
+    if (typeof window === 'undefined') return null;
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {
+      // 無視
+    }
+    return null;
+  };
 
-  // キャッシュから画像を読み込む
+  const initialCache = getInitialCache();
+  const [isComplete, setIsComplete] = useState(!!initialCache);
+  const [containerHeight, setContainerHeight] = useState(initialCache?.height || 400);
+  const [cachedImageUrl, setCachedImageUrl] = useState<string | null>(initialCache?.imageUrl || null);
+
+  // 初期化済みキーを保持（同じデータでの再実行を防ぐ）
+  const initializedKeyRef = useRef<string | null>(initialCache ? backlogKey : null);
+
+  // キャッシュキーが変わったら再チェック
   useEffect(() => {
+    if (cachedImageUrl) return; // 既にキャッシュがあればスキップ
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
@@ -90,11 +107,12 @@ export default function BacklogTower({ games, backlogCount }: BacklogTowerProps)
         setCachedImageUrl(data.imageUrl);
         setContainerHeight(data.height || 400);
         setIsComplete(true);
+        initializedKeyRef.current = backlogKey;
       }
     } catch {
       // キャッシュ読み込みエラーは無視
     }
-  }, [cacheKey]);
+  }, [cacheKey, cachedImageUrl, backlogKey]);
 
   // キャッシュ画像をキャンバスに描画
   useEffect(() => {
