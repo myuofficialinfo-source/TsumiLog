@@ -1109,6 +1109,33 @@ export default function BattleArena({
             )}
 
             <div className="flex flex-col gap-3">
+              {/* Xでシェアボタン */}
+              <button
+                onClick={() => {
+                  const resultParam = winner === 'player' ? 'win' : winner === 'opponent' ? 'lose' : 'draw';
+                  const wins = battleStats?.wins || 0;
+                  const rank = battleStats?.rank || '-';
+                  const score = battleStats?.score || 0;
+
+                  const shareText = language === 'ja'
+                    ? `積みゲーで殴り合おう！積みゲーを消化すればするほど強くなる！\n\n#ツミナビ #積みゲーバトル`
+                    : `Battle with your backlog! The more you play, the stronger you get!\n\n#TsumiNavi #BacklogBattle`;
+
+                  // OG画像付きのシェアページURL
+                  const shareUrl = `https://tsumi-navi.vercel.app/share/battle?result=${resultParam}&wins=${wins}&rank=${rank}&score=${score}&lang=${language}`;
+
+                  const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(shareUrl)}`;
+                  window.open(twitterUrl, '_blank', 'noopener,noreferrer');
+                }}
+                className="flex items-center justify-center gap-2 px-6 py-3 rounded-lg border-2 border-[#3D3D3D] hover:bg-gray-100 font-bold w-full"
+                style={{ backgroundColor: '#000', color: '#fff' }}
+              >
+                <svg className="w-5 h-5" viewBox="0 0 24 24" fill="currentColor">
+                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                </svg>
+                {language === 'ja' ? 'Xでシェア' : 'Share on X'}
+              </button>
+
               <button
                 onClick={() => {
                   setShowResultPopup(false);
