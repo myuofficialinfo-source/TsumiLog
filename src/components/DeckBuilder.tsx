@@ -442,6 +442,7 @@ export default function DeckBuilder({
 
     // プリロードデータがあればそれを使用（APIコールをスキップ）
     if (preloadedDeckData) {
+      console.log('[DeckBuilder] Using preloadedDeckData:', JSON.stringify(preloadedDeckData));
       restoreDecksFromData(preloadedDeckData);
       return;
     }
@@ -449,13 +450,16 @@ export default function DeckBuilder({
     // プリロードデータがない場合はAPIから取得
     const loadDecks = async () => {
       try {
+        console.log('[DeckBuilder] Fetching decks from API...');
         const response = await fetch(`/api/deck?steamId=${steamId}`);
         if (response.ok) {
           const data = await response.json();
+          console.log('[DeckBuilder] API response:', JSON.stringify(data));
           restoreDecksFromData(data);
           // キャッシュに保存
           localStorage.setItem(`deckData_${steamId}`, JSON.stringify(data));
         } else {
+          console.log('[DeckBuilder] API response not ok:', response.status);
           setIsLoadingDecks(false);
         }
       } catch (error) {
@@ -474,8 +478,8 @@ export default function DeckBuilder({
     setIsSaving(true);
     try {
       // 位置情報を保持するため、nullも含めて保存（nullの場合はappid: null）
-      const frontLine = front.map(c => c ? { appid: c.appid } : null);
-      const backLine = back.map(c => c ? { appid: c.appid } : null);
+      const frontLineData = front.map(c => c ? { appid: c.appid } : null);
+      const backLineData = back.map(c => c ? { appid: c.appid } : null);
 
       await fetch('/api/deck', {
         method: 'POST',
@@ -483,9 +487,36 @@ export default function DeckBuilder({
         body: JSON.stringify({
           steamId,
           deckNumber: deckNum,
-          frontLine,
-          backLine,
+          frontLine: frontLineData,
+          backLine: backLineData,
         }),
+      });
+
+      // 保存成功後、localStorageのキャッシュも更新
+      // 現在のdeckStatesを元にキャッシュデータを構築
+      setDeckStates(prev => {
+        const updatedDeckStates = {
+          ...prev,
+          [deckNum]: {
+            frontLine: front,
+            backLine: back,
+            isActive: true, // 現在編集中のデッキがアクティブ
+          },
+        };
+
+        // API形式に変換してlocalStorageに保存
+        const cacheData = {
+          decks: Object.entries(updatedDeckStates).map(([num, deck]) => ({
+            deck_number: parseInt(num),
+            front_line: deck.frontLine.map(c => c ? { appid: c.appid } : null),
+            back_line: deck.backLine.map(c => c ? { appid: c.appid } : null),
+            is_active: parseInt(num) === deckNum, // 現在保存中のデッキをアクティブに
+          })),
+        };
+        localStorage.setItem(`deckData_${steamId}`, JSON.stringify(cacheData));
+        console.log('[DeckBuilder] Updated localStorage cache:', JSON.stringify(cacheData));
+
+        return updatedDeckStates;
       });
     } catch (error) {
       console.error('Failed to save deck:', error);
@@ -509,16 +540,7 @@ export default function DeckBuilder({
     const timer = setTimeout(() => {
       console.log('[DeckBuilder] Saving deck to server...');
       saveDeckToServer(currentDeckNumber, frontLine, backLine);
-
-      // ローカル状態も更新
-      setDeckStates(prev => ({
-        ...prev,
-        [currentDeckNumber]: {
-          frontLine,
-          backLine,
-          isActive: prev[currentDeckNumber]?.isActive || false,
-        },
-      }));
+      // ローカル状態とlocalStorageキャッシュはsaveDeckToServer内で更新される
     }, 1000);
 
     return () => clearTimeout(timer);
