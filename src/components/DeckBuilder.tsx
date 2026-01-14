@@ -892,6 +892,7 @@ export default function DeckBuilder({
   // スマホ用：配置先を選択してカードを配置
   const placeCardToSlot = (line: 'front' | 'back', index: number) => {
     if (!cardToPlace) return;
+    console.log('[DeckBuilder] placeCardToSlot called, setting isUserAction to true');
     isUserActionRef.current = true;
     if (line === 'front') {
       setFrontLine(prev => {
@@ -917,6 +918,7 @@ export default function DeckBuilder({
   // スマホ用：ゲーム選択ポップアップからカードを選んでスロットに配置
   const selectCardForSlot = (card: BattleCardType) => {
     if (!slotToFill) return;
+    console.log('[DeckBuilder] selectCardForSlot called, setting isUserAction to true');
     isUserActionRef.current = true;
     if (slotToFill.line === 'front') {
       setFrontLine(prev => {
@@ -944,6 +946,7 @@ export default function DeckBuilder({
   const handleDrop = (e: DragEvent<HTMLDivElement>, line: 'front' | 'back', index: number) => {
     e.preventDefault();
     if (draggedCard) {
+      console.log('[DeckBuilder] handleDrop called, setting isUserAction to true');
       isUserActionRef.current = true;
       if (draggedFromSlot) {
         // デッキ内のカード移動（スワップ）
