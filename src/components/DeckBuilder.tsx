@@ -361,6 +361,8 @@ export default function DeckBuilder({
 
     // availableCardsがロードされてから実行
     if (availableCards.length === 0) {
+      // カードがない場合もローディング完了にする（保存処理が動くように）
+      setIsLoadingDecks(false);
       return;
     }
 
