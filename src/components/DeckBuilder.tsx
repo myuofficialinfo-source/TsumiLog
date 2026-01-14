@@ -414,6 +414,13 @@ export default function DeckBuilder({
 
       setDeckStates(newDeckStates);
 
+      // アクティブデッキがなかった場合、デッキ1を表示
+      const hasActiveDeck = (data.decks || []).some((d: { isActive: boolean }) => d.isActive);
+      if (!hasActiveDeck && newDeckStates[1]) {
+        setFrontLine(newDeckStates[1].frontLine);
+        setBackLine(newDeckStates[1].backLine);
+      }
+
       // isActive状態をキャッシュに保存
       const activeStates: { [key: number]: { isActive: boolean } } = {};
       Object.entries(newDeckStates).forEach(([key, value]) => {
