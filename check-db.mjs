@@ -14,9 +14,16 @@ async function test() {
     `;
     console.log('Tables:', tables.map(t => t.table_name));
 
-    // user_decksテーブルの内容確認
-    const decks = await sql`SELECT * FROM user_decks LIMIT 5`;
-    console.log('Decks:', JSON.stringify(decks, null, 2));
+    // game_usageテーブルの構造確認
+    const columns = await sql`
+      SELECT column_name, data_type FROM information_schema.columns
+      WHERE table_name = 'game_usage'
+    `;
+    console.log('game_usage columns:', columns);
+
+    // game_usageテーブルの内容確認
+    const usage = await sql`SELECT * FROM game_usage LIMIT 10`;
+    console.log('Game Usage:', JSON.stringify(usage, null, 2));
 
   } catch (e) {
     console.error('Error:', e.message);
