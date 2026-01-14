@@ -383,7 +383,13 @@ export default function DeckBuilder({
         const restoredFront: (BattleCardType | null)[] = [null, null, null, null, null];
         const restoredBack: (BattleCardType | null)[] = [null, null, null, null, null];
 
-        deck.frontLine.forEach((saved: { appid: number } | null, idx: number) => {
+        // スネークケース(front_line)とキャメルケース(frontLine)の両方に対応
+        const frontLineData = deck.front_line || deck.frontLine || [];
+        const backLineData = deck.back_line || deck.backLine || [];
+        const deckNumber = deck.deck_number ?? deck.deckNumber;
+        const isActive = deck.is_active ?? deck.isActive ?? false;
+
+        frontLineData.forEach((saved: { appid: number } | null, idx: number) => {
           if (idx < 5 && saved && saved.appid) {
             const card = availableCards.find(c => c.appid === saved.appid);
             if (card) {
@@ -394,7 +400,7 @@ export default function DeckBuilder({
           }
         });
 
-        deck.backLine.forEach((saved: { appid: number } | null, idx: number) => {
+        backLineData.forEach((saved: { appid: number } | null, idx: number) => {
           if (idx < 5 && saved && saved.appid) {
             const card = availableCards.find(c => c.appid === saved.appid);
             if (card) {
@@ -405,19 +411,19 @@ export default function DeckBuilder({
           }
         });
 
-        newDeckStates[deck.deckNumber] = {
+        newDeckStates[deckNumber] = {
           frontLine: restoredFront,
           backLine: restoredBack,
-          isActive: deck.isActive,
+          isActive: isActive,
         };
 
         // アクティブデッキを現在のデッキとして設定
-        if (deck.isActive) {
-          setCurrentDeckNumber(deck.deckNumber);
+        if (isActive) {
+          setCurrentDeckNumber(deckNumber);
           setFrontLine(restoredFront);
           setBackLine(restoredBack);
           // キャッシュに保存
-          localStorage.setItem(`activeDeckNumber_${steamId}`, deck.deckNumber.toString());
+          localStorage.setItem(`activeDeckNumber_${steamId}`, deckNumber.toString());
         }
       }
 
