@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getRanking, getUserRank, getUserScore, initDatabase } from '@/lib/db';
+import { getRankingByPeriod, getUserRankByPeriod, initDatabase } from '@/lib/db';
 
 // DB初期化フラグ
 let dbInitialized = false;
@@ -12,6 +12,10 @@ async function ensureDbInitialized() {
 }
 
 // ランキング取得
+// クエリパラメータ:
+//   - steamId: ユーザーのSteam ID（任意）
+//   - limit: 取得件数（デフォルト100）
+//   - period: 期間（'all' | 'weekly' | 'daily'、デフォルト'all'）
 export async function GET(request: NextRequest) {
   try {
     await ensureDbInitialized();
@@ -19,25 +23,32 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url);
     const steamId = searchParams.get('steamId');
     const limit = parseInt(searchParams.get('limit') || '100', 10);
+    const period = (searchParams.get('period') || 'all') as 'all' | 'weekly' | 'daily';
 
-    // ランキング一覧取得
-    const ranking = await getRanking(limit);
+    // 期間を検証
+    const validPeriods = ['all', 'weekly', 'daily'];
+    const normalizedPeriod = validPeriods.includes(period) ? period : 'all';
+
+    // ランキング一覧取得（期間指定）
+    const ranking = await getRankingByPeriod(limit, normalizedPeriod);
 
     // steamIdが指定されている場合、そのユーザーの情報も返す
     let userInfo = null;
     if (steamId) {
-      const userScore = await getUserScore(steamId);
-      const userRank = await getUserRank(steamId);
+      const userStats = await getUserRankByPeriod(steamId, normalizedPeriod);
       userInfo = {
         steamId,
-        ...userScore,
-        rank: userRank,
+        sublimations: userStats.sublimations,
+        wins: userStats.wins,
+        score: userStats.score,
+        rank: userStats.rank,
       };
     }
 
     return NextResponse.json({
       ranking,
       userInfo,
+      period: normalizedPeriod,
     });
   } catch (error) {
     console.error('Ranking API error:', error);

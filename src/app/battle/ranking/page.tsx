@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Trophy, Medal, Crown, Gamepad2, Users, Star } from 'lucide-react';
+import { Trophy, Medal, Crown, Gamepad2, Users, Star, Calendar, CalendarDays, Clock } from 'lucide-react';
 import { Header, Footer } from '@/components/Layout';
 
 interface RankingUser {
@@ -23,6 +23,8 @@ interface GameUsage {
   uniqueUsers: number;
 }
 
+type RankingPeriod = 'all' | 'weekly' | 'daily';
+
 export default function RankingPage() {
   const { language } = useLanguage();
   const [ranking, setRanking] = useState<RankingUser[]>([]);
@@ -30,38 +32,61 @@ export default function RankingPage() {
   const [userInfo, setUserInfo] = useState<RankingUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'players' | 'games'>('players');
+  const [period, setPeriod] = useState<RankingPeriod>('all');
+
+  const fetchRanking = useCallback(async (selectedPeriod: RankingPeriod) => {
+    try {
+      setLoading(true);
+      const steamId = localStorage.getItem('steam_id');
+
+      // ランキング取得（期間指定）
+      const params = new URLSearchParams();
+      if (steamId) params.append('steamId', steamId);
+      params.append('period', selectedPeriod);
+
+      const rankingRes = await fetch(`/api/ranking?${params.toString()}`);
+      if (rankingRes.ok) {
+        const data = await rankingRes.json();
+        setRanking(data.ranking || []);
+        if (data.userInfo) {
+          setUserInfo(data.userInfo);
+        } else {
+          setUserInfo(null);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch ranking:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchData = async () => {
+      // ランキング取得
+      await fetchRanking(period);
+
+      // ゲーム使用率取得
       try {
-        // Steam IDを取得
-        const steamId = localStorage.getItem('steam_id');
-
-        // ランキング取得
-        const rankingRes = await fetch(`/api/ranking${steamId ? `?steamId=${steamId}` : ''}`);
-        if (rankingRes.ok) {
-          const data = await rankingRes.json();
-          setRanking(data.ranking || []);
-          if (data.userInfo) {
-            setUserInfo(data.userInfo);
-          }
-        }
-
-        // ゲーム使用率取得
         const gameRes = await fetch('/api/game-usage');
         if (gameRes.ok) {
           const data = await gameRes.json();
           setGameUsage(data.games || []);
         }
       } catch (error) {
-        console.error('Failed to fetch ranking:', error);
-      } finally {
-        setLoading(false);
+        console.error('Failed to fetch game usage:', error);
       }
     };
 
     fetchData();
-  }, []);
+  }, [fetchRanking, period]);
+
+  // 期間切り替え時
+  const handlePeriodChange = (newPeriod: RankingPeriod) => {
+    if (newPeriod !== period) {
+      setPeriod(newPeriod);
+    }
+  };
 
   const getRankIcon = (rank: number) => {
     if (rank === 1) return <Crown className="w-6 h-6 text-yellow-500" />;
@@ -103,7 +128,7 @@ export default function RankingPage() {
           </div>
 
           {/* ユーザー情報 */}
-        {userInfo && (
+        {userInfo && activeTab === 'players' && (
           <div className="pop-card p-4 mb-6 border-4" style={{ borderColor: 'var(--pop-yellow)' }}>
             <div className="flex items-center gap-4">
               <div className="relative">
@@ -123,7 +148,16 @@ export default function RankingPage() {
                 </div>
               </div>
               <div className="flex-1">
-                <h2 className="text-lg font-bold">{userInfo.personaName || 'Unknown'}</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold">{userInfo.personaName || 'Unknown'}</h2>
+                  {period !== 'all' && (
+                    <span className="text-xs px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">
+                      {period === 'weekly'
+                        ? (language === 'ja' ? '週間' : 'Weekly')
+                        : (language === 'ja' ? '今日' : 'Today')}
+                    </span>
+                  )}
+                </div>
                 <div className="flex gap-4 mt-1 text-sm">
                   <span className="flex items-center gap-1">
                     <Star className="w-4 h-4 text-yellow-500" />
@@ -172,9 +206,55 @@ export default function RankingPage() {
         {/* プレイヤーランキング */}
         {activeTab === 'players' && (
           <div className="pop-card p-4">
-            {ranking.length === 0 ? (
+            {/* 期間選択タブ */}
+            <div className="flex gap-1 mb-4 p-1 bg-gray-100 rounded-lg">
+              <button
+                onClick={() => handlePeriodChange('all')}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-bold transition-all ${
+                  period === 'all'
+                    ? 'bg-white text-[#3D3D3D] shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Calendar className="w-4 h-4" />
+                {language === 'ja' ? '全期間' : 'All Time'}
+              </button>
+              <button
+                onClick={() => handlePeriodChange('weekly')}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-bold transition-all ${
+                  period === 'weekly'
+                    ? 'bg-white text-[#3D3D3D] shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <CalendarDays className="w-4 h-4" />
+                {language === 'ja' ? '週間' : 'Weekly'}
+              </button>
+              <button
+                onClick={() => handlePeriodChange('daily')}
+                className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-md text-sm font-bold transition-all ${
+                  period === 'daily'
+                    ? 'bg-white text-[#3D3D3D] shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                <Clock className="w-4 h-4" />
+                {language === 'ja' ? '今日' : 'Today'}
+              </button>
+            </div>
+
+            {loading ? (
+              <div className="text-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-4 border-t-transparent mx-auto mb-2" style={{ borderColor: 'var(--pop-yellow)', borderTopColor: 'transparent' }}></div>
+                <p className="text-gray-500 text-sm">{language === 'ja' ? '読み込み中...' : 'Loading...'}</p>
+              </div>
+            ) : ranking.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                {language === 'ja' ? 'まだランキングデータがありません' : 'No ranking data yet'}
+                {period === 'daily'
+                  ? (language === 'ja' ? '今日のランキングデータはまだありません' : 'No ranking data for today yet')
+                  : period === 'weekly'
+                  ? (language === 'ja' ? '今週のランキングデータはまだありません' : 'No ranking data for this week yet')
+                  : (language === 'ja' ? 'まだランキングデータがありません' : 'No ranking data yet')}
               </div>
             ) : (
               <div className="space-y-2">

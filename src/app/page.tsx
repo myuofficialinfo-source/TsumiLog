@@ -9,7 +9,7 @@ import GameList from '@/components/GameList';
 import GenreChart from '@/components/GenreChart';
 import AIRecommend from '@/components/AIRecommend';
 import BacklogTower from '@/components/BacklogTower';
-import { Loader2, Settings, LogOut, Globe, Swords, Calendar, X, Trash2 } from 'lucide-react';
+import { Loader2, Settings, LogOut, Globe, Swords, Calendar, X, Trash2, Trophy, Crown, Medal, ChevronDown, HelpCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 interface Game {
@@ -48,6 +48,16 @@ interface SteamData {
   wishlist?: WishlistGame[];
 }
 
+interface RankingUser {
+  rank: number;
+  steamId: string;
+  personaName: string;
+  avatarUrl: string;
+  sublimations: number;
+  wins: number;
+  score: number;
+}
+
 function HomeContent() {
   const searchParams = useSearchParams();
   const { language, setLanguage, t } = useLanguage();
@@ -62,6 +72,8 @@ function HomeContent() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showMaintenancePopup, setShowMaintenancePopup] = useState(false);
   const [maintenanceMessage, setMaintenanceMessage] = useState('');
+  const [topRanking, setTopRanking] = useState<RankingUser[]>([]);
+  const [expandedFaq, setExpandedFaq] = useState<number | null>(null);
 
   // 起動時にlocalStorageからsteamIdを復元
   useEffect(() => {
@@ -70,6 +82,22 @@ function HomeContent() {
       setSteamId(savedSteamId);
       fetchSteamData(savedSteamId);
     }
+  }, []);
+
+  // ランキングTOP10を取得（未ログイン時のみ表示用）
+  useEffect(() => {
+    const fetchRanking = async () => {
+      try {
+        const res = await fetch('/api/ranking?limit=10');
+        if (res.ok) {
+          const data = await res.json();
+          setTopRanking(data.ranking || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch ranking:', error);
+      }
+    };
+    fetchRanking();
   }, []);
 
   // URLパラメータからSteam IDを取得（OpenID認証後）
@@ -443,9 +471,197 @@ function HomeContent() {
               </a>
             </div>
 
+            {/* ツミナビとは？セクション */}
+            <div
+              className="mt-8 px-6 py-6 rounded-xl border-3 border-[#3D3D3D] max-w-2xl w-full"
+              style={{ backgroundColor: 'var(--card-bg)' }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <HelpCircle className="w-6 h-6" style={{ color: 'var(--pop-blue)' }} />
+                <h3 className="text-xl font-black text-[#3D3D3D]">
+                  {language === 'ja' ? 'ツミナビとは？' : 'What is TsumiNavi?'}
+                </h3>
+              </div>
+              <div className="space-y-4 text-sm text-gray-600">
+                <p>
+                  {language === 'ja'
+                    ? 'ツミナビは、Steamの積みゲー（未プレイ・未クリアゲーム）を楽しく消化するためのWebサービスです。'
+                    : 'TsumiNavi is a web service designed to help you enjoy clearing your Steam backlog (unplayed/unfinished games).'}
+                </p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background)' }}>
+                    <div className="font-bold mb-1" style={{ color: 'var(--pop-red)' }}>
+                      {language === 'ja' ? '📊 積みゲー可視化' : '📊 Backlog Visualization'}
+                    </div>
+                    <p className="text-xs">
+                      {language === 'ja'
+                        ? 'あなたの積みゲーをタワーやグラフで可視化。現状を把握できます。'
+                        : 'Visualize your backlog as a tower or chart to understand your current status.'}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background)' }}>
+                    <div className="font-bold mb-1" style={{ color: 'var(--pop-yellow)' }}>
+                      {language === 'ja' ? '⚔️ 積みゲーバトル' : '⚔️ Backlog Battle'}
+                    </div>
+                    <p className="text-xs">
+                      {language === 'ja'
+                        ? '積みゲーをカードにして対戦！ゲームを消化すると強くなれます。'
+                        : 'Turn your backlog into cards and battle! Playing games makes you stronger.'}
+                    </p>
+                  </div>
+                  <div className="p-3 rounded-lg" style={{ backgroundColor: 'var(--background)' }}>
+                    <div className="font-bold mb-1" style={{ color: 'var(--pop-green)' }}>
+                      {language === 'ja' ? '🤖 AIおすすめ' : '🤖 AI Recommendations'}
+                    </div>
+                    <p className="text-xs">
+                      {language === 'ja'
+                        ? 'AIがあなたの積みゲーから次にプレイすべきゲームをおすすめ。'
+                        : 'AI recommends which game you should play next from your backlog.'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* ランキングセクション */}
+            {topRanking.length > 0 && (
+              <div
+                className="mt-6 px-6 py-6 rounded-xl border-3 border-[#3D3D3D] max-w-2xl w-full"
+                style={{ backgroundColor: 'var(--card-bg)' }}
+              >
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-2">
+                    <Trophy className="w-6 h-6" style={{ color: 'var(--pop-yellow)' }} />
+                    <h3 className="text-xl font-black text-[#3D3D3D]">
+                      {language === 'ja' ? '積みゲーバトル ランキング' : 'Backlog Battle Ranking'}
+                    </h3>
+                  </div>
+                  <span className="text-xs text-gray-500">TOP 10</span>
+                </div>
+                <div className="space-y-2">
+                  {topRanking.map((user) => (
+                    <div
+                      key={user.steamId}
+                      className={`flex items-center gap-3 p-2 rounded-lg border-2 ${
+                        user.rank === 1
+                          ? 'bg-gradient-to-r from-yellow-100 to-yellow-50 border-yellow-300'
+                          : user.rank === 2
+                          ? 'bg-gradient-to-r from-gray-100 to-gray-50 border-gray-300'
+                          : user.rank === 3
+                          ? 'bg-gradient-to-r from-amber-100 to-amber-50 border-amber-300'
+                          : 'bg-white border-gray-200'
+                      }`}
+                    >
+                      <div className="flex-shrink-0 w-6">
+                        {user.rank === 1 ? (
+                          <Crown className="w-5 h-5 text-yellow-500" />
+                        ) : user.rank === 2 ? (
+                          <Medal className="w-5 h-5 text-gray-400" />
+                        ) : user.rank === 3 ? (
+                          <Medal className="w-5 h-5 text-amber-600" />
+                        ) : (
+                          <span className="text-sm font-bold text-gray-500">{user.rank}</span>
+                        )}
+                      </div>
+                      {user.avatarUrl ? (
+                        <img
+                          src={user.avatarUrl}
+                          alt={user.personaName}
+                          className="w-8 h-8 rounded-full border border-gray-300"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 rounded-full bg-gray-200" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className="font-bold text-sm truncate">{user.personaName || 'Unknown'}</p>
+                        <div className="flex gap-2 text-xs text-gray-500">
+                          <span>{language === 'ja' ? '勝利' : 'Wins'}: {user.wins}</span>
+                          <span>{language === 'ja' ? '昇華' : 'Sub'}: {user.sublimations}</span>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-lg font-black" style={{ color: 'var(--pop-yellow)' }}>
+                          {user.score}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Q&Aセクション */}
+            <div
+              className="mt-6 px-6 py-6 rounded-xl border-3 border-[#3D3D3D] max-w-2xl w-full"
+              style={{ backgroundColor: 'var(--card-bg)' }}
+            >
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl">❓</span>
+                <h3 className="text-xl font-black text-[#3D3D3D]">
+                  {language === 'ja' ? 'よくある質問' : 'FAQ'}
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {[
+                  {
+                    q: language === 'ja' ? '無料で使えますか？' : 'Is it free to use?',
+                    a: language === 'ja'
+                      ? 'はい、完全無料でご利用いただけます。'
+                      : 'Yes, it is completely free to use.',
+                  },
+                  {
+                    q: language === 'ja' ? 'Steamアカウントは安全ですか？' : 'Is my Steam account safe?',
+                    a: language === 'ja'
+                      ? 'Steam公式のOpenID認証を使用しています。パスワードは一切保存しません。読み取り専用のため、ゲームの購入や変更はできません。'
+                      : 'We use Steam\'s official OpenID authentication. We never store your password. Read-only access means we cannot purchase or modify your games.',
+                  },
+                  {
+                    q: language === 'ja' ? '「積みゲー」の定義は？' : 'What defines a "backlog" game?',
+                    a: language === 'ja'
+                      ? 'プレイ時間が30分未満のゲームを「積みゲー」として分類しています。この基準は、起動確認程度のプレイを除外するためです。'
+                      : 'Games with less than 30 minutes of playtime are classified as "backlog." This threshold excludes games you only launched to test.',
+                  },
+                  {
+                    q: language === 'ja' ? '「昇華」とは何ですか？' : 'What is "Sublimation"?',
+                    a: language === 'ja'
+                      ? '積みゲー（30分未満）を30分以上プレイすると「昇華」となります。積みゲーバトルのスコアに大きく貢献します。'
+                      : 'When you play a backlog game (under 30 min) for 30+ minutes, it becomes "sublimated." This greatly contributes to your Battle score.',
+                  },
+                  {
+                    q: language === 'ja' ? 'データは保存されますか？' : 'Is my data saved?',
+                    a: language === 'ja'
+                      ? 'バトルの戦績、昇華データ、カレンダーの予定はサーバーに保存されます。アカウント削除でいつでも完全に消去できます。'
+                      : 'Battle records, sublimation data, and calendar events are saved on our server. You can completely delete them anytime via Account Deletion.',
+                  },
+                ].map((faq, index) => (
+                  <div
+                    key={index}
+                    className="border-2 border-gray-200 rounded-lg overflow-hidden"
+                  >
+                    <button
+                      onClick={() => setExpandedFaq(expandedFaq === index ? null : index)}
+                      className="w-full flex items-center justify-between p-3 text-left hover:bg-gray-50 transition-colors"
+                    >
+                      <span className="font-bold text-sm">{faq.q}</span>
+                      <ChevronDown
+                        className={`w-4 h-4 text-gray-500 transition-transform ${
+                          expandedFaq === index ? 'rotate-180' : ''
+                        }`}
+                      />
+                    </button>
+                    {expandedFaq === index && (
+                      <div className="px-3 pb-3 text-sm text-gray-600">
+                        {faq.a}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
             {/* リリースノート */}
             <div
-              className="mt-4 px-6 py-4 rounded-xl border-2 border-[#3D3D3D] max-w-md text-left"
+              className="mt-6 px-6 py-4 rounded-xl border-2 border-[#3D3D3D] max-w-2xl w-full text-left"
               style={{ backgroundColor: 'var(--card-bg)' }}
             >
               <h3 className="text-sm font-bold mb-2" style={{ color: 'var(--pop-purple)' }}>
