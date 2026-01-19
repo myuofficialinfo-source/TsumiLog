@@ -263,6 +263,170 @@ export async function getRanking(limit: number = 100): Promise<Array<{
   }));
 }
 
+// 期間指定ランキング取得（週間・日別）
+// period: 'all' | 'weekly' | 'daily'
+export async function getRankingByPeriod(
+  limit: number = 100,
+  period: 'all' | 'weekly' | 'daily' = 'all'
+): Promise<Array<{
+  rank: number;
+  steamId: string;
+  personaName: string;
+  avatarUrl: string;
+  sublimations: number;
+  wins: number;
+  score: number;
+}>> {
+  // 全期間の場合は既存の関数を使用
+  if (period === 'all') {
+    return getRanking(limit);
+  }
+
+  // 期間の開始日を計算
+  const now = new Date();
+  let startDate: string;
+
+  if (period === 'daily') {
+    // 今日の0時（UTC）
+    startDate = now.toISOString().split('T')[0];
+  } else {
+    // 週間: 7日前
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    startDate = weekAgo.toISOString().split('T')[0];
+  }
+
+  const result = await sql`
+    WITH user_stats AS (
+      SELECT
+        u.steam_id,
+        u.persona_name,
+        u.avatar_url,
+        u.created_at,
+        COALESCE(g.graduation_count, 0) as sublimations,
+        COALESCE(b.win_count, 0) as wins,
+        (COALESCE(g.graduation_count, 0) * 10) + COALESCE(b.win_count, 0) as score
+      FROM users u
+      LEFT JOIN (
+        SELECT steam_id, COUNT(*) as graduation_count
+        FROM graduations
+        WHERE graduated_at >= ${startDate}::DATE
+        GROUP BY steam_id
+      ) g ON u.steam_id = g.steam_id
+      LEFT JOIN (
+        SELECT steam_id, COUNT(*) as win_count
+        FROM battles
+        WHERE result = 'win' AND battled_at >= ${startDate}::DATE
+        GROUP BY steam_id
+      ) b ON u.steam_id = b.steam_id
+    )
+    SELECT
+      ROW_NUMBER() OVER (ORDER BY score DESC, sublimations DESC, wins DESC, created_at ASC) as rank,
+      steam_id,
+      persona_name,
+      avatar_url,
+      sublimations,
+      wins,
+      score
+    FROM user_stats
+    WHERE wins >= 1 OR sublimations >= 1
+    ORDER BY score DESC, sublimations DESC, wins DESC, created_at ASC
+    LIMIT ${limit}
+  `;
+
+  return result.map(row => ({
+    rank: parseInt(row.rank as string, 10),
+    steamId: row.steam_id as string,
+    personaName: row.persona_name as string || 'Unknown',
+    avatarUrl: row.avatar_url as string || '',
+    sublimations: parseInt(row.sublimations as string, 10),
+    wins: parseInt(row.wins as string, 10),
+    score: parseInt(row.score as string, 10),
+  }));
+}
+
+// 期間指定のユーザーランキング順位を取得
+export async function getUserRankByPeriod(
+  steamId: string,
+  period: 'all' | 'weekly' | 'daily' = 'all'
+): Promise<{ rank: number | null; sublimations: number; wins: number; score: number }> {
+  // 全期間の場合は既存の関数を使用
+  if (period === 'all') {
+    const userScore = await getUserScore(steamId);
+    const userRank = await getUserRank(steamId);
+    return { rank: userRank, ...userScore };
+  }
+
+  // 期間の開始日を計算
+  const now = new Date();
+  let startDate: string;
+
+  if (period === 'daily') {
+    startDate = now.toISOString().split('T')[0];
+  } else {
+    const weekAgo = new Date(now);
+    weekAgo.setDate(weekAgo.getDate() - 7);
+    startDate = weekAgo.toISOString().split('T')[0];
+  }
+
+  // ユーザーの期間内スコアを計算
+  const sublimationsResult = await sql`
+    SELECT COUNT(*) as count FROM graduations
+    WHERE steam_id = ${steamId} AND graduated_at >= ${startDate}::DATE
+  `;
+  const sublimations = parseInt(sublimationsResult[0]?.count || '0', 10);
+
+  const winsResult = await sql`
+    SELECT COUNT(*) as count FROM battles
+    WHERE steam_id = ${steamId} AND result = 'win' AND battled_at >= ${startDate}::DATE
+  `;
+  const wins = parseInt(winsResult[0]?.count || '0', 10);
+
+  const score = (sublimations * 10) + wins;
+
+  // 勝利も昇華もない場合はランク外
+  if (wins < 1 && sublimations < 1) {
+    return { rank: null, sublimations, wins, score };
+  }
+
+  // ランキング順位を計算
+  const rankResult = await sql`
+    WITH user_stats AS (
+      SELECT
+        u.steam_id,
+        (COALESCE(g.graduation_count, 0) * 10) + COALESCE(b.win_count, 0) as score,
+        COALESCE(b.win_count, 0) as wins,
+        COALESCE(g.graduation_count, 0) as sublimations,
+        u.created_at
+      FROM users u
+      LEFT JOIN (
+        SELECT steam_id, COUNT(*) as graduation_count
+        FROM graduations
+        WHERE graduated_at >= ${startDate}::DATE
+        GROUP BY steam_id
+      ) g ON u.steam_id = g.steam_id
+      LEFT JOIN (
+        SELECT steam_id, COUNT(*) as win_count
+        FROM battles
+        WHERE result = 'win' AND battled_at >= ${startDate}::DATE
+        GROUP BY steam_id
+      ) b ON u.steam_id = b.steam_id
+      WHERE COALESCE(b.win_count, 0) >= 1 OR COALESCE(g.graduation_count, 0) >= 1
+    ),
+    ranked AS (
+      SELECT
+        steam_id,
+        ROW_NUMBER() OVER (ORDER BY score DESC, sublimations DESC, wins DESC, created_at ASC) as rank
+      FROM user_stats
+    )
+    SELECT rank FROM ranked WHERE steam_id = ${steamId}
+  `;
+
+  const rank = rankResult[0] ? parseInt(rankResult[0].rank as string, 10) : null;
+
+  return { rank, sublimations, wins, score };
+}
+
 // ユーザーのランキング順位を取得（1勝以上のみランキング参加）
 // 0勝の場合はnullを返す（ランク外）
 export async function getUserRank(steamId: string): Promise<number | null> {
