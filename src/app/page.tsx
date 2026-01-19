@@ -606,8 +606,8 @@ function HomeContent() {
                   {
                     q: language === 'ja' ? '無料で使えますか？' : 'Is it free to use?',
                     a: language === 'ja'
-                      ? 'はい、完全無料でご利用いただけます。広告もありません。'
-                      : 'Yes, it is completely free to use. There are no ads either.',
+                      ? 'はい、完全無料でご利用いただけます。'
+                      : 'Yes, it is completely free to use.',
                   },
                   {
                     q: language === 'ja' ? 'Steamアカウントは安全ですか？' : 'Is my Steam account safe?',
