@@ -564,12 +564,10 @@ function HomeContent() {
                         )}
                       </div>
                       {user.avatarUrl ? (
-                        <Image
+                        <img
                           src={user.avatarUrl}
                           alt={user.personaName}
-                          width={32}
-                          height={32}
-                          className="rounded-full border border-gray-300"
+                          className="w-8 h-8 rounded-full border border-gray-300"
                         />
                       ) : (
                         <div className="w-8 h-8 rounded-full bg-gray-200" />
