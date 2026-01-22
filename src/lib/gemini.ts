@@ -65,7 +65,7 @@ export async function generateRecommendations(
   userPreferences?: string,
   language: Language = 'ja'
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const topGenres = genreStats
     .sort((a, b) => b.count - a.count)
@@ -138,7 +138,7 @@ export async function analyzeGamingPreferences(
   totalPlaytime: number,
   language: Language = 'ja'
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   const genreSummary = language === 'ja'
     ? genreStats
@@ -234,7 +234,7 @@ export async function recommendNewReleases(
   wishlistNames: string[] = [],
   language: Language = 'ja'
 ): Promise<NewGameRecommendation[]> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
   // プレイ時間順でソートしたジャンル統計
   const topGenresByPlaytime = genreStats
