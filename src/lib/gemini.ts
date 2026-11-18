@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI, GenerativeModel } from '@google/generative-ai';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import { GenreStats, BacklogGame } from '@/types/steam';
 
 const apiKey = process.env.GOOGLE_AI_API_KEY;
@@ -12,17 +12,23 @@ if (!isApiKeyValid) {
 
 const genAI = new GoogleGenerativeAI(apiKey || '');
 
-// リトライ処理付きのコンテンツ生成
-async function generateWithRetry(
-  model: GenerativeModel,
-  prompt: string,
-  maxRetries: number = 5
-): Promise<string> {
-  // APIキーが無効な場合は即座にエラー
-  if (!isApiKeyValid) {
-    throw new Error('AI機能は現在メンテナンス中です');
-  }
+// モデル名は環境変数 GEMINI_MODEL で差し替え可能（Vercelの環境変数を変えるだけで対応できる）
+// カンマ区切りで複数指定すると、廃止(404)や混雑(503)のときに先頭から順にフォールバックする
+// 例: GEMINI_MODEL=gemini-3.8-flash,gemini-flash-latest
+const MODEL_NAMES = (process.env.GEMINI_MODEL || 'gemini-flash-latest')
+  .split(',')
+  .map(m => m.trim())
+  .filter(Boolean);
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// 1つのモデルに対するリトライ処理付きのコンテンツ生成
+async function generateWithModel(
+  modelName: string,
+  prompt: string,
+  maxRetries: number
+): Promise<string> {
+  const model = genAI.getGenerativeModel({ model: modelName });
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -34,27 +40,68 @@ async function generateWithRetry(
 
       const errorMessage = lastError.message.toLowerCase();
 
+      // 429エラー（レート制限）の場合はリトライ
+      if (errorMessage.includes('429') || errorMessage.includes('rate') || errorMessage.includes('quota')) {
+        // 指数バックオフ: 1秒、2秒、4秒...
+        const waitTime = Math.pow(2, attempt) * 1000;
+        console.log(`Rate limited. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${maxRetries})`);
+        await sleep(waitTime);
+        continue;
+      }
+
+      throw lastError;
+    }
+  }
+
+  throw lastError || new Error('Max retries exceeded');
+}
+
+// モデルを順に試すコンテンツ生成
+async function generateWithRetry(
+  prompt: string,
+  maxRetries: number = 5
+): Promise<string> {
+  // APIキーが無効な場合は即座にエラー
+  if (!isApiKeyValid) {
+    throw new Error('AI機能は現在メンテナンス中です');
+  }
+
+  let lastError: Error | null = null;
+
+  for (const modelName of MODEL_NAMES) {
+    try {
+      return await generateWithModel(modelName, prompt, maxRetries);
+    } catch (error) {
+      lastError = error instanceof Error ? error : new Error('Unknown error');
+      const errorMessage = lastError.message.toLowerCase();
+
       // APIキーが漏洩報告された場合
       if (errorMessage.includes('leaked') || errorMessage.includes('403')) {
         console.error('API key is invalid or leaked');
         throw new Error('AI機能は現在メンテナンス中です');
       }
 
-      // 429エラー（レート制限）の場合はリトライ
-      if (errorMessage.includes('429') || errorMessage.includes('rate') || errorMessage.includes('quota')) {
-        // 指数バックオフ: 1秒、2秒、4秒...
-        const waitTime = Math.pow(2, attempt) * 1000;
-        console.log(`Rate limited. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, waitTime));
+      // モデル廃止(404)・混雑(503)・過負荷・タイムアウトは次のモデルへ
+      if (
+        errorMessage.includes('404') ||
+        errorMessage.includes('not found') ||
+        errorMessage.includes('no longer available') ||
+        errorMessage.includes('503') ||
+        errorMessage.includes('overloaded') ||
+        errorMessage.includes('high demand') ||
+        errorMessage.includes('429') ||
+        errorMessage.includes('quota')
+      ) {
+        console.error(`Model ${modelName} failed, trying next model:`, lastError.message);
         continue;
       }
 
-      // その他のエラーはリトライしない
+      // その他のエラーはフォールバックしない
       throw lastError;
     }
   }
 
-  throw lastError || new Error('Max retries exceeded');
+  throw lastError || new Error('No Gemini model configured');
 }
 
 export type Language = 'ja' | 'en';
@@ -65,8 +112,6 @@ export async function generateRecommendations(
   userPreferences?: string,
   language: Language = 'ja'
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
   const topGenres = genreStats
     .sort((a, b) => b.count - a.count)
     .slice(0, 5)
@@ -124,7 +169,7 @@ Select 5 games from the backlog list and respond in the following format.
 Consider the user's preferred genres and tendencies to suggest the best games from their backlog.`;
 
   try {
-    return await generateWithRetry(model, prompt);
+    return await generateWithRetry(prompt);
   } catch (error) {
     console.error('Gemini API error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -138,8 +183,6 @@ export async function analyzeGamingPreferences(
   totalPlaytime: number,
   language: Language = 'ja'
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
   const genreSummary = language === 'ja'
     ? genreStats
         .sort((a, b) => b.count - a.count)
@@ -203,7 +246,7 @@ Make it unique and memorable, something worth sharing on social media.
 4. **Recommended Play Style**: Advice for clearing their backlog`;
 
   try {
-    return await generateWithRetry(model, prompt);
+    return await generateWithRetry(prompt);
   } catch (error) {
     console.error('Gemini API error:', error);
     const errorMessage = error instanceof Error ? error.message : 'Unknown error';
@@ -234,8 +277,6 @@ export async function recommendNewReleases(
   wishlistNames: string[] = [],
   language: Language = 'ja'
 ): Promise<NewGameRecommendation[]> {
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
-
   // プレイ時間順でソートしたジャンル統計
   const topGenresByPlaytime = genreStats
     .sort((a, b) => b.totalPlaytime - a.totalPlaytime)
@@ -348,7 +389,7 @@ Select 5 games from the candidate list.`;
   const validAppIds = new Set(newGames.map(g => g.appid));
 
   try {
-    const text = await generateWithRetry(model, prompt);
+    const text = await generateWithRetry(prompt);
 
     // JSONを抽出
     const jsonMatch = text.match(/```json\s*([\s\S]*?)\s*```/) || text.match(/\[[\s\S]*\]/);
