@@ -13,20 +13,29 @@ const isUpstashConfigured = !!(
   process.env.UPSTASH_REDIS_REST_TOKEN
 );
 
-// IPベースのレート制限（1時間あたり10回）
+// 上限は環境変数で一時的に上書き可能（未設定なら既定値）
+// 例: RATE_LIMIT_IP_HOURLY=1000 を設定すると確認用に緩められる。終わったら環境変数を削除して戻す
+function envLimit(name: string, fallback: number): number {
+  const n = Number(process.env[name]);
+  return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
+}
+const IP_HOURLY_LIMIT = envLimit('RATE_LIMIT_IP_HOURLY', 10);
+const IP_DAILY_LIMIT = envLimit('RATE_LIMIT_IP_DAILY', 30);
+
+// IPベースのレート制限（既定: 1時間あたり10回）
 const ipHourlyLimiter = isUpstashConfigured
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(10, '1 h'),
+      limiter: Ratelimit.slidingWindow(IP_HOURLY_LIMIT, '1 h'),
       prefix: 'ratelimit:ip:hourly',
     })
   : null;
 
-// IPベースのレート制限（1日あたり30回）
+// IPベースのレート制限（既定: 1日あたり30回）
 const ipDailyLimiter = isUpstashConfigured
   ? new Ratelimit({
       redis,
-      limiter: Ratelimit.slidingWindow(30, '24 h'),
+      limiter: Ratelimit.slidingWindow(IP_DAILY_LIMIT, '24 h'),
       prefix: 'ratelimit:ip:daily',
     })
   : null;
@@ -42,8 +51,6 @@ const globalDailyLimiter = isUpstashConfigured
 
 // ===== フォールバック用のインメモリ制限 =====
 const DAILY_LIMIT = 1000;
-const IP_HOURLY_LIMIT = 10;
-const IP_DAILY_LIMIT = 30;
 
 interface RateLimitData {
   count: number;
