@@ -4,6 +4,33 @@ const STEAM_API_KEY = process.env.STEAM_API_KEY;
 const STEAM_API_BASE = 'https://api.steampowered.com';
 const STEAM_STORE_API = 'https://store.steampowered.com/api';
 
+// Steamは連続アクセスを制限すると、JSONではなくHTMLのエラーページ（429等）を返す。
+// 制限・一時エラー・HTML応答のときは待って再試行し、JSONが取れたときだけ返す。
+async function fetchSteamJson<T = unknown>(url: string, maxTries: number = 3): Promise<T | null> {
+  for (let attempt = 0; attempt < maxTries; attempt++) {
+    try {
+      const response = await fetch(url);
+      const contentType = response.headers.get('content-type') || '';
+      if (response.ok && contentType.includes('json')) {
+        return (await response.json()) as T;
+      }
+      // 429/5xx/HTML応答は一時的な制限とみなして再試行。それ以外(404等)は即終了
+      const retryable = response.status === 429 || response.status >= 500 || response.ok;
+      if (!retryable) return null;
+    } catch {
+      // ネットワークエラーも再試行
+    }
+    if (attempt < maxTries - 1) {
+      await new Promise(resolve => setTimeout(resolve, 500 * Math.pow(2, attempt)));
+    }
+  }
+  return null;
+}
+
+// ゲーム詳細のキャッシュ（Steamへのアクセス回数を減らして制限を避ける）
+const DETAILS_CACHE_TTL = 60 * 60 * 1000; // 1時間
+const detailsCache = new Map<string, { data: SteamGameDetails; timestamp: number }>();
+
 export async function resolveVanityURL(vanityUrl: string): Promise<string | null> {
   const response = await fetch(
     `${STEAM_API_BASE}/ISteamUser/ResolveVanityURL/v1/?key=${STEAM_API_KEY}&vanityurl=${vanityUrl}`
@@ -74,14 +101,14 @@ export async function getSteamSpyData(appId: number): Promise<{
 async function getReviewCount(appId: number): Promise<{ total: number } | undefined> {
   try {
     // language=allで全言語のレビュー合計を取得
-    const response = await fetch(
-      `https://store.steampowered.com/appreviews/${appId}?json=1&num_per_page=0&language=all`
-    );
-    if (!response.ok) {
-      console.log(`[getReviewCount] appId=${appId}: response not ok (${response.status})`);
+    const data = await fetchSteamJson<{
+      success?: number;
+      query_summary?: { total_reviews?: number };
+    }>(`https://store.steampowered.com/appreviews/${appId}?json=1&num_per_page=0&language=all`);
+    if (!data) {
+      console.log(`[getReviewCount] appId=${appId}: no JSON from Reviews API`);
       return undefined;
     }
-    const data = await response.json();
     console.log(`[getReviewCount] appId=${appId}: success=${data.success}, total_reviews=${data.query_summary?.total_reviews}`);
     if (data.success === 1 && data.query_summary) {
       const total = data.query_summary.total_reviews || 0;
@@ -99,12 +126,18 @@ async function getReviewCount(appId: number): Promise<{ total: number } | undefi
 export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'): Promise<SteamGameDetails | null> {
   try {
     const steamLang = language === 'ja' ? 'japanese' : 'english';
-    const response = await fetch(
+    const cacheKey = `${appId}:${steamLang}`;
+    const cached = detailsCache.get(cacheKey);
+    if (cached && Date.now() - cached.timestamp < DETAILS_CACHE_TTL) {
+      return cached.data;
+    }
+
+    // Steam APIの応答は形が多様なため any を許容
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const data = await fetchSteamJson<Record<string, { success?: boolean; data?: any }>>(
       `${STEAM_STORE_API}/appdetails?appids=${appId}&l=${steamLang}`
     );
-    const data = await response.json();
-
-    if (!data[appId]?.success) return null;
+    if (!data || !data[appId]?.success) return null;
 
     const gameData = data[appId].data;
 
@@ -128,7 +161,7 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
       console.log(`[getGameDetails] appId=${appId}: Reviews API fallback result=${JSON.stringify(recommendations)}`);
     }
 
-    return {
+    const details: SteamGameDetails = {
       appid: gameData.steam_appid,
       name: gameData.name,
       description: gameData.short_description,
@@ -145,6 +178,8 @@ export async function getGameDetails(appId: number, language: 'ja' | 'en' = 'ja'
       developers: gameData.developers || [],  // 開発元
       publishers: gameData.publishers || [],  // パブリッシャー
     };
+    detailsCache.set(cacheKey, { data: details, timestamp: Date.now() });
+    return details;
   } catch {
     return null;
   }
