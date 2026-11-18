@@ -44,7 +44,7 @@ async function generateWithModel(
       const errorMessage = lastError.message.toLowerCase();
 
       // 429エラー（レート制限）の場合はリトライ
-      if (errorMessage.includes('429') || errorMessage.includes('rate') || errorMessage.includes('quota')) {
+      if (errorMessage.includes('429') || errorMessage.includes('rate limit') || errorMessage.includes('quota') || errorMessage.includes('resource_exhausted')) {
         // 指数バックオフ: 1秒、2秒、4秒...
         const waitTime = Math.pow(2, attempt) * 1000;
         console.log(`Rate limited. Retrying in ${waitTime}ms... (attempt ${attempt + 1}/${maxRetries})`);
@@ -62,7 +62,7 @@ async function generateWithModel(
 // モデルを順に試すコンテンツ生成
 async function generateWithRetry(
   prompt: string,
-  maxRetries: number = 5
+  maxRetries: number = 2
 ): Promise<string> {
   // APIキーが無効な場合は即座にエラー
   if (!isApiKeyValid) {
@@ -95,7 +95,8 @@ async function generateWithRetry(
         errorMessage.includes('abort') ||
         errorMessage.includes('timeout') ||
         errorMessage.includes('429') ||
-        errorMessage.includes('quota')
+        errorMessage.includes('quota') ||
+        errorMessage.includes('resource_exhausted')
       ) {
         console.error(`Model ${modelName} failed, trying next model:`, lastError.message);
         continue;
