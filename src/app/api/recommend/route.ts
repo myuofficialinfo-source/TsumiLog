@@ -4,6 +4,9 @@ import { getNewReleases } from '@/lib/steam';
 import { checkIpRateLimitAsync, checkGlobalRateLimitAsync } from '@/lib/rate-limit';
 import { GenreStats, BacklogGame } from '@/types/steam';
 
+// Gemini呼び出しのフォールバックを待てるよう、関数の最大実行時間を延長
+export const maxDuration = 60;
+
 // クライアントIPを取得
 function getClientIp(request: NextRequest): string {
   // Vercelの場合は x-forwarded-for ヘッダーを使用

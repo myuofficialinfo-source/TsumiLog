@@ -15,10 +15,13 @@ const genAI = new GoogleGenerativeAI(apiKey || '');
 // モデル名は環境変数 GEMINI_MODEL で差し替え可能（Vercelの環境変数を変えるだけで対応できる）
 // カンマ区切りで複数指定すると、廃止(404)や混雑(503)のときに先頭から順にフォールバックする
 // 例: GEMINI_MODEL=gemini-3.8-flash,gemini-flash-latest
-const MODEL_NAMES = (process.env.GEMINI_MODEL || 'gemini-flash-latest')
+const MODEL_NAMES = (process.env.GEMINI_MODEL || 'gemini-flash-latest,gemini-3.1-flash-lite')
   .split(',')
   .map(m => m.trim())
   .filter(Boolean);
+
+// 1モデルあたりの待ち時間上限。遅いモデルで関数タイムアウトになる前に次のモデルへ切り替える
+const MODEL_TIMEOUT_MS = 12000;
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
@@ -28,7 +31,7 @@ async function generateWithModel(
   prompt: string,
   maxRetries: number
 ): Promise<string> {
-  const model = genAI.getGenerativeModel({ model: modelName });
+  const model = genAI.getGenerativeModel({ model: modelName }, { timeout: MODEL_TIMEOUT_MS });
   let lastError: Error | null = null;
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
@@ -89,6 +92,8 @@ async function generateWithRetry(
         errorMessage.includes('503') ||
         errorMessage.includes('overloaded') ||
         errorMessage.includes('high demand') ||
+        errorMessage.includes('abort') ||
+        errorMessage.includes('timeout') ||
         errorMessage.includes('429') ||
         errorMessage.includes('quota')
       ) {
