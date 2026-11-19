@@ -47,9 +47,10 @@ interface AIRecommendProps {
   gameDetails: Map<number, { genres: { description: string }[] }>;
   stats?: Stats;
   wishlist?: WishlistGame[];
+  isLoadingDetails?: boolean;
 }
 
-export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIRecommendProps) {
+export default function AIRecommend({ games, gameDetails, stats, wishlist, isLoadingDetails = false }: AIRecommendProps) {
   const { language, t } = useLanguage();
   const [recommendation, setRecommendation] = useState<string | null>(null);
   const [analysis, setAnalysis] = useState<string | null>(null);
@@ -453,7 +454,7 @@ Check your backlog too!
           </p>
           <button
             onClick={handleGenerate}
-            disabled={isLoading || gameDetails.size === 0}
+            disabled={isLoading || isLoadingDetails || gameDetails.size === 0}
             className="pop-button px-6 py-3 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
           >
             {isLoading ? (
@@ -468,7 +469,7 @@ Check your backlog too!
               </>
             )}
           </button>
-          {gameDetails.size === 0 && (
+          {(gameDetails.size === 0 || isLoadingDetails) && (
             <p className="text-sm text-gray-500 mt-2 font-medium">
               {t('ai.waiting')}
             </p>
@@ -479,7 +480,7 @@ Check your backlog too!
           <div className="flex justify-end mb-4">
             <button
               onClick={handleGenerate}
-              disabled={isLoading}
+              disabled={isLoading || isLoadingDetails}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors border-2 border-[#3D3D3D] disabled:opacity-50"
               style={{ backgroundColor: 'var(--background-secondary)' }}
             >
@@ -519,7 +520,7 @@ Check your backlog too!
           </p>
           <button
             onClick={handleGenerate}
-            disabled={isLoading || gameDetails.size === 0}
+            disabled={isLoading || isLoadingDetails || gameDetails.size === 0}
             className="pop-button px-6 py-3 text-white font-bold disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 mx-auto"
           >
             {isLoading ? (
@@ -534,7 +535,7 @@ Check your backlog too!
               </>
             )}
           </button>
-          {gameDetails.size === 0 && (
+          {(gameDetails.size === 0 || isLoadingDetails) && (
             <p className="text-sm text-gray-500 mt-2 font-medium">
               {t('ai.waiting')}
             </p>
@@ -584,7 +585,7 @@ Check your backlog too!
           <div className="flex justify-end mb-4 gap-2">
             <button
               onClick={handleGenerate}
-              disabled={isLoading}
+              disabled={isLoading || isLoadingDetails}
               className="flex items-center gap-2 px-4 py-2 text-sm font-medium rounded-lg transition-colors border-2 border-[#3D3D3D] disabled:opacity-50"
               style={{ backgroundColor: 'var(--background-secondary)' }}
             >

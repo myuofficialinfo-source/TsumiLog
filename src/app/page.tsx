@@ -66,6 +66,7 @@ function HomeContent() {
   const [steamData, setSteamData] = useState<SteamData | null>(null);
   const [gameDetails, setGameDetails] = useState<Map<number, { genres: { description: string }[] }>>(new Map());
   const [gameDetailsTimedOut, setGameDetailsTimedOut] = useState(false);
+  const [gameDetailsLoading, setGameDetailsLoading] = useState(false);
   const [steamId, setSteamId] = useState<string | null>(null);
   const [showAccountPopup, setShowAccountPopup] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -205,6 +206,7 @@ function HomeContent() {
     // 言語が変わったらキャッシュとタイムアウト状態をクリア
     setGameDetails(new Map());
     setGameDetailsTimedOut(false);
+    setGameDetailsLoading(true);
 
     let isCancelled = false;
     let hasReceivedData = false;
@@ -250,7 +252,10 @@ function HomeContent() {
       }
     };
 
-    fetchDetails();
+    fetchDetails().finally(() => {
+      // 取得が最後まで終わったときだけ解除（言語切替などで中断された場合は次の取得に任せる）
+      if (!isCancelled) setGameDetailsLoading(false);
+    });
 
     return () => {
       isCancelled = true;
@@ -763,7 +768,7 @@ function HomeContent() {
               <GenreChart games={steamData.games} gameDetails={gameDetails} isTimedOut={gameDetailsTimedOut} />
 
               {/* AI分析 */}
-              <AIRecommend games={steamData.games} gameDetails={gameDetails} stats={steamData.stats} wishlist={steamData.wishlist} />
+              <AIRecommend games={steamData.games} gameDetails={gameDetails} stats={steamData.stats} wishlist={steamData.wishlist} isLoadingDetails={gameDetailsLoading} />
             </div>
 
             {/* ゲームリスト */}
