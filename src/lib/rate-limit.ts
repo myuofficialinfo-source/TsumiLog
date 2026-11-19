@@ -19,10 +19,10 @@ function envLimit(name: string, fallback: number): number {
   const n = Number(process.env[name]);
   return Number.isFinite(n) && n > 0 ? Math.floor(n) : fallback;
 }
-const IP_HOURLY_LIMIT = envLimit('RATE_LIMIT_IP_HOURLY', 10);
+const IP_HOURLY_LIMIT = envLimit('RATE_LIMIT_IP_HOURLY', 30);
 const IP_DAILY_LIMIT = envLimit('RATE_LIMIT_IP_DAILY', 30);
 
-// IPベースのレート制限（既定: 1時間あたり10回）
+// IPベースのレート制限（既定: 1時間あたり30回）
 const ipHourlyLimiter = isUpstashConfigured
   ? new Ratelimit({
       redis,
