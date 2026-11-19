@@ -56,6 +56,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
   const [newReleases, setNewReleases] = useState<NewGameRecommendation[] | null>(null);
   const [catchphrase, setCatchphrase] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<'recommend' | 'analyze' | 'new-releases'>('recommend');
 
   // プレイ時間を日と時間に変換
@@ -101,7 +102,18 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
     }));
   };
 
+  // APIのエラーを画面に表示する（以前は無言でボタンが戻るだけだった）
+  const reportError = (data: { error?: string } | null) => {
+    setErrorMessage(
+      data?.error ||
+        (language === 'ja'
+          ? '通信に失敗しました。しばらく待ってからもう一度お試しください。'
+          : 'Request failed. Please try again later.')
+    );
+  };
+
   const fetchRecommendation = async () => {
+    setErrorMessage(null);
     setIsLoading(true);
     try {
       const backlogGames = games
@@ -126,17 +138,20 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
       });
 
       const data = await response.json();
+      if (!data.recommendations) reportError(data);
       if (data.recommendations) {
         setRecommendation(data.recommendations);
       }
     } catch (error) {
       console.error('Recommendation error:', error);
+      reportError(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   const fetchAnalysis = async () => {
+    setErrorMessage(null);
     setIsLoading(true);
     try {
       const genreStats = generateGenreStats();
@@ -155,6 +170,7 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
       });
 
       const data = await response.json();
+      if (!data.analysis) reportError(data);
       if (data.analysis) {
         // キャッチコピーを抽出
         const lines = data.analysis.split('\n');
@@ -208,12 +224,14 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
       }
     } catch (error) {
       console.error('Analysis error:', error);
+      reportError(null);
     } finally {
       setIsLoading(false);
     }
   };
 
   const fetchNewReleases = async () => {
+    setErrorMessage(null);
     setIsLoading(true);
     try {
       const genreStats = generateGenreStats();
@@ -248,11 +266,13 @@ export default function AIRecommend({ games, gameDetails, stats, wishlist }: AIR
       });
 
       const data = await response.json();
+      if (!data.newReleases) reportError(data);
       if (data.newReleases) {
         setNewReleases(data.newReleases);
       }
     } catch (error) {
       console.error('New releases error:', error);
+      reportError(null);
     } finally {
       setIsLoading(false);
     }
@@ -388,6 +408,12 @@ Check your backlog too!
           </button>
         </div>
       </div>
+
+      {errorMessage && (
+        <p className="mb-4 p-3 rounded-lg border-2 border-[#3D3D3D] text-sm font-medium text-red-600 bg-red-50">
+          {errorMessage}
+        </p>
+      )}
 
       {/* 積みゲーゼロの場合（おすすめタブのみ） */}
       {activeTab === 'recommend' && backlogCount === 0 ? (
